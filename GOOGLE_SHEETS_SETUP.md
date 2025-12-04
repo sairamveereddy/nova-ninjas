@@ -207,3 +207,4 @@ customer_email | company_name | job_title | status | application_link | submitte
 That's it! Your employees can now update the Google Sheet and customers will see real data on their dashboard. 🎉
 
 
+
