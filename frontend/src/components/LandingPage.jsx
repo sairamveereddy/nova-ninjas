@@ -131,7 +131,7 @@ const LandingPage = () => {
     <div className="landing-page">
       {/* Navigation Header */}
       <header className="nav-header">
-        <button onClick={() => navigate('/')} className="nav-logo">
+        <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="nav-logo">
           <img src="/logo.png" alt="Nova Ninjas" className="logo-image" />
           <span className="logo-text">Nova Ninjas</span>
         </button>
