@@ -11,9 +11,6 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import aiosmtplib
 import aiohttp
 from models import CheckoutRequest, SubscriptionData, WebhookEvent
 from payment_service import create_checkout_session, verify_webhook_signature, create_customer_portal_session
@@ -123,42 +120,36 @@ async def root():
 @api_router.get("/test-email/{email}")
 async def test_email_endpoint(email: str):
     """
-    Test endpoint to debug email sending on Railway.
+    Test endpoint to debug email sending on Railway using Resend.
     """
-    smtp_host = os.environ.get('SMTP_HOST', 'smtp.zoho.com')
-    smtp_port = int(os.environ.get('SMTP_PORT', 465))
-    smtp_user = os.environ.get('SMTP_USER')
-    smtp_password = os.environ.get('SMTP_PASSWORD')
-    from_email = os.environ.get('FROM_EMAIL', smtp_user)
+    resend_api_key = os.environ.get('RESEND_API_KEY')
+    from_email = os.environ.get('FROM_EMAIL', 'onboarding@resend.dev')
     
-    # Log configuration (without password)
-    logger.info(f"SMTP Config: host={smtp_host}, port={smtp_port}, user={smtp_user}, from={from_email}")
-    
-    if not smtp_user or not smtp_password:
-        return {"success": False, "error": "SMTP credentials not configured", "smtp_user": smtp_user, "smtp_port": smtp_port}
+    if not resend_api_key:
+        return {"success": False, "error": "RESEND_API_KEY not configured"}
     
     try:
-        message = MIMEText(f"Test email from Railway at {datetime.now()}")
-        message["Subject"] = "Test Email from Railway"
-        message["From"] = from_email
-        message["To"] = email
-        
-        await asyncio.wait_for(
-            aiosmtplib.send(
-                message,
-                hostname=smtp_host,
-                port=smtp_port,
-                use_tls=True,
-                username=smtp_user,
-                password=smtp_password,
-            ),
-            timeout=15.0
-        )
-        return {"success": True, "message": f"Email sent to {email}", "smtp_host": smtp_host, "smtp_port": smtp_port}
-    except asyncio.TimeoutError:
-        return {"success": False, "error": "Email timed out after 15 seconds", "smtp_host": smtp_host, "smtp_port": smtp_port}
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {resend_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "from": from_email,
+                    "to": [email],
+                    "subject": "Test Email from Railway via Resend",
+                    "html": f"<p>Test email sent at {datetime.now()}</p><p>If you receive this, emails are working! 🎉</p>"
+                }
+            ) as response:
+                result = await response.json()
+                if response.status == 200:
+                    return {"success": True, "message": f"Email sent to {email}", "resend_response": result}
+                else:
+                    return {"success": False, "error": result, "status": response.status}
     except Exception as e:
-        return {"success": False, "error": str(e), "smtp_host": smtp_host, "smtp_port": smtp_port}
+        return {"success": False, "error": str(e)}
 
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
@@ -184,52 +175,51 @@ async def get_status_checks():
     
     return status_checks
 
-# ============ EMAIL HELPER ============
+# ============ EMAIL HELPER (RESEND) ============
+
+async def send_email_resend(to_email: str, subject: str, html_content: str):
+    """
+    Send email using Resend API (HTTP-based, works on Railway).
+    """
+    resend_api_key = os.environ.get('RESEND_API_KEY')
+    from_email = os.environ.get('FROM_EMAIL', 'Nova Ninjas <onboarding@resend.dev>')
+    
+    if not resend_api_key:
+        logger.warning("RESEND_API_KEY not configured, skipping email")
+        return False
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {resend_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "from": from_email,
+                    "to": [to_email],
+                    "subject": subject,
+                    "html": html_content
+                }
+            ) as response:
+                result = await response.json()
+                if response.status == 200:
+                    logger.info(f"Email sent successfully to {to_email}")
+                    return True
+                else:
+                    logger.error(f"Failed to send email: {result}")
+                    return False
+    except Exception as e:
+        logger.error(f"Error sending email: {e}")
+        return False
+
 
 async def send_waitlist_email(name: str, email: str):
     """
     Send a confirmation email to users who join the waitlist.
     """
-    try:
-        smtp_host = os.environ.get('SMTP_HOST', 'smtp.zoho.com')
-        smtp_port = int(os.environ.get('SMTP_PORT', 465))
-        smtp_user = os.environ.get('SMTP_USER')
-        smtp_password = os.environ.get('SMTP_PASSWORD')
-        from_email = os.environ.get('FROM_EMAIL', smtp_user)
-        
-        if not smtp_user or not smtp_password:
-            logger.warning("SMTP credentials not configured, skipping email")
-            return False
-        
-        # Create email message
-        message = MIMEMultipart("alternative")
-        message["Subject"] = "Welcome to Nova Ninjas Waitlist! 🥷"
-        message["From"] = from_email
-        message["To"] = email
-        
-        # Plain text version
-        text_content = f"""
-Hi {name},
-
-Thank you for joining the Nova Ninjas waitlist!
-
-We're excited to have you on board. You've taken the first step toward transforming your job search.
-
-What happens next:
-- We'll review your application
-- You'll receive priority access when we launch
-- Our team will reach out with personalized onboarding
-
-In the meantime, feel free to reply to this email if you have any questions.
-
-Best regards,
-The Nova Ninjas Team
-
-Human-powered job applications for serious job seekers
-        """
-        
-        # HTML version
-        html_content = f"""
+    html_content = f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -276,72 +266,16 @@ Human-powered job applications for serious job seekers
     </div>
 </body>
 </html>
-        """
-        
-        message.attach(MIMEText(text_content, "plain"))
-        message.attach(MIMEText(html_content, "html"))
-        
-        # Send email
-        await aiosmtplib.send(
-            message,
-            hostname=smtp_host,
-            port=smtp_port,
-            use_tls=True,
-            username=smtp_user,
-            password=smtp_password,
-        )
-        
-        logger.info(f"Waitlist confirmation email sent to {email}")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Failed to send email to {email}: {str(e)}")
-        return False
+    """
+    
+    return await send_email_resend(email, "Welcome to Nova Ninjas Waitlist! 🥷", html_content)
+
 
 async def send_booking_email(name: str, email: str):
     """
     Send a confirmation email to users who book a call.
     """
-    try:
-        smtp_host = os.environ.get('SMTP_HOST', 'smtp.zoho.com')
-        smtp_port = int(os.environ.get('SMTP_PORT', 465))
-        smtp_user = os.environ.get('SMTP_USER')
-        smtp_password = os.environ.get('SMTP_PASSWORD')
-        from_email = os.environ.get('FROM_EMAIL', smtp_user)
-        
-        if not smtp_user or not smtp_password:
-            logger.warning("SMTP credentials not configured, skipping email")
-            return False
-        
-        # Create email message
-        message = MIMEMultipart("alternative")
-        message["Subject"] = "Your Call with Nova Ninjas is Booked! 📞"
-        message["From"] = from_email
-        message["To"] = email
-        
-        # Plain text version
-        text_content = f"""
-Hi {name},
-
-Thank you for booking a consultation call with Nova Ninjas!
-
-We've received your request and our team will reach out to you within 24 hours to schedule your 15-minute call.
-
-What to expect:
-- A quick call to understand your job search needs
-- Personalized recommendations for your situation
-- Answers to any questions you have about our service
-
-We're excited to help you land your dream job faster!
-
-Best regards,
-The Nova Ninjas Team
-
-Human-powered job applications for serious job seekers
-        """
-        
-        # HTML version
-        html_content = f"""
+    html_content = f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -351,116 +285,47 @@ Human-powered job applications for serious job seekers
         .header {{ background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
         .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
         .highlight {{ background: #e8f5e9; padding: 15px; border-radius: 8px; margin: 20px 0; }}
-        .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 14px; }}
         h1 {{ margin: 0; font-size: 28px; }}
-        .emoji {{ font-size: 40px; }}
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <div class="emoji">📞</div>
-            <h1>Your Call is Booked!</h1>
+            <h1>📞 Call Booked!</h1>
         </div>
         <div class="content">
             <p>Hi <strong>{name}</strong>,</p>
             
             <p>Thank you for booking a consultation call with Nova Ninjas!</p>
             
+            <p>We've received your request and our team will reach out to you within 24 hours to schedule your 15-minute call.</p>
+            
             <div class="highlight">
-                <strong>What happens next:</strong>
+                <strong>What to expect:</strong>
                 <ul>
-                    <li>📱 Our team will contact you within 24 hours</li>
-                    <li>📅 We'll schedule your 15-minute consultation</li>
-                    <li>💬 You'll get personalized job search recommendations</li>
+                    <li>A quick call to understand your job search needs</li>
+                    <li>Personalized recommendations for your situation</li>
+                    <li>Answers to any questions you have about our service</li>
                 </ul>
             </div>
             
-            <p>We're excited to learn more about your career goals and show you how Nova Ninjas can help you land your dream job faster!</p>
-            
-            <p>If you have any questions, simply reply to this email.</p>
+            <p>We're excited to help you land your dream job faster!</p>
             
             <p>Best regards,<br><strong>The Nova Ninjas Team</strong></p>
-        </div>
-        <div class="footer">
-            <p>Human-powered job applications for serious job seekers</p>
         </div>
     </div>
 </body>
 </html>
-        """
-        
-        message.attach(MIMEText(text_content, "plain"))
-        message.attach(MIMEText(html_content, "html"))
-        
-        # Send email
-        await aiosmtplib.send(
-            message,
-            hostname=smtp_host,
-            port=smtp_port,
-            use_tls=True,
-            username=smtp_user,
-            password=smtp_password,
-        )
-        
-        logger.info(f"Call booking confirmation email sent to {email}")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Failed to send booking email to {email}: {str(e)}")
-        return False
+    """
+    
+    return await send_email_resend(email, "Your Call with Nova Ninjas is Booked! 📞", html_content)
+
 
 async def send_welcome_email(name: str, email: str):
     """
     Send a welcome email to new users who sign up.
     """
-    try:
-        smtp_host = os.environ.get('SMTP_HOST', 'smtp.zoho.com')
-        smtp_port = int(os.environ.get('SMTP_PORT', 465))
-        smtp_user = os.environ.get('SMTP_USER')
-        smtp_password = os.environ.get('SMTP_PASSWORD')
-        from_email = os.environ.get('FROM_EMAIL', smtp_user)
-        
-        if not smtp_user or not smtp_password:
-            logger.warning("SMTP credentials not configured, skipping welcome email")
-            return False
-        
-        # Create email message
-        message = MIMEMultipart("alternative")
-        message["Subject"] = f"Welcome to Nova Ninjas, {name}! 🥷"
-        message["From"] = from_email
-        message["To"] = email
-        
-        # Plain text version
-        text_content = f"""
-Hi {name},
-
-Welcome to Nova Ninjas! 🎉
-
-Thank you for signing up. We're thrilled to have you join our community of job seekers who are taking their career to the next level.
-
-What Nova Ninjas Does For You:
-• Your dedicated Job Ninja applies to jobs on your behalf
-• AI-powered application tailoring for maximum impact
-• Real-time tracking dashboard to monitor progress
-• Human specialists, not bots - every application is reviewed personally
-
-Ready to Get Started?
-1. Log in to your dashboard
-2. Complete your profile
-3. Choose a plan that fits your needs
-4. Let your Ninja handle the job application grind!
-
-If you have any questions, just reply to this email - we're here to help.
-
-Best regards,
-The Nova Ninjas Team
-
-Your Personal Job Ninja - Fast, Accurate, Human.
-        """
-        
-        # HTML version
-        html_content = f"""
+    html_content = f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -513,68 +378,18 @@ Your Personal Job Ninja - Fast, Accurate, Human.
     </div>
 </body>
 </html>
-        """
-        
-        message.attach(MIMEText(text_content, "plain"))
-        message.attach(MIMEText(html_content, "html"))
-        
-        # Send email with timeout (10 seconds max)
-        await asyncio.wait_for(
-            aiosmtplib.send(
-                message,
-                hostname=smtp_host,
-                port=smtp_port,
-                use_tls=True,
-                username=smtp_user,
-                password=smtp_password,
-            ),
-            timeout=10.0
-        )
-        
-        logger.info(f"Welcome email sent to {email}")
-        return True
-        
-    except asyncio.TimeoutError:
-        logger.error(f"Timeout sending welcome email to {email}")
-        return False
-    except Exception as e:
-        logger.error(f"Failed to send welcome email to {email}: {str(e)}")
-        return False
+    """
+    
+    return await send_email_resend(email, f"Welcome to Nova Ninjas, {name}! 🥷", html_content)
+
 
 async def send_admin_booking_notification(booking):
     """
     Send notification to admin when someone books a call.
     """
-    try:
-        smtp_host = os.environ.get('SMTP_HOST', 'smtp.zoho.com')
-        smtp_port = int(os.environ.get('SMTP_PORT', 465))
-        smtp_user = os.environ.get('SMTP_USER')
-        smtp_password = os.environ.get('SMTP_PASSWORD')
-        from_email = os.environ.get('FROM_EMAIL', smtp_user)
-        admin_email = os.environ.get('ADMIN_EMAIL', from_email)
-        
-        if not smtp_user or not smtp_password:
-            logger.warning("SMTP credentials not configured, skipping admin notification")
-            return False
-        
-        message = MIMEMultipart("alternative")
-        message["Subject"] = f"🔔 New Call Booking: {booking.name}"
-        message["From"] = from_email
-        message["To"] = admin_email
-        
-        text_content = f"""
-New 15-Minute Call Booking!
-
-Name: {booking.name}
-Email: {booking.email}
-Mobile: {booking.mobile}
-Experience: {booking.years_of_experience}
-Booked At: {booking.created_at}
-
-Log in to your dashboard to view all bookings.
-        """
-        
-        html_content = f"""
+    admin_email = os.environ.get('ADMIN_EMAIL', 'veereddy@novaninjas.com')
+    
+    html_content = f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -616,26 +431,9 @@ Log in to your dashboard to view all bookings.
     </div>
 </body>
 </html>
-        """
-        
-        message.attach(MIMEText(text_content, "plain"))
-        message.attach(MIMEText(html_content, "html"))
-        
-        await aiosmtplib.send(
-            message,
-            hostname=smtp_host,
-            port=smtp_port,
-            use_tls=True,
-            username=smtp_user,
-            password=smtp_password,
-        )
-        
-        logger.info(f"Admin notification sent for booking: {booking.email}")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Failed to send admin notification: {str(e)}")
-        return False
+    """
+    
+    return await send_email_resend(admin_email, f"🔔 New Call Booking: {booking.name}", html_content)
 
 # ============ AUTH ENDPOINTS ============
 
