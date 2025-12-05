@@ -514,6 +514,110 @@ async def get_all_users():
     users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(1000)
     return {"users": users, "count": len(users)}
 
+# ============ PROFILE ENDPOINTS ============
+
+@api_router.get("/profile/{email}")
+async def get_profile(email: str):
+    """
+    Get user profile by email.
+    """
+    profile = await db.profiles.find_one({"email": email}, {"_id": 0})
+    
+    if not profile:
+        return {"profile": None}
+    
+    return {"profile": profile}
+
+@api_router.post("/profile")
+async def save_profile(request: Request):
+    """
+    Save or update user profile.
+    Handles multipart form data including file uploads.
+    """
+    form_data = await request.form()
+    
+    email = form_data.get('email')
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+    
+    # Build profile data
+    profile_data = {
+        "email": email,
+        "fullName": form_data.get('fullName', ''),
+        "phone": form_data.get('phone', ''),
+        
+        # Professional Info
+        "yearsOfExperience": form_data.get('yearsOfExperience', ''),
+        "currentRole": form_data.get('currentRole', ''),
+        "targetRole": form_data.get('targetRole', ''),
+        "expectedSalary": form_data.get('expectedSalary', ''),
+        "preferredLocations": form_data.get('preferredLocations', ''),
+        "remotePreference": form_data.get('remotePreference', ''),
+        "preferredJobTypes": form_data.get('preferredJobTypes', ''),
+        "noticePeriod": form_data.get('noticePeriod', ''),
+        
+        # Visa & Work Authorization
+        "visaStatus": form_data.get('visaStatus', ''),
+        "requiresSponsorship": form_data.get('requiresSponsorship', ''),
+        "willingToRelocate": form_data.get('willingToRelocate', ''),
+        
+        # Job Portal Credentials (encrypted in production)
+        "linkedinUrl": form_data.get('linkedinUrl', ''),
+        "linkedinEmail": form_data.get('linkedinEmail', ''),
+        "linkedinPassword": form_data.get('linkedinPassword', ''),
+        "indeedEmail": form_data.get('indeedEmail', ''),
+        "indeedPassword": form_data.get('indeedPassword', ''),
+        
+        # Skills & Background
+        "skills": form_data.get('skills', ''),
+        "education": form_data.get('education', ''),
+        "certifications": form_data.get('certifications', ''),
+        "additionalNotes": form_data.get('additionalNotes', ''),
+        
+        # Metadata
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Handle resume file upload
+    resume_file = form_data.get('resume')
+    if resume_file and hasattr(resume_file, 'read'):
+        # In production, upload to S3/GCS and store URL
+        # For now, just store the filename
+        profile_data['resumeFileName'] = resume_file.filename
+        logger.info(f"Resume uploaded for {email}: {resume_file.filename}")
+    
+    # Upsert profile (update if exists, insert if not)
+    result = await db.profiles.update_one(
+        {"email": email},
+        {"$set": profile_data},
+        upsert=True
+    )
+    
+    logger.info(f"Profile saved for {email}")
+    
+    return {"success": True, "message": "Profile saved successfully"}
+
+@api_router.delete("/user/{email}")
+async def delete_user(email: str):
+    """
+    Delete user account and all associated data.
+    """
+    # Delete from users collection
+    await db.users.delete_one({"email": email})
+    
+    # Delete profile
+    await db.profiles.delete_one({"email": email})
+    
+    # Delete from waitlist
+    await db.waitlist.delete_many({"email": email})
+    
+    # Delete call bookings
+    await db.call_bookings.delete_many({"email": email})
+    
+    logger.info(f"Account deleted for {email}")
+    
+    return {"success": True, "message": "Account deleted successfully"}
+
 # ============ WAITLIST ENDPOINTS ============
 
 @api_router.post("/waitlist", response_model=WaitlistEntry)

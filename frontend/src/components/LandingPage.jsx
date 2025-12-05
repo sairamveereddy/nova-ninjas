@@ -4,11 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Check, X, TrendingUp, Users, Clock, Target, Search, FileText, Send, ChevronRight } from 'lucide-react';
+import { Check, X, TrendingUp, Users, Clock, Target, ChevronRight } from 'lucide-react';
 import BookCallModal from './BookCallModal';
 import {
   heroStats,
@@ -33,16 +29,6 @@ const LandingPage = () => {
     hoursSaved: 0
   });
 
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    currentRole: '',
-    targetRole: '',
-    urgency: ''
-  });
-
-  const [formSubmitted, setFormSubmitted] = useState(false);
   const [isBookCallModalOpen, setIsBookCallModalOpen] = useState(false);
 
   // Animate numbers on load
@@ -70,53 +56,6 @@ const LandingPage = () => {
 
     return () => clearInterval(timer);
   }, []);
-
-  const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleUrgencyChange = (value) => {
-    setFormData({
-      ...formData,
-      urgency: value
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/waitlist`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          current_role: formData.currentRole,
-          target_role: formData.targetRole,
-          urgency: formData.urgency
-        }),
-      });
-
-      if (response.ok) {
-        setFormSubmitted(true);
-        setFormData({ name: '', email: '', phone: '', currentRole: '', targetRole: '', urgency: '' });
-        setTimeout(() => setFormSubmitted(false), 5000);
-      } else {
-        console.error('Failed to submit:', await response.text());
-        alert('Failed to join waitlist. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      alert('Failed to join waitlist. Please try again.');
-    }
-  };
 
   // Handle plan selection - redirect to signup/dashboard
   const handlePlanSelect = (planId) => {
@@ -462,89 +401,24 @@ const LandingPage = () => {
             <p className="about-story">{aboutContent.story}</p>
           </div>
           <Card className="contact-card">
-            <h3 className="contact-title">Join the Waitlist</h3>
-            <p className="contact-subtitle">Get early access and priority onboarding</p>
-            {formSubmitted ? (
-              <div className="form-success">
-                <Check className="success-icon" />
-                <p>Thank you! We'll be in touch soon.</p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="contact-form">
-                <div className="form-group">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="John Doe"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="john@example.com"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <Label htmlFor="phone">Mobile Number</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="+1 (555) 123-4567"
-                  />
-                </div>
-                <div className="form-group">
-                  <Label htmlFor="currentRole">Current or Previous Role</Label>
-                  <Input
-                    id="currentRole"
-                    name="currentRole"
-                    value={formData.currentRole}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Software Engineer"
-                  />
-                </div>
-                <div className="form-group">
-                  <Label htmlFor="targetRole">Target Role</Label>
-                  <Input
-                    id="targetRole"
-                    name="targetRole"
-                    value={formData.targetRole}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Senior Software Engineer"
-                  />
-                </div>
-                <div className="form-group">
-                  <Label htmlFor="urgency">Urgency Level</Label>
-                  <Select onValueChange={handleUrgencyChange} value={formData.urgency}>
-                    <SelectTrigger id="urgency">
-                      <SelectValue placeholder="Select urgency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low - Exploring options</SelectItem>
-                      <SelectItem value="medium">Medium - Actively searching</SelectItem>
-                      <SelectItem value="high">High - Need job ASAP</SelectItem>
-                      <SelectItem value="urgent">Urgent - Visa/timeline pressure</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button type="submit" className="btn-primary w-full">
-                  <Send className="button-icon" />
-                  Join Waitlist
-                </Button>
-              </form>
-            )}
+            <h3 className="contact-title">Ready to Get Started?</h3>
+            <p className="contact-subtitle">Let your Ninja handle the job application grind</p>
+            <div className="contact-cta">
+              <Button 
+                className="btn-primary w-full" 
+                onClick={() => navigate(isAuthenticated ? '/dashboard' : '/signup')}
+              >
+                {isAuthenticated ? 'Go to Dashboard' : 'Create Your Account'}
+              </Button>
+              <p className="contact-note">or</p>
+              <Button 
+                variant="outline" 
+                className="btn-secondary w-full"
+                onClick={() => setIsBookCallModalOpen(true)}
+              >
+                Book a Free Consultation
+              </Button>
+            </div>
           </Card>
         </div>
       </section>
