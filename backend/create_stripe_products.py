@@ -53,3 +53,4 @@ print(f"STRIPE_PRICE_URGENT={price_ids[2]}")
 print("\n" + "=" * 50)
 
 
+

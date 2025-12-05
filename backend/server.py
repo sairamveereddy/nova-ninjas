@@ -120,6 +120,46 @@ class UserResponse(BaseModel):
 async def root():
     return {"message": "Hello World"}
 
+@api_router.get("/test-email/{email}")
+async def test_email_endpoint(email: str):
+    """
+    Test endpoint to debug email sending on Railway.
+    """
+    smtp_host = os.environ.get('SMTP_HOST', 'smtp.zoho.com')
+    smtp_port = int(os.environ.get('SMTP_PORT', 465))
+    smtp_user = os.environ.get('SMTP_USER')
+    smtp_password = os.environ.get('SMTP_PASSWORD')
+    from_email = os.environ.get('FROM_EMAIL', smtp_user)
+    
+    # Log configuration (without password)
+    logger.info(f"SMTP Config: host={smtp_host}, port={smtp_port}, user={smtp_user}, from={from_email}")
+    
+    if not smtp_user or not smtp_password:
+        return {"success": False, "error": "SMTP credentials not configured", "smtp_user": smtp_user, "smtp_port": smtp_port}
+    
+    try:
+        message = MIMEText(f"Test email from Railway at {datetime.now()}")
+        message["Subject"] = "Test Email from Railway"
+        message["From"] = from_email
+        message["To"] = email
+        
+        await asyncio.wait_for(
+            aiosmtplib.send(
+                message,
+                hostname=smtp_host,
+                port=smtp_port,
+                use_tls=True,
+                username=smtp_user,
+                password=smtp_password,
+            ),
+            timeout=15.0
+        )
+        return {"success": True, "message": f"Email sent to {email}", "smtp_host": smtp_host, "smtp_port": smtp_port}
+    except asyncio.TimeoutError:
+        return {"success": False, "error": "Email timed out after 15 seconds", "smtp_host": smtp_host, "smtp_port": smtp_port}
+    except Exception as e:
+        return {"success": False, "error": str(e), "smtp_host": smtp_host, "smtp_port": smtp_port}
+
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
     status_dict = input.model_dump()
