@@ -152,7 +152,7 @@ async def send_waitlist_email(name: str, email: str):
     """
     try:
         smtp_host = os.environ.get('SMTP_HOST', 'smtp.zoho.com')
-        smtp_port = int(os.environ.get('SMTP_PORT', 587))
+        smtp_port = int(os.environ.get('SMTP_PORT', 465))
         smtp_user = os.environ.get('SMTP_USER')
         smtp_password = os.environ.get('SMTP_PASSWORD')
         from_email = os.environ.get('FROM_EMAIL', smtp_user)
@@ -246,7 +246,7 @@ Human-powered job applications for serious job seekers
             message,
             hostname=smtp_host,
             port=smtp_port,
-            start_tls=True,
+            use_tls=True,
             username=smtp_user,
             password=smtp_password,
         )
@@ -264,7 +264,7 @@ async def send_booking_email(name: str, email: str):
     """
     try:
         smtp_host = os.environ.get('SMTP_HOST', 'smtp.zoho.com')
-        smtp_port = int(os.environ.get('SMTP_PORT', 587))
+        smtp_port = int(os.environ.get('SMTP_PORT', 465))
         smtp_user = os.environ.get('SMTP_USER')
         smtp_password = os.environ.get('SMTP_PASSWORD')
         from_email = os.environ.get('FROM_EMAIL', smtp_user)
@@ -358,7 +358,7 @@ Human-powered job applications for serious job seekers
             message,
             hostname=smtp_host,
             port=smtp_port,
-            start_tls=True,
+            use_tls=True,
             username=smtp_user,
             password=smtp_password,
         )
@@ -376,7 +376,7 @@ async def send_welcome_email(name: str, email: str):
     """
     try:
         smtp_host = os.environ.get('SMTP_HOST', 'smtp.zoho.com')
-        smtp_port = int(os.environ.get('SMTP_PORT', 587))
+        smtp_port = int(os.environ.get('SMTP_PORT', 465))
         smtp_user = os.environ.get('SMTP_USER')
         smtp_password = os.environ.get('SMTP_PASSWORD')
         from_email = os.environ.get('FROM_EMAIL', smtp_user)
@@ -484,7 +484,7 @@ Your Personal Job Ninja - Fast, Accurate, Human.
                 message,
                 hostname=smtp_host,
                 port=smtp_port,
-                start_tls=True,
+                use_tls=True,
                 username=smtp_user,
                 password=smtp_password,
             ),
@@ -507,7 +507,7 @@ async def send_admin_booking_notification(booking):
     """
     try:
         smtp_host = os.environ.get('SMTP_HOST', 'smtp.zoho.com')
-        smtp_port = int(os.environ.get('SMTP_PORT', 587))
+        smtp_port = int(os.environ.get('SMTP_PORT', 465))
         smtp_user = os.environ.get('SMTP_USER')
         smtp_password = os.environ.get('SMTP_PASSWORD')
         from_email = os.environ.get('FROM_EMAIL', smtp_user)
@@ -585,7 +585,7 @@ Log in to your dashboard to view all bookings.
             message,
             hostname=smtp_host,
             port=smtp_port,
-            start_tls=True,
+            use_tls=True,
             username=smtp_user,
             password=smtp_password,
         )
