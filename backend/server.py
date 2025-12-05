@@ -5,6 +5,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import asyncio
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
@@ -477,19 +478,25 @@ Your Personal Job Ninja - Fast, Accurate, Human.
         message.attach(MIMEText(text_content, "plain"))
         message.attach(MIMEText(html_content, "html"))
         
-        # Send email
-        await aiosmtplib.send(
-            message,
-            hostname=smtp_host,
-            port=smtp_port,
-            start_tls=True,
-            username=smtp_user,
-            password=smtp_password,
+        # Send email with timeout (10 seconds max)
+        await asyncio.wait_for(
+            aiosmtplib.send(
+                message,
+                hostname=smtp_host,
+                port=smtp_port,
+                start_tls=True,
+                username=smtp_user,
+                password=smtp_password,
+            ),
+            timeout=10.0
         )
         
         logger.info(f"Welcome email sent to {email}")
         return True
         
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout sending welcome email to {email}")
+        return False
     except Exception as e:
         logger.error(f"Failed to send welcome email to {email}: {str(e)}")
         return False
@@ -617,8 +624,8 @@ async def signup(user_data: UserSignup):
     user_dict['created_at'] = user_dict['created_at'].isoformat()
     await db.users.insert_one(user_dict)
     
-    # Send welcome email
-    await send_welcome_email(user.name, user.email)
+    # Send welcome email in background (don't wait)
+    asyncio.create_task(send_welcome_email(user.name, user.email))
     
     # Return user data (without password)
     return {
@@ -687,8 +694,8 @@ async def join_waitlist(input: WaitlistCreate):
     await db.waitlist.insert_one(doc)
     logger.info(f"New waitlist entry: {waitlist_obj.email}")
     
-    # Send confirmation email
-    await send_waitlist_email(waitlist_obj.name, waitlist_obj.email)
+    # Send confirmation email in background (don't wait)
+    asyncio.create_task(send_waitlist_email(waitlist_obj.name, waitlist_obj.email))
     
     return waitlist_obj
 
@@ -723,11 +730,9 @@ async def book_call(input: CallBookingCreate):
     await db.call_bookings.insert_one(doc)
     logger.info(f"New call booking: {booking_obj.email} - {booking_obj.name}")
     
-    # Send confirmation email to user
-    await send_booking_email(booking_obj.name, booking_obj.email)
-    
-    # Send notification to admin
-    await send_admin_booking_notification(booking_obj)
+    # Send emails in background (don't wait)
+    asyncio.create_task(send_booking_email(booking_obj.name, booking_obj.email))
+    asyncio.create_task(send_admin_booking_notification(booking_obj))
     
     return booking_obj
 
