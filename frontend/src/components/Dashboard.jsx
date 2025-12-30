@@ -8,6 +8,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
+import { API_URL } from '../config/api';
 import { 
   TrendingUp, Target, Users, Clock, LogOut, Settings, CreditCard, Loader2,
   User, Upload, Briefcase, Linkedin, Mail, Shield, Trash2, Save, CheckCircle,
@@ -89,7 +90,6 @@ const Dashboard = () => {
       
       try {
         setIsLoading(true);
-        const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
         
         const response = await fetch(`${API_URL}/api/applications/${encodeURIComponent(user.email)}`);
         
@@ -134,7 +134,6 @@ const Dashboard = () => {
       if (!user?.email) return;
       
       try {
-        const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
         const response = await fetch(`${API_URL}/api/profile/${encodeURIComponent(user.email)}`);
         
         if (response.ok) {
@@ -176,8 +175,6 @@ const Dashboard = () => {
     setSaveMessage('');
     
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-      
       // Create form data for file upload
       const formData = new FormData();
       
@@ -214,7 +211,6 @@ const Dashboard = () => {
     if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
       if (window.confirm('This will permanently delete all your data. Type "DELETE" to confirm.')) {
         try {
-          const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
           const response = await fetch(`${API_URL}/api/user/${encodeURIComponent(user?.email)}`, {
             method: 'DELETE'
           });

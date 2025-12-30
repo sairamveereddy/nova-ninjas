@@ -23,10 +23,23 @@ load_dotenv(ROOT_DIR / '.env')
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# MongoDB connection with error handling
+mongo_url = os.environ.get('MONGO_URL')
+db_name = os.environ.get('DB_NAME', 'nova_ninjas')
+
+if not mongo_url:
+    logger.error("MONGO_URL environment variable is not set!")
+    raise ValueError("MONGO_URL environment variable is required")
+
+logger.info(f"Connecting to MongoDB database: {db_name}")
+
+try:
+    client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
+    db = client[db_name]
+    logger.info("MongoDB client initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize MongoDB client: {e}")
+    raise
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -116,6 +129,33 @@ class UserResponse(BaseModel):
 @api_router.get("/")
 async def root():
     return {"message": "Hello World"}
+
+@api_router.get("/health")
+async def health_check():
+    """
+    Health check endpoint that also tests MongoDB connection.
+    """
+    try:
+        # Test MongoDB connection by pinging
+        await client.admin.command('ping')
+        mongo_status = "connected"
+    except Exception as e:
+        mongo_status = f"error: {str(e)}"
+    
+    # Check environment variables
+    env_check = {
+        "MONGO_URL": "set" if os.environ.get('MONGO_URL') else "missing",
+        "DB_NAME": os.environ.get('DB_NAME', 'not set'),
+        "RESEND_API_KEY": "set" if os.environ.get('RESEND_API_KEY') else "missing",
+        "ADMIN_EMAIL": os.environ.get('ADMIN_EMAIL', 'not set')
+    }
+    
+    return {
+        "status": "healthy",
+        "mongodb": mongo_status,
+        "environment": env_check,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
 
 @api_router.get("/test-email/{email}")
 async def test_email_endpoint(email: str):
@@ -442,41 +482,51 @@ async def signup(user_data: UserSignup):
     """
     Register a new user and send welcome email.
     """
-    # Check if user already exists
-    existing_user = await db.users.find_one({"email": user_data.email})
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Create user (in production, hash the password with bcrypt)
-    import hashlib
-    password_hash = hashlib.sha256(user_data.password.encode()).hexdigest()
-    
-    user = User(
-        email=user_data.email,
-        name=user_data.name,
-        password_hash=password_hash
-    )
-    
-    # Save to database
-    user_dict = user.model_dump()
-    user_dict['created_at'] = user_dict['created_at'].isoformat()
-    await db.users.insert_one(user_dict)
-    
-    # Send welcome email in background (don't wait)
-    asyncio.create_task(send_welcome_email(user.name, user.email))
-    
-    # Return user data (without password)
-    return {
-        "success": True,
-        "user": {
-            "id": user.id,
-            "email": user.email,
-            "name": user.name,
-            "role": user.role,
-            "plan": user.plan
-        },
-        "token": f"token_{user.id}"  # In production, use JWT
-    }
+    try:
+        # Check if user already exists
+        existing_user = await db.users.find_one({"email": user_data.email})
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Create user (in production, hash the password with bcrypt)
+        import hashlib
+        password_hash = hashlib.sha256(user_data.password.encode()).hexdigest()
+        
+        user = User(
+            email=user_data.email,
+            name=user_data.name,
+            password_hash=password_hash
+        )
+        
+        # Save to database
+        user_dict = user.model_dump()
+        user_dict['created_at'] = user_dict['created_at'].isoformat()
+        await db.users.insert_one(user_dict)
+        logger.info(f"New user signed up: {user.email}")
+        
+        # Send welcome email in background (don't wait)
+        try:
+            asyncio.create_task(send_welcome_email(user.name, user.email))
+        except Exception as email_error:
+            logger.error(f"Error sending welcome email: {email_error}")
+        
+        # Return user data (without password)
+        return {
+            "success": True,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.name,
+                "role": user.role,
+                "plan": user.plan
+            },
+            "token": f"token_{user.id}"  # In production, use JWT
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in signup: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Signup failed: {str(e)}")
 
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
@@ -666,21 +716,28 @@ async def book_call(input: CallBookingCreate):
     Book a consultation call.
     Stores contact info and experience level.
     """
-    booking_dict = input.model_dump()
-    booking_obj = CallBooking(**booking_dict)
-    
-    # Convert to dict and serialize datetime for MongoDB
-    doc = booking_obj.model_dump()
-    doc['created_at'] = doc['created_at'].isoformat()
-    
-    await db.call_bookings.insert_one(doc)
-    logger.info(f"New call booking: {booking_obj.email} - {booking_obj.name}")
-    
-    # Send emails in background (don't wait)
-    asyncio.create_task(send_booking_email(booking_obj.name, booking_obj.email))
-    asyncio.create_task(send_admin_booking_notification(booking_obj))
-    
-    return booking_obj
+    try:
+        booking_dict = input.model_dump()
+        booking_obj = CallBooking(**booking_dict)
+        
+        # Convert to dict and serialize datetime for MongoDB
+        doc = booking_obj.model_dump()
+        doc['created_at'] = doc['created_at'].isoformat()
+        
+        await db.call_bookings.insert_one(doc)
+        logger.info(f"New call booking: {booking_obj.email} - {booking_obj.name}")
+        
+        # Send emails in background (don't wait)
+        try:
+            asyncio.create_task(send_booking_email(booking_obj.name, booking_obj.email))
+            asyncio.create_task(send_admin_booking_notification(booking_obj))
+        except Exception as email_error:
+            logger.error(f"Error sending emails: {email_error}")
+        
+        return booking_obj
+    except Exception as e:
+        logger.error(f"Error in book_call: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to book call: {str(e)}")
 
 @api_router.get("/call-bookings", response_model=List[CallBooking])
 async def get_call_bookings():
@@ -962,6 +1019,349 @@ async def get_subscription(user_id: str):
         return {'status': 'none', 'message': 'No active subscription'}
     
     return subscription
+
+# ============ EMPLOYEE ENDPOINTS ============
+
+class JobApplication(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    customer_email: str
+    employee_email: str
+    company_name: str
+    job_title: str
+    job_url: str
+    status: str = "found"  # found, prepared, submitted, interview, offer, rejected
+    notes: Optional[str] = None
+    job_description: Optional[str] = None
+    submitted_date: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class JobApplicationCreate(BaseModel):
+    customer_email: str
+    company_name: str
+    job_title: str
+    job_url: str
+    status: str = "found"
+    notes: Optional[str] = None
+    job_description: Optional[str] = None
+
+class CustomerAssignment(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    customer_email: str
+    employee_email: str
+    assigned_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    status: str = "active"  # active, paused, completed
+
+@api_router.get("/employee/customers/{employee_email}")
+async def get_assigned_customers(employee_email: str):
+    """
+    Get all customers assigned to an employee.
+    """
+    # Get assignments
+    assignments = await db.customer_assignments.find(
+        {"employee_email": employee_email, "status": "active"},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    customer_emails = [a['customer_email'] for a in assignments]
+    
+    # Get customer details
+    customers = []
+    for email in customer_emails:
+        user = await db.users.find_one({"email": email}, {"_id": 0, "password_hash": 0})
+        profile = await db.profiles.find_one({"email": email}, {"_id": 0})
+        
+        # Get application count for this customer
+        app_count = await db.job_applications.count_documents({"customer_email": email})
+        
+        if user:
+            customers.append({
+                "user": user,
+                "profile": profile,
+                "application_count": app_count
+            })
+    
+    return {"customers": customers, "count": len(customers)}
+
+@api_router.get("/employee/customer/{customer_email}")
+async def get_customer_details(customer_email: str):
+    """
+    Get detailed information about a specific customer.
+    """
+    user = await db.users.find_one({"email": customer_email}, {"_id": 0, "password_hash": 0})
+    profile = await db.profiles.find_one({"email": customer_email}, {"_id": 0})
+    
+    # Get applications
+    applications = await db.job_applications.find(
+        {"customer_email": customer_email},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    
+    # Get subscription
+    subscription = await db.subscriptions.find_one(
+        {"user_email": customer_email},
+        {"_id": 0}
+    )
+    
+    return {
+        "user": user,
+        "profile": profile,
+        "applications": applications,
+        "subscription": subscription
+    }
+
+@api_router.post("/employee/application")
+async def add_job_application(input: JobApplicationCreate, employee_email: str = None):
+    """
+    Add a new job application for a customer.
+    """
+    app_dict = input.model_dump()
+    app_dict['employee_email'] = employee_email or "system"
+    app_dict['submitted_date'] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    app_obj = JobApplication(**app_dict)
+    
+    doc = app_obj.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await db.job_applications.insert_one(doc)
+    logger.info(f"New application added for {input.customer_email}: {input.company_name}")
+    
+    return {"success": True, "application": doc}
+
+@api_router.get("/employee/applications/{customer_email}")
+async def get_customer_applications(customer_email: str):
+    """
+    Get all applications for a specific customer.
+    """
+    applications = await db.job_applications.find(
+        {"customer_email": customer_email},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    
+    # Calculate stats
+    total = len(applications)
+    interviews = sum(1 for app in applications if app.get('status') == 'interview')
+    submitted = sum(1 for app in applications if app.get('status') == 'submitted')
+    
+    return {
+        "applications": applications,
+        "stats": {
+            "total": total,
+            "interviews": interviews,
+            "submitted": submitted,
+            "hours_saved": total * 0.5
+        }
+    }
+
+@api_router.patch("/employee/application/{application_id}")
+async def update_application(application_id: str, status: str, notes: Optional[str] = None):
+    """
+    Update application status and notes.
+    """
+    update_data = {
+        "status": status,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    if notes:
+        update_data["notes"] = notes
+    
+    result = await db.job_applications.update_one(
+        {"id": application_id},
+        {"$set": update_data}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    return {"success": True, "message": "Application updated"}
+
+@api_router.delete("/employee/application/{application_id}")
+async def delete_application(application_id: str):
+    """
+    Delete a job application.
+    """
+    result = await db.job_applications.delete_one({"id": application_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    return {"success": True, "message": "Application deleted"}
+
+# ============ ADMIN ENDPOINTS ============
+
+@api_router.get("/admin/stats")
+async def get_admin_stats():
+    """
+    Get system-wide statistics.
+    """
+    total_users = await db.users.count_documents({})
+    total_customers = await db.users.count_documents({"role": "customer"})
+    total_employees = await db.users.count_documents({"role": "employee"})
+    total_applications = await db.job_applications.count_documents({})
+    total_bookings = await db.call_bookings.count_documents({})
+    pending_bookings = await db.call_bookings.count_documents({"status": "pending"})
+    waitlist_count = await db.waitlist.count_documents({})
+    
+    # Active subscriptions
+    active_subscriptions = await db.subscriptions.count_documents({"status": "active"})
+    
+    return {
+        "users": {
+            "total": total_users,
+            "customers": total_customers,
+            "employees": total_employees
+        },
+        "applications": {
+            "total": total_applications
+        },
+        "bookings": {
+            "total": total_bookings,
+            "pending": pending_bookings
+        },
+        "waitlist": waitlist_count,
+        "subscriptions": {
+            "active": active_subscriptions
+        }
+    }
+
+@api_router.get("/admin/customers")
+async def get_all_customers():
+    """
+    Get all customers with their profiles and stats.
+    """
+    users = await db.users.find(
+        {"role": "customer"},
+        {"_id": 0, "password_hash": 0}
+    ).to_list(1000)
+    
+    customers = []
+    for user in users:
+        profile = await db.profiles.find_one({"email": user['email']}, {"_id": 0})
+        app_count = await db.job_applications.count_documents({"customer_email": user['email']})
+        subscription = await db.subscriptions.find_one({"user_email": user['email']}, {"_id": 0})
+        assignment = await db.customer_assignments.find_one(
+            {"customer_email": user['email'], "status": "active"},
+            {"_id": 0}
+        )
+        
+        customers.append({
+            "user": user,
+            "profile": profile,
+            "application_count": app_count,
+            "subscription": subscription,
+            "assigned_employee": assignment['employee_email'] if assignment else None
+        })
+    
+    return {"customers": customers, "count": len(customers)}
+
+@api_router.get("/admin/employees")
+async def get_all_employees():
+    """
+    Get all employees with their assigned customer counts.
+    """
+    users = await db.users.find(
+        {"role": "employee"},
+        {"_id": 0, "password_hash": 0}
+    ).to_list(1000)
+    
+    employees = []
+    for user in users:
+        customer_count = await db.customer_assignments.count_documents({
+            "employee_email": user['email'],
+            "status": "active"
+        })
+        total_applications = await db.job_applications.count_documents({
+            "employee_email": user['email']
+        })
+        
+        employees.append({
+            "user": user,
+            "customer_count": customer_count,
+            "total_applications": total_applications
+        })
+    
+    return {"employees": employees, "count": len(employees)}
+
+@api_router.post("/admin/assign-customer")
+async def assign_customer_to_employee(customer_email: str, employee_email: str):
+    """
+    Assign a customer to an employee.
+    """
+    # Check if already assigned
+    existing = await db.customer_assignments.find_one({
+        "customer_email": customer_email,
+        "status": "active"
+    })
+    
+    if existing:
+        # Update assignment
+        await db.customer_assignments.update_one(
+            {"id": existing['id']},
+            {"$set": {"employee_email": employee_email}}
+        )
+        return {"success": True, "message": "Customer reassigned"}
+    
+    # Create new assignment
+    assignment = CustomerAssignment(
+        customer_email=customer_email,
+        employee_email=employee_email
+    )
+    
+    doc = assignment.model_dump()
+    doc['assigned_at'] = doc['assigned_at'].isoformat()
+    
+    await db.customer_assignments.insert_one(doc)
+    logger.info(f"Customer {customer_email} assigned to {employee_email}")
+    
+    return {"success": True, "message": "Customer assigned"}
+
+@api_router.patch("/admin/user/{user_id}/role")
+async def update_user_role(user_id: str, role: str):
+    """
+    Update a user's role (customer, employee, admin).
+    """
+    if role not in ['customer', 'employee', 'admin']:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"role": role}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"success": True, "message": f"User role updated to {role}"}
+
+@api_router.get("/admin/bookings")
+async def get_all_bookings():
+    """
+    Get all call bookings with stats.
+    """
+    bookings = await db.call_bookings.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    # Convert datetime strings
+    for booking in bookings:
+        if isinstance(booking.get('created_at'), str):
+            booking['created_at'] = datetime.fromisoformat(booking['created_at'])
+    
+    pending = sum(1 for b in bookings if b.get('status') == 'pending')
+    contacted = sum(1 for b in bookings if b.get('status') == 'contacted')
+    
+    return {
+        "bookings": bookings,
+        "stats": {
+            "total": len(bookings),
+            "pending": pending,
+            "contacted": contacted
+        }
+    }
 
 # Include the router in the main app
 app.include_router(api_router)

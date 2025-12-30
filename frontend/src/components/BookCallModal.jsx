@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { API_URL } from '../config/api';
 import './BookCallModal.css';
 
 const BookCallModal = ({ isOpen, onClose }) => {
@@ -56,8 +57,6 @@ const BookCallModal = ({ isOpen, onClose }) => {
     setError('');
 
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-      
       const response = await fetch(`${API_URL}/api/book-call`, {
         method: 'POST',
         headers: {
