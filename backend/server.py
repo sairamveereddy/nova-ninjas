@@ -34,9 +34,19 @@ if not mongo_url:
 logger.info(f"Connecting to MongoDB database: {db_name}")
 
 try:
-    client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
+    import certifi
+    import ssl
+    
+    # Add TLS/SSL configuration for MongoDB Atlas compatibility
+    # Use certifi's certificates for proper SSL verification
+    client = AsyncIOMotorClient(
+        mongo_url,
+        serverSelectionTimeoutMS=10000,
+        tls=True,
+        tlsCAFile=certifi.where()
+    )
     db = client[db_name]
-    logger.info("MongoDB client initialized successfully")
+    logger.info("MongoDB client initialized successfully with certifi SSL")
 except Exception as e:
     logger.error(f"Failed to initialize MongoDB client: {e}")
     raise
