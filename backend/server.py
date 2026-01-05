@@ -15,6 +15,13 @@ import aiohttp
 from models import CheckoutRequest, SubscriptionData, WebhookEvent
 from payment_service import create_checkout_session, verify_webhook_signature, create_customer_portal_session
 from job_fetcher import fetch_all_job_categories, update_jobs_in_database, scheduled_job_fetch
+from razorpay_service import (
+    create_razorpay_order, 
+    verify_razorpay_payment, 
+    get_payment_details,
+    RAZORPAY_PLANS,
+    RAZORPAY_PLANS_USD
+)
 
 
 ROOT_DIR = Path(__file__).parent
@@ -1765,6 +1772,134 @@ async def refresh_jobs():
     except Exception as e:
         logger.error(f"Error refreshing jobs: {e}")
         raise HTTPException(status_code=500, detail="Failed to refresh jobs")
+
+
+# ============================================
+# RAZORPAY PAYMENT ENDPOINTS
+# ============================================
+
+class RazorpayOrderRequest(BaseModel):
+    plan_id: str
+    user_email: str
+    currency: str = 'INR'  # 'INR' or 'USD'
+
+class RazorpayVerifyRequest(BaseModel):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+    plan_id: str
+    user_email: str
+
+
+@app.post("/api/razorpay/create-order")
+async def create_razorpay_order_endpoint(request: RazorpayOrderRequest):
+    """
+    Create a Razorpay order for payment
+    """
+    try:
+        order = create_razorpay_order(
+            plan_id=request.plan_id,
+            user_email=request.user_email,
+            currency=request.currency
+        )
+        
+        if not order:
+            raise HTTPException(status_code=400, detail="Failed to create order")
+        
+        if order.get('free'):
+            return {
+                "success": True,
+                "free": True,
+                "message": "Free plan - no payment required"
+            }
+        
+        return {
+            "success": True,
+            "order": order
+        }
+        
+    except Exception as e:
+        logger.error(f"Error creating Razorpay order: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create payment order")
+
+
+@app.post("/api/razorpay/verify-payment")
+async def verify_razorpay_payment_endpoint(request: RazorpayVerifyRequest):
+    """
+    Verify Razorpay payment and activate subscription
+    """
+    try:
+        # Verify payment signature
+        is_valid = verify_razorpay_payment(
+            order_id=request.razorpay_order_id,
+            payment_id=request.razorpay_payment_id,
+            signature=request.razorpay_signature
+        )
+        
+        if not is_valid:
+            raise HTTPException(status_code=400, detail="Payment verification failed")
+        
+        # Get payment details
+        payment = get_payment_details(request.razorpay_payment_id)
+        
+        # Update user subscription in database
+        await db.users.update_one(
+            {"email": request.user_email},
+            {
+                "$set": {
+                    "subscription": {
+                        "plan_id": request.plan_id,
+                        "payment_id": request.razorpay_payment_id,
+                        "order_id": request.razorpay_order_id,
+                        "status": "active",
+                        "amount": payment.get('amount', 0) if payment else 0,
+                        "currency": payment.get('currency', 'INR') if payment else 'INR',
+                        "activated_at": datetime.now(timezone.utc),
+                        "provider": "razorpay"
+                    }
+                }
+            }
+        )
+        
+        # Log the payment
+        await db.payments.insert_one({
+            "user_email": request.user_email,
+            "plan_id": request.plan_id,
+            "payment_id": request.razorpay_payment_id,
+            "order_id": request.razorpay_order_id,
+            "amount": payment.get('amount', 0) if payment else 0,
+            "currency": payment.get('currency', 'INR') if payment else 'INR',
+            "status": "success",
+            "provider": "razorpay",
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        logger.info(f"Payment successful for {request.user_email}, plan: {request.plan_id}")
+        
+        return {
+            "success": True,
+            "message": "Payment verified and subscription activated",
+            "plan_id": request.plan_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error verifying payment: {e}")
+        raise HTTPException(status_code=500, detail="Payment verification failed")
+
+
+@app.get("/api/razorpay/plans")
+async def get_razorpay_plans(currency: str = 'INR'):
+    """
+    Get available plans with pricing
+    """
+    plans = RAZORPAY_PLANS_USD if currency == 'USD' else RAZORPAY_PLANS
+    return {
+        "success": True,
+        "plans": plans,
+        "currency": currency
+    }
 
 
 # ============================================
