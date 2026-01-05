@@ -235,13 +235,21 @@ async def update_jobs_in_database(db, jobs: List[Dict[str, Any]]) -> int:
             {"$set": {"isActive": False}}
         )
         
-        # Insert new jobs (upsert based on externalId)
+        # Insert new jobs (upsert based on externalId) - all new jobs are active
         for job in jobs:
+            job["isActive"] = True  # Ensure new jobs are active
             await db.jobs.update_one(
                 {"externalId": job["externalId"]},
                 {"$set": job},
                 upsert=True
             )
+        
+        # Also mark all freshly inserted jobs as active
+        external_ids = [job["externalId"] for job in jobs]
+        await db.jobs.update_many(
+            {"externalId": {"$in": external_ids}},
+            {"$set": {"isActive": True}}
+        )
         
         logger.info(f"Updated {len(jobs)} jobs in database")
         return len(jobs)
