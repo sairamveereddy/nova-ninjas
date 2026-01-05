@@ -22,6 +22,7 @@ import HumanNinja from "./components/HumanNinja";
 import Jobs from "./components/Jobs";
 import MyResumes from "./components/MyResumes";
 import InterviewPrep from "./components/InterviewPrep";
+import Checkout from "./components/Checkout";
 import "./components/Jobs.css";
 import "./components/InterviewPrep.css";
 
@@ -38,6 +39,7 @@ function App() {
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/canceled" element={<PaymentCanceled />} />
+            <Route path="/checkout" element={<Checkout />} />
             
             {/* AI Ninja Routes */}
             <Route path="/ai-ninja" element={<AINinja />} />

@@ -17,11 +17,8 @@ const Pricing = () => {
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
   const handleSubscribe = (planId) => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    } else {
-      navigate('/signup');
-    }
+    // Navigate to checkout with plan ID
+    navigate(`/checkout?plan=${planId}`);
   };
 
   // AI Ninja Plans from config
