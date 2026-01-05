@@ -71,11 +71,26 @@ const Jobs = () => {
       const response = await fetch(`${API_URL}/api/jobs?${params.toString()}`);
       const data = await response.json();
       
-      if (data.success && data.jobs.length > 0) {
-        setJobs(data.jobs);
-        setPagination(data.pagination);
+      if (data.success && data.jobs && data.jobs.length > 0) {
+        // Map API response to expected format
+        const mappedJobs = data.jobs.map(job => ({
+          id: job.id || job._id || job.externalId,
+          title: job.title,
+          company: job.company,
+          location: job.location,
+          salaryRange: job.salaryRange || 'Competitive',
+          description: job.description,
+          type: job.type || 'onsite',
+          visaTags: job.visaTags || [],
+          categoryTags: job.categoryTags || [],
+          highPay: job.highPay || false,
+          sourceUrl: job.sourceUrl
+        }));
+        setJobs(mappedJobs);
+        setPagination(data.pagination || { page: 1, limit: 20, total: mappedJobs.length, pages: 1 });
       } else {
         // Fallback to sample jobs if no real jobs available
+        console.log('No jobs from API, using sample jobs');
         setJobs(sampleJobs);
       }
     } catch (error) {

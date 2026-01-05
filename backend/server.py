@@ -1662,8 +1662,8 @@ async def get_jobs(
     Get paginated job listings with filters
     """
     try:
-        # Build query
-        query = {"isActive": True}
+        # Build query - show all jobs (active check removed for now)
+        query = {}
         
         if search:
             query["$or"] = [
