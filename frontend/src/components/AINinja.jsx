@@ -54,14 +54,20 @@ const AINinja = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch(`${API_URL}/api/jobs?limit=50`);
+        const url = `${API_URL}/api/jobs?limit=50`;
+        console.log('AI Ninja - Fetching jobs from:', url);
+        const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
+        console.log('AI Ninja - API Response:', data);
         
-        if (data.success && data.jobs && data.jobs.length > 0) {
-          const mappedJobs = data.jobs.map(job => ({
+        // Handle both response formats: {success, jobs, pagination} OR {jobs, total}
+        const jobsArray = data.jobs || [];
+        
+        if (jobsArray.length > 0) {
+          const mappedJobs = jobsArray.map(job => ({
             id: job.id || job._id || job.externalId,
             title: job.title,
             company: job.company,
@@ -75,6 +81,7 @@ const AINinja = () => {
             sourceUrl: job.sourceUrl
           }));
           setJobs(mappedJobs);
+          console.log('AI Ninja - Loaded', mappedJobs.length, 'jobs');
         } else {
           setError('No jobs available at the moment');
         }

@@ -62,6 +62,7 @@ const Jobs = () => {
     setError(null);
     try {
       const url = `${API_URL}/api/jobs?page=1&limit=50`;
+      console.log('Fetching jobs from:', url);
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -69,9 +70,13 @@ const Jobs = () => {
       }
       
       const data = await response.json();
+      console.log('API Response:', data);
       
-      if (data.success && data.jobs && data.jobs.length > 0) {
-        const mappedJobs = data.jobs.map(job => ({
+      // Handle both response formats: {success, jobs, pagination} OR {jobs, total}
+      const jobsArray = data.jobs || [];
+      
+      if (jobsArray.length > 0) {
+        const mappedJobs = jobsArray.map(job => ({
           id: job.id || job._id || job.externalId,
           title: job.title,
           company: job.company,
@@ -85,7 +90,9 @@ const Jobs = () => {
           sourceUrl: job.sourceUrl
         }));
         setJobs(mappedJobs);
-        setPagination(data.pagination || { page: 1, limit: 50, total: mappedJobs.length, pages: 1 });
+        const total = data.total || data.pagination?.total || mappedJobs.length;
+        setPagination({ page: 1, limit: 50, total, pages: Math.ceil(total / 50) });
+        console.log('Loaded', mappedJobs.length, 'jobs');
       } else {
         setError('No jobs available at the moment');
       }
@@ -102,8 +109,11 @@ const Jobs = () => {
     try {
       const response = await fetch(`${API_URL}/api/jobs/stats/summary`);
       const data = await response.json();
-      if (data.success) {
+      // Handle both {success, stats} and direct stats response
+      if (data.stats) {
         setJobStats(data.stats);
+      } else if (data.totalJobs !== undefined) {
+        setJobStats(data);
       }
     } catch (error) {
       console.error('Error fetching job stats:', error);
