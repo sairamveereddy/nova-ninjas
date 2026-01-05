@@ -11,8 +11,10 @@ const DEVELOPMENT_API_URL = 'http://localhost:8000';
 const isProduction = window.location.hostname !== 'localhost' && 
                      window.location.hostname !== '127.0.0.1';
 
-// Export the appropriate API URL
-export const API_URL = isProduction ? PRODUCTION_API_URL : DEVELOPMENT_API_URL;
+// Always use production backend for now (has real job data)
+// Change to: isProduction ? PRODUCTION_API_URL : DEVELOPMENT_API_URL
+// when you want to use local backend
+export const API_URL = PRODUCTION_API_URL;
 
 // Helper function to make API calls with proper error handling
 export const apiCall = async (endpoint, options = {}) => {

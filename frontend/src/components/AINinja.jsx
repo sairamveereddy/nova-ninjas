@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
@@ -24,10 +24,12 @@ import {
   Check,
   Menu,
   ExternalLink,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { BRAND, PRODUCTS } from '../config/branding';
-import { sampleJobs, aiNinjaFAQ } from '../mock';
+import { aiNinjaFAQ } from '../mock';
+import { API_URL } from '../config/api';
 import SideMenu from './SideMenu';
 import './SideMenu.css';
 
@@ -40,6 +42,51 @@ const AINinja = () => {
   const [externalJobTitle, setExternalJobTitle] = useState('');
   const [externalCompany, setExternalCompany] = useState('');
   const [externalJobDescription, setExternalJobDescription] = useState('');
+  
+  // Jobs state
+  const [jobs, setJobs] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch jobs from API
+  useEffect(() => {
+    const fetchJobs = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`${API_URL}/api/jobs?limit=50`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        if (data.success && data.jobs && data.jobs.length > 0) {
+          const mappedJobs = data.jobs.map(job => ({
+            id: job.id || job._id || job.externalId,
+            title: job.title,
+            company: job.company,
+            location: job.location,
+            salaryRange: job.salaryRange || 'Competitive',
+            description: job.description,
+            type: job.type || 'onsite',
+            visaTags: job.visaTags || [],
+            categoryTags: job.categoryTags || [],
+            highPay: job.highPay || false,
+            sourceUrl: job.sourceUrl
+          }));
+          setJobs(mappedJobs);
+        } else {
+          setError('No jobs available at the moment');
+        }
+      } catch (error) {
+        console.error('Error fetching jobs:', error);
+        setError(`Failed to load jobs: ${error.message}`);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchJobs();
+  }, []);
 
   const handleExternalJDSubmit = () => {
     if (!externalJobTitle || !externalJobDescription) {
@@ -57,7 +104,7 @@ const AINinja = () => {
   };
 
   // Filter jobs based on active filter
-  const filteredJobs = sampleJobs.filter(job => {
+  const filteredJobs = jobs.filter(job => {
     switch (activeFilter) {
       case 'high-paying':
         return job.highPay;
@@ -71,10 +118,10 @@ const AINinja = () => {
   });
 
   const filters = [
-    { id: 'all', label: 'All Jobs', count: sampleJobs.length },
-    { id: 'high-paying', label: 'High-paying', count: sampleJobs.filter(j => j.highPay).length },
-    { id: 'visa-friendly', label: 'Visa-friendly', count: sampleJobs.filter(j => j.visaTags?.length > 0).length },
-    { id: 'remote', label: 'Remote', count: sampleJobs.filter(j => j.type === 'remote').length },
+    { id: 'all', label: 'All Jobs', count: jobs.length },
+    { id: 'high-paying', label: 'High-paying', count: jobs.filter(j => j.highPay).length },
+    { id: 'visa-friendly', label: 'Visa-friendly', count: jobs.filter(j => j.visaTags?.length > 0).length },
+    { id: 'remote', label: 'Remote', count: jobs.filter(j => j.type === 'remote').length },
   ];
 
   const getWorkTypeIcon = (type) => {
@@ -199,7 +246,27 @@ const AINinja = () => {
 
           {/* Job List */}
           <div className="job-list">
-            {filteredJobs.map(job => (
+            {isLoading && (
+              <div className="text-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto text-green-600 mb-4" />
+                <p className="text-gray-600">Loading jobs...</p>
+              </div>
+            )}
+            
+            {error && !isLoading && (
+              <div className="text-center py-12">
+                <p className="text-red-600 mb-4">{error}</p>
+                <Button onClick={() => window.location.reload()}>Retry</Button>
+              </div>
+            )}
+            
+            {!isLoading && !error && filteredJobs.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-gray-600">No jobs found matching your filters.</p>
+              </div>
+            )}
+            
+            {!isLoading && !error && filteredJobs.map(job => (
               <Card key={job.id} className="job-card">
                 <div className="job-card-main">
                   <div className="job-info">

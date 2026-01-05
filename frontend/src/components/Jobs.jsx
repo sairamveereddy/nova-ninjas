@@ -28,7 +28,6 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { BRAND } from '../config/branding';
-import { sampleJobs } from '../mock';
 import { API_URL } from '../config/api';
 import SideMenu from './SideMenu';
 import './SideMenu.css';
@@ -42,6 +41,7 @@ const Jobs = () => {
   // Jobs data state
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [jobStats, setJobStats] = useState({ totalJobs: 0, visaJobs: 0, remoteJobs: 0, highPayJobs: 0 });
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 0 });
   
@@ -59,20 +59,18 @@ const Jobs = () => {
   // Fetch jobs from API
   const fetchJobs = async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      const params = new URLSearchParams();
-      params.append('page', pagination.page);
-      params.append('limit', pagination.limit);
+      const url = `${API_URL}/api/jobs?page=1&limit=50`;
+      const response = await fetch(url);
       
-      if (searchKeyword) params.append('search', searchKeyword);
-      if (workTypeFilter !== 'all') params.append('type', workTypeFilter);
-      if (sponsorshipFilter === 'visa-friendly') params.append('visa', 'true');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
-      const response = await fetch(`${API_URL}/api/jobs?${params.toString()}`);
       const data = await response.json();
       
       if (data.success && data.jobs && data.jobs.length > 0) {
-        // Map API response to expected format
         const mappedJobs = data.jobs.map(job => ({
           id: job.id || job._id || job.externalId,
           title: job.title,
@@ -87,16 +85,13 @@ const Jobs = () => {
           sourceUrl: job.sourceUrl
         }));
         setJobs(mappedJobs);
-        setPagination(data.pagination || { page: 1, limit: 20, total: mappedJobs.length, pages: 1 });
+        setPagination(data.pagination || { page: 1, limit: 50, total: mappedJobs.length, pages: 1 });
       } else {
-        // Fallback to sample jobs if no real jobs available
-        console.log('No jobs from API, using sample jobs');
-        setJobs(sampleJobs);
+        setError('No jobs available at the moment');
       }
     } catch (error) {
       console.error('Error fetching jobs:', error);
-      // Fallback to sample jobs on error
-      setJobs(sampleJobs);
+      setError(`Failed to load jobs: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -115,19 +110,12 @@ const Jobs = () => {
     }
   };
 
-  // Initial fetch
+  // Initial fetch on component mount
   useEffect(() => {
+    console.log('Jobs component mounted, fetching jobs...');
     fetchJobs();
     fetchJobStats();
   }, []);
-
-  // Refetch when filters change
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      fetchJobs();
-    }, 300);
-    return () => clearTimeout(debounceTimer);
-  }, [searchKeyword, workTypeFilter, sponsorshipFilter, pagination.page]);
 
   // Filter jobs locally for location (API doesn't support location filter yet)
   const filteredJobs = jobs.filter(job => {
