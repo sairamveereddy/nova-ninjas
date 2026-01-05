@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
@@ -21,20 +21,85 @@ import {
   FileText,
   MessageSquare,
   Clock,
-  Menu
+  Menu,
+  Loader2
 } from 'lucide-react';
 import { BRAND } from '../config/branding';
-import { sampleJobs } from '../mock';
+import { API_URL } from '../config/api';
 
 const JobDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { isAuthenticated } = useAuth();
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
+  const [job, setJob] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const job = sampleJobs.find(j => j.id === id);
+  // Fetch job from API
+  useEffect(() => {
+    const fetchJob = async () => {
+      setIsLoading(true);
+      try {
+        // Try fetching by ID (could be MongoDB _id or externalId)
+        const response = await fetch(`${API_URL}/api/jobs/${id}`);
+        if (!response.ok) {
+          throw new Error('Job not found');
+        }
+        const data = await response.json();
+        // Handle response format: {job: {...}} or direct job object
+        const jobData = data.job || data;
+        if (jobData && (jobData.id || jobData._id || jobData.externalId)) {
+          setJob({
+            id: jobData.id || jobData._id || jobData.externalId,
+            title: jobData.title,
+            company: jobData.company,
+            location: jobData.location,
+            salaryRange: jobData.salaryRange || 'Competitive',
+            description: jobData.description,
+            fullDescription: jobData.description, // Use description as fullDescription
+            type: jobData.type || 'onsite',
+            visaTags: jobData.visaTags || [],
+            categoryTags: jobData.categoryTags || [],
+            highPay: jobData.highPay || false,
+            sourceUrl: jobData.sourceUrl
+          });
+        } else {
+          setError('Job not found');
+        }
+      } catch (err) {
+        console.error('Error fetching job:', err);
+        setError('Job not found');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (id) {
+      fetchJob();
+    }
+  }, [id]);
 
-  if (!job) {
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="job-detail-page">
+        <header className="nav-header">
+          <button onClick={() => navigate('/')} className="nav-logo">
+            <img src={BRAND.logoPath} alt={BRAND.logoAlt} className="logo-image" />
+            <span className="logo-text">{BRAND.name}</span>
+          </button>
+        </header>
+        <div className="container" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" style={{ color: 'var(--primary)' }} />
+          <p>Loading job details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error or job not found
+  if (error || !job) {
     return (
       <div className="job-detail-page">
         <header className="nav-header">
@@ -170,7 +235,7 @@ const JobDetail = () => {
               <div className="job-description-section">
                 <h2>Job Description</h2>
                 <div className="job-description-text">
-                  {job.fullDescription.split('\n').map((line, i) => (
+                  {(job.fullDescription || job.description || '').split('\n').map((line, i) => (
                     <p key={i}>{line}</p>
                   ))}
                 </div>

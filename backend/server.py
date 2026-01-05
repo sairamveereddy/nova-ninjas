@@ -1712,12 +1712,26 @@ async def get_jobs(
 @app.get("/api/jobs/{job_id}")
 async def get_job_by_id(job_id: str):
     """
-    Get a single job by ID
+    Get a single job by ID (supports MongoDB _id or externalId)
     """
     try:
         from bson import ObjectId
         
-        job = await db.jobs.find_one({"_id": ObjectId(job_id)})
+        job = None
+        
+        # Try to find by MongoDB ObjectId first
+        try:
+            job = await db.jobs.find_one({"_id": ObjectId(job_id)})
+        except Exception:
+            pass  # Invalid ObjectId format, try externalId
+        
+        # If not found, try by externalId
+        if not job:
+            job = await db.jobs.find_one({"externalId": job_id})
+        
+        # Also try by string id
+        if not job:
+            job = await db.jobs.find_one({"id": job_id})
         
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
@@ -1726,6 +1740,8 @@ async def get_job_by_id(job_id: str):
         
         return {"success": True, "job": job}
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching job: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch job")
