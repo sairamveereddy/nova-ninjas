@@ -2323,6 +2323,157 @@ async def get_scan_by_id(scan_id: str):
 
 
 # ============================================
+# APPLICATION TRACKER
+# ============================================
+
+class ApplicationData(BaseModel):
+    userEmail: str
+    jobId: Optional[str] = None
+    jobTitle: str
+    company: str
+    location: Optional[str] = ""
+    jobDescription: Optional[str] = ""
+    sourceUrl: Optional[str] = ""
+    salaryRange: Optional[str] = ""
+    matchScore: Optional[int] = 0
+    status: Optional[str] = "materials_ready"  # materials_ready, applied, interviewing, offered, rejected
+    createdAt: Optional[str] = None
+    appliedAt: Optional[str] = None
+    notes: Optional[str] = ""
+
+@app.post("/api/applications")
+async def save_application(application: ApplicationData):
+    """
+    Save a job application to the tracker
+    """
+    try:
+        app_doc = {
+            "userEmail": application.userEmail,
+            "jobId": application.jobId,
+            "jobTitle": application.jobTitle,
+            "company": application.company,
+            "location": application.location,
+            "jobDescription": application.jobDescription[:5000] if application.jobDescription else "",
+            "sourceUrl": application.sourceUrl,
+            "salaryRange": application.salaryRange,
+            "matchScore": application.matchScore,
+            "status": application.status,
+            "createdAt": application.createdAt or datetime.now(timezone.utc).isoformat(),
+            "appliedAt": application.appliedAt,
+            "notes": application.notes,
+            "updatedAt": datetime.now(timezone.utc).isoformat()
+        }
+        
+        result = await db.applications.insert_one(app_doc)
+        
+        return {
+            "success": True,
+            "applicationId": str(result.inserted_id),
+            "message": "Application saved to tracker"
+        }
+        
+    except Exception as e:
+        logger.error(f"Save application error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/applications/{user_email}")
+async def get_user_applications(user_email: str, status: Optional[str] = None, limit: int = 50):
+    """
+    Get all applications for a user
+    """
+    try:
+        query = {"userEmail": user_email}
+        if status:
+            query["status"] = status
+        
+        applications = await db.applications.find(query).sort("createdAt", -1).limit(limit).to_list(length=limit)
+        
+        for app in applications:
+            app["id"] = str(app.pop("_id"))
+        
+        # Get stats
+        total = await db.applications.count_documents({"userEmail": user_email})
+        applied = await db.applications.count_documents({"userEmail": user_email, "status": "applied"})
+        interviewing = await db.applications.count_documents({"userEmail": user_email, "status": "interviewing"})
+        
+        return {
+            "success": True,
+            "applications": applications,
+            "stats": {
+                "total": total,
+                "applied": applied,
+                "interviewing": interviewing
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Get applications error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/applications/{application_id}")
+async def update_application(application_id: str, status: str = None, notes: str = None, appliedAt: str = None):
+    """
+    Update an application status
+    """
+    try:
+        from bson import ObjectId
+        
+        update_data = {"updatedAt": datetime.now(timezone.utc).isoformat()}
+        if status:
+            update_data["status"] = status
+        if notes is not None:
+            update_data["notes"] = notes
+        if appliedAt:
+            update_data["appliedAt"] = appliedAt
+        
+        result = await db.applications.update_one(
+            {"_id": ObjectId(application_id)},
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Application not found")
+        
+        return {
+            "success": True,
+            "message": "Application updated"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update application error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/applications/{application_id}")
+async def delete_application(application_id: str):
+    """
+    Delete an application
+    """
+    try:
+        from bson import ObjectId
+        
+        result = await db.applications.delete_one({"_id": ObjectId(application_id)})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Application not found")
+        
+        return {
+            "success": True,
+            "message": "Application deleted"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete application error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
 # APP STARTUP & SHUTDOWN
 # ============================================
 

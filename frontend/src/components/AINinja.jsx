@@ -25,7 +25,9 @@ import {
   Menu,
   ExternalLink,
   X,
-  Loader2
+  Loader2,
+  Search,
+  Zap
 } from 'lucide-react';
 import { BRAND, PRODUCTS } from '../config/branding';
 import { aiNinjaFAQ } from '../mock';
@@ -172,6 +174,14 @@ const AINinja = () => {
             application questions. You stay in control of final submission – we just give you everything you need, fast.
           </p>
 
+          {/* Resume Scanner CTA - Primary Action */}
+          <div className="ai-ninja-cta-buttons" style={{ display: 'flex', gap: '1rem', marginTop: '2rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <Button className="btn-primary btn-large" onClick={() => navigate('/scanner')}>
+              <Search className="w-5 h-5 mr-2" />
+              Resume Scanner – Check Your Match Score
+            </Button>
+          </div>
+
           {/* What you get */}
           <div className="ai-ninja-features">
             <div className="feature-item">
@@ -274,12 +284,28 @@ const AINinja = () => {
                   </div>
                 </div>
                 <p className="job-description">{job.description}</p>
-                <div className="job-card-actions">
+                <div className="job-card-actions" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                   <Button 
-                    className="btn-primary"
+                    variant="outline"
                     onClick={() => navigate(`/ai-ninja/jobs/${job.id}`)}
                   >
-                    View Job <ChevronRight className="w-4 h-4" />
+                    View Details <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    className="btn-primary"
+                    onClick={() => navigate('/ai-apply', { 
+                      state: { 
+                        jobId: job.id,
+                        jobTitle: job.title,
+                        company: job.company,
+                        location: job.location,
+                        description: job.description,
+                        sourceUrl: job.sourceUrl,
+                        salaryRange: job.salaryRange
+                      }
+                    })}
+                  >
+                    <Zap className="w-4 h-4 mr-1" /> Apply with AI Ninja
                   </Button>
                 </div>
               </Card>

@@ -25,7 +25,8 @@ import {
   ExternalLink,
   X,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Zap
 } from 'lucide-react';
 import { BRAND } from '../config/branding';
 import { API_URL } from '../config/api';
@@ -352,12 +353,28 @@ const Jobs = () => {
                       </div>
                     </div>
                     <p className="job-description">{job.description}</p>
-                    <div className="job-card-actions">
+                    <div className="job-card-actions" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <Button 
-                        className="btn-primary"
+                        variant="outline"
                         onClick={() => navigate(`/ai-ninja/jobs/${job.id}`)}
                       >
-                        View Job <ChevronRight className="w-4 h-4" />
+                        View Details <ChevronRight className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        className="btn-primary"
+                        onClick={() => navigate('/ai-apply', { 
+                          state: { 
+                            jobId: job.id,
+                            jobTitle: job.title,
+                            company: job.company,
+                            location: job.location,
+                            description: job.description,
+                            sourceUrl: job.sourceUrl,
+                            salaryRange: job.salaryRange
+                          }
+                        })}
+                      >
+                        <Zap className="w-4 h-4 mr-1" /> Apply with AI Ninja
                       </Button>
                     </div>
                   </Card>

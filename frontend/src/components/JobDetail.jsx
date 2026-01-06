@@ -268,11 +268,17 @@ const JobDetail = () => {
                 <Button 
                   className="btn-primary w-full btn-large"
                   onClick={() => {
-                    if (isAuthenticated) {
-                      navigate(`/ai-ninja/apply/${job.id}`);
-                    } else {
-                      navigate('/signup');
-                    }
+                    navigate('/ai-apply', { 
+                      state: { 
+                        jobId: job.id,
+                        jobTitle: job.title,
+                        company: job.company,
+                        location: job.location,
+                        description: job.fullDescription || job.description,
+                        sourceUrl: job.sourceUrl,
+                        salaryRange: job.salaryRange
+                      }
+                    });
                   }}
                 >
                   <Bot className="w-5 h-5" /> Apply with AI Ninja

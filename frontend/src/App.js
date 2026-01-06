@@ -24,9 +24,11 @@ import MyResumes from "./components/MyResumes";
 import InterviewPrep from "./components/InterviewPrep";
 import Checkout from "./components/Checkout";
 import ResumeScanner from "./components/ResumeScanner";
+import AIApplyFlow from "./components/AIApplyFlow";
 import "./components/Jobs.css";
 import "./components/InterviewPrep.css";
 import "./components/ResumeScanner.css";
+import "./components/AIApplyFlow.css";
 
 function App() {
   return (
@@ -47,6 +49,7 @@ function App() {
             <Route path="/ai-ninja" element={<AINinja />} />
             <Route path="/ai-ninja/jobs/:id" element={<JobDetail />} />
             <Route path="/ai-ninja/apply/:id" element={<AIApply />} />
+            <Route path="/ai-apply" element={<AIApplyFlow />} />
             
             {/* Human Ninja Route */}
             <Route path="/human-ninja" element={<HumanNinja />} />
