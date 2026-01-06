@@ -57,6 +57,12 @@ const AIApplyFlow = () => {
   const [coverLetterUrl, setCoverLetterUrl] = useState(null);
   const [isSavingApplication, setIsSavingApplication] = useState(false);
   const [applicationSaved, setApplicationSaved] = useState(false);
+  
+  // Save resume prompt state
+  const [showSaveResumePrompt, setShowSaveResumePrompt] = useState(false);
+  const [resumeName, setResumeName] = useState('');
+  const [isSavingResume, setIsSavingResume] = useState(false);
+  const [resumeSaved, setResumeSaved] = useState(false);
 
   // Fetch saved resumes on mount
   useEffect(() => {
@@ -207,6 +213,14 @@ const AIApplyFlow = () => {
       setGenerationProgress('Done! Your application materials are ready.');
       setCurrentStep(3);
       
+      // Show save resume prompt if user uploaded a new resume (not using saved one)
+      if (resumeFile && !selectedResume && isAuthenticated) {
+        setTimeout(() => {
+          setShowSaveResumePrompt(true);
+          setResumeName(resumeFile.name.replace(/\.[^/.]+$/, '') || 'My Resume');
+        }, 500);
+      }
+      
     } catch (error) {
       console.error('Generation failed:', error);
       setGenerationProgress('Something went wrong. Please try again.');
@@ -251,6 +265,40 @@ const AIApplyFlow = () => {
       console.error('Failed to save application:', error);
     } finally {
       setIsSavingApplication(false);
+    }
+  };
+
+  const handleSaveResume = async () => {
+    if (!isAuthenticated || !user?.email || !resumeText) {
+      return;
+    }
+    
+    setIsSavingResume(true);
+    
+    try {
+      const resumeData = {
+        userEmail: user.email,
+        fileName: resumeName || `Resume_${new Date().toLocaleDateString().replace(/\//g, '-')}`,
+        resumeText: resumeText,
+        createdAt: new Date().toISOString()
+      };
+      
+      const response = await fetch(`${API_URL}/api/resumes/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resumeData)
+      });
+      
+      if (response.ok) {
+        setResumeSaved(true);
+        setShowSaveResumePrompt(false);
+        // Refresh saved resumes list
+        fetchSavedResumes();
+      }
+    } catch (error) {
+      console.error('Failed to save resume:', error);
+    } finally {
+      setIsSavingResume(false);
     }
   };
 
@@ -517,6 +565,69 @@ const AIApplyFlow = () => {
           </Card>
         )}
       </div>
+
+      {/* Save Resume Prompt Modal */}
+      {showSaveResumePrompt && (
+        <div className="modal-overlay" onClick={() => setShowSaveResumePrompt(false)}>
+          <Card className="save-resume-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2><Save className="w-5 h-5" /> Save Resume for Future Use?</h2>
+              <button className="modal-close" onClick={() => setShowSaveResumePrompt(false)}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="modal-content">
+              <p>Would you like to save this resume for future job applications? You won't need to upload it again.</p>
+              
+              <div className="form-group" style={{ marginTop: '1rem' }}>
+                <Label>Resume Name</Label>
+                <Input
+                  placeholder="e.g., Software Engineer Resume"
+                  value={resumeName}
+                  onChange={(e) => setResumeName(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <Button variant="outline" onClick={() => setShowSaveResumePrompt(false)}>
+                No, Thanks
+              </Button>
+              <Button 
+                className="btn-primary"
+                onClick={handleSaveResume}
+                disabled={isSavingResume || !resumeName.trim()}
+              >
+                {isSavingResume ? (
+                  <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving...</>
+                ) : (
+                  <><Save className="w-4 h-4 mr-2" /> Save Resume</>
+                )}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Resume Saved Toast */}
+      {resumeSaved && (
+        <div className="toast-notification" style={{
+          position: 'fixed',
+          bottom: '2rem',
+          right: '2rem',
+          background: '#10b981',
+          color: 'white',
+          padding: '1rem 1.5rem',
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          zIndex: 1000
+        }}>
+          <CheckCircle className="w-5 h-5" />
+          Resume saved! You can use it for future applications.
+        </div>
+      )}
     </div>
   );
 };
