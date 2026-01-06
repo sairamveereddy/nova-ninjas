@@ -14,12 +14,40 @@ logger = logging.getLogger(__name__)
 
 # Configure Gemini
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
-if GOOGLE_API_KEY:
+model = None
+
+def get_gemini_model():
+    """Get an available Gemini model"""
+    global model
+    if model:
+        return model
+    
+    if not GOOGLE_API_KEY:
+        logger.warning("GOOGLE_API_KEY not set - Resume analyzer will not work")
+        return None
+    
     genai.configure(api_key=GOOGLE_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
-else:
-    model = None
-    logger.warning("GOOGLE_API_KEY not set - Resume analyzer will not work")
+    
+    # Try different model names in order of preference
+    model_names = [
+        'gemini-2.0-flash',
+        'gemini-1.5-flash-latest', 
+        'gemini-1.5-flash',
+        'gemini-pro',
+        'models/gemini-pro'
+    ]
+    
+    for name in model_names:
+        try:
+            model = genai.GenerativeModel(name)
+            logger.info(f"Using Gemini model: {name}")
+            return model
+        except Exception as e:
+            logger.debug(f"Model {name} not available: {e}")
+            continue
+    
+    logger.error("No Gemini model available")
+    return None
 
 
 def clean_json_response(text: str) -> str:
@@ -42,7 +70,8 @@ async def analyze_resume(resume_text: str, job_description: str) -> Dict[str, An
     Returns:
         Analysis results including match score, skills comparison, and suggestions
     """
-    if not model:
+    gemini_model = get_gemini_model()
+    if not gemini_model:
         return {
             "error": "Gemini API not configured",
             "matchScore": 0
@@ -143,7 +172,7 @@ Important:
 """
 
     try:
-        response = model.generate_content(prompt)
+        response = gemini_model.generate_content(prompt)
         json_text = clean_json_response(response.text)
         result = json.loads(json_text)
         return result
@@ -173,7 +202,8 @@ async def extract_resume_data(resume_text: str) -> Dict[str, Any]:
     Returns:
         Structured resume data
     """
-    if not model:
+    gemini_model = get_gemini_model()
+    if not gemini_model:
         return {"error": "Gemini API not configured"}
     
     prompt = f"""
@@ -221,7 +251,7 @@ Return ONLY the JSON, no other text.
 """
 
     try:
-        response = model.generate_content(prompt)
+        response = gemini_model.generate_content(prompt)
         json_text = clean_json_response(response.text)
         result = json.loads(json_text)
         return result
@@ -241,7 +271,8 @@ async def generate_optimized_resume(resume_text: str, job_description: str) -> D
     Returns:
         Optimized resume suggestions
     """
-    if not model:
+    gemini_model = get_gemini_model()
+    if not gemini_model:
         return {"error": "Gemini API not configured"}
     
     prompt = f"""
@@ -271,7 +302,7 @@ Return ONLY the JSON, no other text.
 """
 
     try:
-        response = model.generate_content(prompt)
+        response = gemini_model.generate_content(prompt)
         json_text = clean_json_response(response.text)
         result = json.loads(json_text)
         return result
