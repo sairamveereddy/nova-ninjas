@@ -342,10 +342,10 @@ const AIApplyFlow = () => {
     
     try {
       const resumeData = {
-        userEmail: user.email,
-        fileName: resumeName || `Resume_${new Date().toLocaleDateString().replace(/\//g, '-')}`,
-        resumeText: resumeText,
-        createdAt: new Date().toISOString()
+        user_email: user.email,
+        resume_name: resumeName || `Resume_${new Date().toLocaleDateString().replace(/\//g, '-')}`,
+        resume_text: resumeText,
+        file_name: resumeFile?.name || ''
       };
       
       const response = await fetch(`${API_URL}/api/resumes/save`, {
@@ -359,9 +359,13 @@ const AIApplyFlow = () => {
         setShowSaveResumePrompt(false);
         // Refresh saved resumes list
         fetchSavedResumes();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.detail || 'Failed to save resume. Please try again.');
       }
     } catch (error) {
       console.error('Failed to save resume:', error);
+      alert('Failed to save resume. Please try again.');
     } finally {
       setIsSavingResume(false);
     }
