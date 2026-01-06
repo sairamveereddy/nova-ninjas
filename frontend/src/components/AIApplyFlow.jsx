@@ -208,6 +208,11 @@ const AIApplyFlow = () => {
       // Use resume text from analysis if available (properly parsed from file)
       const parsedResumeText = analysisData.resumeText || textToUse;
       
+      // Update resumeText state so it's available for saving
+      if (parsedResumeText && parsedResumeText !== resumeText) {
+        setResumeText(parsedResumeText);
+      }
+      
       // Step 2: Generate optimized resume
       setGenerationProgress('Creating your tailored resume...');
       const resumeResponse = await fetch(`${API_URL}/api/generate/optimized-resume`, {
@@ -334,7 +339,16 @@ const AIApplyFlow = () => {
   };
 
   const handleSaveResume = async () => {
-    if (!isAuthenticated || !user?.email || !resumeText) {
+    if (!isAuthenticated || !user?.email) {
+      alert('Please sign in to save your resume');
+      return;
+    }
+    
+    // Use the current resume text, or fall back to any available text
+    const textToSave = resumeText || selectedResume?.resumeText || '';
+    
+    if (!textToSave) {
+      alert('No resume content to save');
       return;
     }
     
@@ -344,9 +358,11 @@ const AIApplyFlow = () => {
       const resumeData = {
         user_email: user.email,
         resume_name: resumeName || `Resume_${new Date().toLocaleDateString().replace(/\//g, '-')}`,
-        resume_text: resumeText,
+        resume_text: textToSave,
         file_name: resumeFile?.name || ''
       };
+      
+      console.log('Saving resume:', { ...resumeData, resume_text: `[${textToSave.length} chars]` });
       
       const response = await fetch(`${API_URL}/api/resumes/save`, {
         method: 'POST',
