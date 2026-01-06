@@ -19,7 +19,7 @@ GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
 
 # Groq API settings
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama-3.1-70b-versatile"  # Fast and powerful
+GROQ_MODEL = "llama-3.3-70b-versatile"  # Latest and most powerful
 
 # Retry configuration
 MAX_RETRIES = 3
