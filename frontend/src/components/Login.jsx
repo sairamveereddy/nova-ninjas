@@ -12,20 +12,21 @@ import { BRAND } from '../config/branding';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, isAuthenticated, loading } = useAuth();
+  const { login, isAuthenticated, loading: authLoading } = useAuth();
   
   // Redirect if already authenticated
   useEffect(() => {
-    if (!loading && isAuthenticated) {
+    if (!authLoading && isAuthenticated) {
       navigate('/dashboard');
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
+  
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
   const handleChange = (e) => {
@@ -38,7 +39,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    setSubmitting(true);
 
     try {
       const result = await login(formData.email, formData.password);
@@ -55,7 +56,7 @@ const Login = () => {
     } catch (err) {
       setError('Login failed. Please try again.');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -120,8 +121,8 @@ const Login = () => {
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign In'}
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
 
