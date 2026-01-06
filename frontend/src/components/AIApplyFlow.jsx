@@ -260,21 +260,25 @@ const AIApplyFlow = () => {
       
       // Auto-save application to tracker
       setGenerationProgress('Saving to your application tracker...');
+      console.log('Auto-save check - isAuthenticated:', isAuthenticated, 'user:', user);
+      
       if (isAuthenticated && user?.email) {
         try {
           const applicationData = {
             userEmail: user.email,
-            jobId: jobData.jobId || null,
-            jobTitle: jobData.jobTitle,
-            company: jobData.company,
+            jobId: jobData.jobId || jobData.id || null,
+            jobTitle: jobData.jobTitle || jobData.title || 'Unknown Position',
+            company: jobData.company || 'Unknown Company',
             location: jobData.location || '',
-            jobDescription: jobData.description,
-            sourceUrl: jobData.sourceUrl || '',
-            salaryRange: jobData.salaryRange || '',
+            jobDescription: (jobData.description || '').substring(0, 5000),
+            sourceUrl: jobData.sourceUrl || jobData.url || '',
+            salaryRange: jobData.salaryRange || jobData.salary || '',
             matchScore: analysis?.matchScore || 0,
             status: 'materials_ready',
             createdAt: new Date().toISOString()
           };
+          
+          console.log('Saving application:', applicationData);
           
           const saveResponse = await fetch(`${API_URL}/api/applications`, {
             method: 'POST',
@@ -282,12 +286,20 @@ const AIApplyFlow = () => {
             body: JSON.stringify(applicationData)
           });
           
-          if (saveResponse.ok) {
+          const saveResult = await saveResponse.json();
+          console.log('Save result:', saveResult);
+          
+          if (saveResponse.ok || saveResult.success) {
             setApplicationSaved(true);
+            console.log('Application saved successfully!');
+          } else {
+            console.error('Failed to save application:', saveResult);
           }
         } catch (saveError) {
           console.error('Failed to auto-save application:', saveError);
         }
+      } else {
+        console.log('Skipping auto-save - user not authenticated or no email');
       }
       
       setGenerationProgress('Done! Your application materials are ready.');

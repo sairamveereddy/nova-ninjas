@@ -245,9 +245,10 @@ const ResumeScanner = () => {
       setAnalysisResult(data.analysis);
       setCurrentStep(3);
 
-      // Save scan if user is authenticated
+      // Save scan and application if user is authenticated
       if (isAuthenticated && user?.email) {
         try {
+          // Save scan history
           await fetch(`${API_URL}/api/scan/save`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -259,8 +260,35 @@ const ResumeScanner = () => {
               analysis: data.analysis
             })
           });
+          
+          // Also save to application tracker
+          const applicationData = {
+            userEmail: user.email,
+            jobId: null,
+            jobTitle: jobTitle || 'Untitled Position',
+            company: company || 'Unknown Company',
+            location: '',
+            jobDescription: (jobDescription || '').substring(0, 5000),
+            sourceUrl: '',
+            salaryRange: '',
+            matchScore: data.analysis?.matchScore || 0,
+            status: 'materials_ready',
+            createdAt: new Date().toISOString()
+          };
+          
+          console.log('Saving to application tracker:', applicationData);
+          
+          const appResponse = await fetch(`${API_URL}/api/applications`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(applicationData)
+          });
+          
+          if (appResponse.ok) {
+            console.log('Application saved to tracker');
+          }
         } catch (saveError) {
-          console.error('Failed to save scan:', saveError);
+          console.error('Failed to save scan/application:', saveError);
         }
       }
 
