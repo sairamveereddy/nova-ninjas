@@ -172,6 +172,38 @@ const AIApplyFlow = () => {
         setCoverLetterUrl(URL.createObjectURL(coverBlob));
       }
       
+      // Auto-save application to tracker
+      setGenerationProgress('Saving to your application tracker...');
+      if (isAuthenticated && user?.email) {
+        try {
+          const applicationData = {
+            userEmail: user.email,
+            jobId: jobData.jobId || null,
+            jobTitle: jobData.jobTitle,
+            company: jobData.company,
+            location: jobData.location || '',
+            jobDescription: jobData.description,
+            sourceUrl: jobData.sourceUrl || '',
+            salaryRange: jobData.salaryRange || '',
+            matchScore: analysis?.matchScore || 0,
+            status: 'materials_ready',
+            createdAt: new Date().toISOString()
+          };
+          
+          const saveResponse = await fetch(`${API_URL}/api/applications`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(applicationData)
+          });
+          
+          if (saveResponse.ok) {
+            setApplicationSaved(true);
+          }
+        } catch (saveError) {
+          console.error('Failed to auto-save application:', saveError);
+        }
+      }
+      
       setGenerationProgress('Done! Your application materials are ready.');
       setCurrentStep(3);
       

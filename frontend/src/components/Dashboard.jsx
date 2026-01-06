@@ -102,21 +102,31 @@ const Dashboard = () => {
           const data = await response.json();
           
           // Transform applications to match component format
-          const formattedApps = data.applications.map((app, index) => ({
-            id: index + 1,
-            company: app.company_name,
-            role: app.job_title,
-            status: app.status,
-            applicationLink: app.application_link,
-            date: app.submitted_date
+          const formattedApps = (data.applications || []).map((app, index) => ({
+            id: app.id || index + 1,
+            company: app.company || app.company_name || 'Unknown',
+            role: app.jobTitle || app.job_title || 'Unknown',
+            status: app.status || 'materials_ready',
+            applicationLink: app.sourceUrl || app.application_link || '',
+            date: app.createdAt ? new Date(app.createdAt).toLocaleDateString() : (app.submitted_date || '-'),
+            location: app.location || '',
+            matchScore: app.matchScore || 0,
+            notes: app.notes || ''
           }));
           
           setApplications(formattedApps);
+          
+          // Use stats from new API format
+          const stats = data.stats || {};
           setKpis({
-            applicationsThisWeek: data.stats.this_week || 0,
-            totalJobsApplied: data.stats.total || 0,
-            interviews: data.stats.interviews || 0,
-            hoursSaved: Math.round(data.stats.hours_saved || 0)
+            applicationsThisWeek: stats.this_week || formattedApps.filter(a => {
+              const weekAgo = new Date();
+              weekAgo.setDate(weekAgo.getDate() - 7);
+              return new Date(a.date) >= weekAgo;
+            }).length || 0,
+            totalJobsApplied: stats.total || formattedApps.length || 0,
+            interviews: stats.interviews || stats.interviewing || 0,
+            hoursSaved: Math.round(stats.hours_saved || formattedApps.length * 0.5 || 0)
           });
         }
       } catch (error) {
@@ -447,30 +457,26 @@ const Dashboard = () => {
                             <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Company</th>
                             <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Role</th>
                             <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Location</th>
-                            <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Type</th>
-                            <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Tags</th>
-                            <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Email Used</th>
-                            <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Resume</th>
-                            <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Cover Letter</th>
-                            <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Link</th>
+                            <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Match</th>
+                            <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Job Link</th>
                             <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Status</th>
                           </tr>
                         </thead>
                         <tbody>
                           {isLoading ? (
                             <tr>
-                              <td colSpan="11" className="py-8 text-center">
+                              <td colSpan="7" className="py-8 text-center">
                                 <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
                                 <p className="text-sm text-gray-500 mt-2">Loading applications...</p>
                               </td>
                             </tr>
                           ) : applications.length === 0 ? (
                             <tr>
-                              <td colSpan="11" className="py-8 text-center">
+                              <td colSpan="7" className="py-8 text-center">
                                 <ClipboardList className="w-12 h-12 mx-auto text-gray-300 mb-4" />
                                 <p className="text-gray-500 font-medium">No applications yet</p>
                                 <p className="text-sm text-gray-400 mt-1 mb-4">
-                                  Start using AI Ninja or Human Ninja to track your applications here.
+                                  Start using AI Ninja to track your applications here.
                                 </p>
                                 <div className="flex justify-center gap-2">
                                   <Button variant="outline" onClick={() => navigate('/ai-ninja')}>
@@ -489,29 +495,11 @@ const Dashboard = () => {
                                 <td className="py-3 px-4 font-medium">{app.company}</td>
                                 <td className="py-3 px-4">{app.role}</td>
                                 <td className="py-3 px-4 text-sm">{app.location || '-'}</td>
-                                <td className="py-3 px-4 text-sm">
-                                  <Badge variant="outline">{app.type || 'Unknown'}</Badge>
-                                </td>
                                 <td className="py-3 px-4">
-                                  <div className="flex gap-1 flex-wrap">
-                                    {app.tags?.map((tag, i) => (
-                                      <Badge key={i} variant="secondary" className="text-xs">{tag}</Badge>
-                                    ))}
-                                  </div>
-                                </td>
-                                <td className="py-3 px-4 text-sm text-gray-600">{app.emailUsed || '-'}</td>
-                                <td className="py-3 px-4">
-                                  {app.resumeId ? (
-                                    <Button variant="ghost" size="sm">
-                                      <FileText className="w-4 h-4" />
-                                    </Button>
-                                  ) : '-'}
-                                </td>
-                                <td className="py-3 px-4">
-                                  {app.coverLetterId ? (
-                                    <Button variant="ghost" size="sm">
-                                      <FileText className="w-4 h-4" />
-                                    </Button>
+                                  {app.matchScore ? (
+                                    <Badge variant={app.matchScore >= 70 ? 'success' : app.matchScore >= 50 ? 'warning' : 'secondary'}>
+                                      {app.matchScore}%
+                                    </Badge>
                                   ) : '-'}
                                 </td>
                                 <td className="py-3 px-4">
@@ -520,27 +508,38 @@ const Dashboard = () => {
                                       href={app.applicationLink}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="text-primary hover:underline"
+                                      className="text-primary hover:underline flex items-center gap-1"
                                     >
-                                      <ExternalLink className="w-4 h-4" />
+                                      <ExternalLink className="w-4 h-4" /> View
                                     </a>
                                   ) : '-'}
                                 </td>
                                 <td className="py-3 px-4">
                                   <Select 
                                     value={app.status} 
-                                    onValueChange={(value) => {
-                                      // TODO: Update status via API
-                                      console.log('Update status:', app.id, value);
+                                    onValueChange={async (value) => {
+                                      try {
+                                        await fetch(`${API_URL}/api/applications/${app.id}?status=${value}`, {
+                                          method: 'PUT'
+                                        });
+                                        // Update local state
+                                        setApplications(prev => prev.map(a => 
+                                          a.id === app.id ? {...a, status: value} : a
+                                        ));
+                                      } catch (e) {
+                                        console.error('Failed to update status:', e);
+                                      }
                                     }}
                                   >
-                                    <SelectTrigger className="w-28 h-8 text-xs">
+                                    <SelectTrigger className="w-32 h-8 text-xs">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {Object.entries(APPLICATION_STATUS_LABELS).map(([key, label]) => (
-                                        <SelectItem key={key} value={key}>{label}</SelectItem>
-                                      ))}
+                                      <SelectItem value="materials_ready">📝 Ready</SelectItem>
+                                      <SelectItem value="applied">✅ Applied</SelectItem>
+                                      <SelectItem value="interviewing">📞 Interview</SelectItem>
+                                      <SelectItem value="offered">🎉 Offered</SelectItem>
+                                      <SelectItem value="rejected">❌ Rejected</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </td>
