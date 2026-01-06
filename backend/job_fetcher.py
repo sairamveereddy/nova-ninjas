@@ -82,7 +82,9 @@ async def fetch_jobs_from_adzuna(
     country: str = "us",
     what: str = "software engineer",
     results_per_page: int = 50,
-    page: int = 1
+    page: int = 1,
+    max_days_old: int = 1,
+    where: str = ""
 ) -> List[Dict[str, Any]]:
     """
     Fetch jobs from Adzuna API
@@ -92,6 +94,8 @@ async def fetch_jobs_from_adzuna(
         what: Job search keywords
         results_per_page: Number of results per page (max 50)
         page: Page number
+        max_days_old: Only show jobs posted in the last N days
+        where: Location filter
     
     Returns:
         List of job dictionaries
@@ -106,8 +110,13 @@ async def fetch_jobs_from_adzuna(
         "app_key": ADZUNA_API_KEY,
         "results_per_page": results_per_page,
         "what": what,
+        "max_days_old": max_days_old,
+        "sort_by": "date",
         "content-type": "application/json"
     }
+    
+    if where:
+        params["where"] = where
     
     try:
         async with aiohttp.ClientSession() as session:
@@ -177,29 +186,102 @@ async def fetch_jobs_from_adzuna(
 
 async def fetch_all_job_categories() -> List[Dict[str, Any]]:
     """
-    Fetch jobs from multiple categories
+    Fetch thousands of jobs from multiple categories, pages, and locations
     """
+    # Expanded job categories
     categories = [
         "software engineer",
+        "senior software engineer",
         "data scientist", 
+        "data engineer",
         "product manager",
-        "machine learning",
+        "machine learning engineer",
+        "AI engineer",
         "frontend developer",
         "backend developer",
+        "full stack developer",
         "devops engineer",
         "cloud engineer",
-        "full stack developer",
-        "data analyst"
+        "site reliability engineer",
+        "data analyst",
+        "business analyst",
+        "python developer",
+        "java developer",
+        "javascript developer",
+        "react developer",
+        "node.js developer",
+        "aws engineer",
+        "azure engineer",
+        "security engineer",
+        "QA engineer",
+        "mobile developer",
+        "iOS developer",
+        "android developer",
+        "blockchain developer",
+        "systems engineer",
+        "network engineer",
+        "database administrator",
+        "project manager IT",
+        "scrum master",
+        "technical lead",
+        "solutions architect",
+        "UX designer",
+        "UI developer"
+    ]
+    
+    # Major tech hub locations
+    locations = [
+        "",  # No filter - all US
+        "New York",
+        "San Francisco",
+        "Seattle",
+        "Austin",
+        "Boston",
+        "Los Angeles",
+        "Chicago",
+        "Denver",
+        "Atlanta",
+        "Remote"
     ]
     
     all_jobs = []
     
+    # Fetch jobs for each category
     for category in categories:
-        logger.info(f"Fetching jobs for: {category}")
-        jobs = await fetch_jobs_from_adzuna(what=category, results_per_page=20)
-        all_jobs.extend(jobs)
-        # Small delay to avoid rate limiting
-        await asyncio.sleep(0.5)
+        for page in range(1, 4):  # Fetch 3 pages per category (150 jobs per category)
+            logger.info(f"Fetching {category} - page {page}")
+            try:
+                jobs = await fetch_jobs_from_adzuna(
+                    what=category, 
+                    results_per_page=50,
+                    page=page,
+                    max_days_old=3  # Jobs from last 3 days
+                )
+                all_jobs.extend(jobs)
+                # Small delay to avoid rate limiting
+                await asyncio.sleep(0.3)
+            except Exception as e:
+                logger.error(f"Error fetching {category} page {page}: {e}")
+                continue
+    
+    # Also fetch by location for key categories
+    key_categories = ["software engineer", "data scientist", "devops engineer", "product manager"]
+    for location in locations[1:6]:  # Top 5 locations
+        for category in key_categories:
+            logger.info(f"Fetching {category} in {location}")
+            try:
+                jobs = await fetch_jobs_from_adzuna(
+                    what=category,
+                    results_per_page=50,
+                    page=1,
+                    max_days_old=3,
+                    where=location
+                )
+                all_jobs.extend(jobs)
+                await asyncio.sleep(0.3)
+            except Exception as e:
+                logger.error(f"Error fetching {category} in {location}: {e}")
+                continue
     
     # Remove duplicates based on externalId
     seen_ids = set()
@@ -209,7 +291,7 @@ async def fetch_all_job_categories() -> List[Dict[str, Any]]:
             seen_ids.add(job["externalId"])
             unique_jobs.append(job)
     
-    logger.info(f"Total unique jobs fetched: {len(unique_jobs)}")
+    logger.info(f"🎯 Total unique jobs fetched: {len(unique_jobs)}")
     return unique_jobs
 
 

@@ -1914,16 +1914,23 @@ async def get_razorpay_plans(currency: str = 'INR'):
 
 # Background task to fetch jobs periodically
 async def job_fetch_background_task():
-    """Background task that runs every 24 hours to fetch new jobs"""
+    """Background task that runs every 6 hours to fetch new jobs"""
+    # Initial fetch on startup
+    try:
+        logger.info("🚀 Running initial job fetch on startup...")
+        await scheduled_job_fetch(db)
+    except Exception as e:
+        logger.error(f"Initial job fetch error: {e}")
+    
     while True:
+        # Wait 6 hours before next fetch
+        await asyncio.sleep(6 * 60 * 60)  # 6 hours in seconds
+        
         try:
             logger.info("🔄 Running scheduled job fetch...")
             await scheduled_job_fetch(db)
         except Exception as e:
             logger.error(f"Background job fetch error: {e}")
-        
-        # Wait 24 hours before next fetch
-        await asyncio.sleep(24 * 60 * 60)  # 24 hours in seconds
 
 
 # ============================================
@@ -2482,12 +2489,9 @@ async def startup_event():
     """Initialize background tasks on startup"""
     logger.info("🚀 Starting Job Ninjas backend...")
     
-    # Start the background job fetcher
+    # Start the background job fetcher (runs every 6 hours, including immediately on startup)
     asyncio.create_task(job_fetch_background_task())
-    logger.info("📅 Job fetch scheduler started (runs every 24 hours)")
-    
-    # Optionally fetch jobs immediately on startup (comment out if not needed)
-    # asyncio.create_task(scheduled_job_fetch(db))
+    logger.info("📅 Job fetch scheduler started (fetches immediately, then every 6 hours)")
 
 
 @app.on_event("shutdown")
