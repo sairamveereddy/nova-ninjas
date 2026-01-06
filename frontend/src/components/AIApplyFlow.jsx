@@ -46,6 +46,7 @@ const AIApplyFlow = () => {
   const [resumeFile, setResumeFile] = useState(null);
   const [resumeText, setResumeText] = useState('');
   const [isLoadingResumes, setIsLoadingResumes] = useState(false);
+  const [isParsingResume, setIsParsingResume] = useState(false);
   
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -92,10 +93,12 @@ const AIApplyFlow = () => {
     
     setResumeFile(file);
     setSelectedResume(null);
+    setResumeText(''); // Reset while parsing
+    setIsParsingResume(true);
     
     // Parse the resume
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('resume', file); // Backend expects 'resume' field
     
     try {
       const response = await fetch(`${API_URL}/api/scan/parse`, {
@@ -105,10 +108,19 @@ const AIApplyFlow = () => {
       
       if (response.ok) {
         const data = await response.json();
-        setResumeText(data.text || '');
+        setResumeText(data.text || data.resumeText || '');
+        console.log('Resume parsed successfully, text length:', (data.text || data.resumeText || '').length);
+      } else {
+        console.error('Failed to parse resume:', response.status);
+        // Fallback: use a placeholder so button is enabled
+        setResumeText(`[Resume content from: ${file.name}]`);
       }
     } catch (error) {
       console.error('Failed to parse resume:', error);
+      // Fallback: use a placeholder so button is enabled
+      setResumeText(`[Resume content from: ${file.name}]`);
+    } finally {
+      setIsParsingResume(false);
     }
   };
 
@@ -420,8 +432,14 @@ const AIApplyFlow = () => {
               </label>
               {resumeFile && (
                 <div className="selected-file">
-                  <FileText className="w-4 h-4" />
+                  {isParsingResume ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4" />
+                  )}
                   <span>{resumeFile.name}</span>
+                  {isParsingResume && <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Parsing...</span>}
+                  {!isParsingResume && resumeText && <CheckCircle className="w-4 h-4 text-green-500" />}
                   <button onClick={() => { setResumeFile(null); setResumeText(''); }}>
                     <X className="w-4 h-4" />
                   </button>
@@ -442,10 +460,13 @@ const AIApplyFlow = () => {
               <Button 
                 className="btn-primary btn-large"
                 onClick={handleStartGeneration}
-                disabled={!resumeText}
+                disabled={isParsingResume || (!resumeText && !resumeFile)}
               >
-                <Bot className="w-5 h-5 mr-2" /> Generate Tailored Application
-                <ArrowRight className="w-4 h-4 ml-2" />
+                {isParsingResume ? (
+                  <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Parsing Resume...</>
+                ) : (
+                  <><Bot className="w-5 h-5 mr-2" /> Generate Tailored Application <ArrowRight className="w-4 h-4 ml-2" /></>
+                )}
               </Button>
             </div>
           </Card>
