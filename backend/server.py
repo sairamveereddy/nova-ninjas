@@ -1931,7 +1931,14 @@ async def job_fetch_background_task():
 # ============================================
 
 from resume_parser import parse_resume, validate_resume_file
-from resume_analyzer import analyze_resume, extract_resume_data, generate_optimized_resume
+from resume_analyzer import analyze_resume, extract_resume_data
+from document_generator import (
+    generate_optimized_resume_content,
+    generate_cover_letter_content,
+    create_resume_docx,
+    create_cover_letter_docx
+)
+from fastapi.responses import StreamingResponse
 
 @app.post("/api/scan/analyze")
 async def scan_resume(
@@ -1966,6 +1973,7 @@ async def scan_resume(
         return {
             "success": True,
             "analysis": analysis,
+            "resumeText": resume_text,  # Return for document generation
             "resumeTextLength": len(resume_text)
         }
         
@@ -2014,41 +2022,89 @@ async def parse_resume_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/scan/optimize")
-async def optimize_resume_endpoint(
-    resume: UploadFile = File(...),
-    job_description: str = Form(...)
-):
+class GenerateResumeRequest(BaseModel):
+    resume_text: str
+    job_description: str
+    job_title: str = "Position"
+    company: str = "Company"
+    analysis: dict
+
+
+@app.post("/api/generate/resume")
+async def generate_resume_docx(request: GenerateResumeRequest):
     """
-    Get suggestions to optimize resume for a specific job
+    Generate an optimized resume as a Word document
     """
     try:
-        # Validate file
-        file_content = await resume.read()
-        validation_error = validate_resume_file(resume.filename, len(file_content))
-        if validation_error:
-            raise HTTPException(status_code=400, detail=validation_error)
+        # Generate optimized content
+        resume_data = await generate_optimized_resume_content(
+            request.resume_text,
+            request.job_description,
+            request.analysis
+        )
         
-        # Parse resume
-        resume_text = await parse_resume(file_content, resume.filename)
-        if not resume_text.strip():
-            raise HTTPException(
-                status_code=400, 
-                detail="Could not extract text from resume"
-            )
+        if not resume_data:
+            raise HTTPException(status_code=500, detail="Failed to generate resume content")
         
-        # Generate optimizations with Gemini
-        optimizations = await generate_optimized_resume(resume_text, job_description)
+        # Create Word document
+        docx_file = create_resume_docx(resume_data)
         
-        return {
-            "success": True,
-            "optimizations": optimizations
-        }
+        # Return as downloadable file
+        return StreamingResponse(
+            docx_file,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f"attachment; filename=Optimized_Resume_{request.company.replace(' ', '_')}.docx"
+            }
+        )
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Resume optimize error: {e}")
+        logger.error(f"Resume generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class GenerateCoverLetterRequest(BaseModel):
+    resume_text: str
+    job_description: str
+    job_title: str = "Position"
+    company: str = "Company"
+
+
+@app.post("/api/generate/cover-letter")
+async def generate_cover_letter_docx(request: GenerateCoverLetterRequest):
+    """
+    Generate a cover letter as a Word document
+    """
+    try:
+        # Generate cover letter content
+        cover_letter_text = await generate_cover_letter_content(
+            request.resume_text,
+            request.job_description,
+            request.job_title,
+            request.company
+        )
+        
+        if not cover_letter_text:
+            raise HTTPException(status_code=500, detail="Failed to generate cover letter")
+        
+        # Create Word document
+        docx_file = create_cover_letter_docx(cover_letter_text, request.job_title, request.company)
+        
+        # Return as downloadable file
+        return StreamingResponse(
+            docx_file,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f"attachment; filename=Cover_Letter_{request.company.replace(' ', '_')}.docx"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Cover letter generation error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

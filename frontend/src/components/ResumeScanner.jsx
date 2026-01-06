@@ -18,7 +18,9 @@ import {
   AlertTriangle,
   TrendingUp,
   Target,
-  Sparkles
+  Sparkles,
+  Download,
+  FileDown
 } from 'lucide-react';
 import { BRAND } from '../config/branding';
 import { API_URL } from '../config/api';
@@ -49,6 +51,11 @@ const ResumeScanner = () => {
   
   // Copy state
   const [copiedSkills, setCopiedSkills] = useState(false);
+  
+  // Document generation state
+  const [generatingResume, setGeneratingResume] = useState(false);
+  const [generatingCoverLetter, setGeneratingCoverLetter] = useState(false);
+  const [parsedResumeText, setParsedResumeText] = useState('');
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -106,6 +113,7 @@ const ResumeScanner = () => {
 
       const data = await response.json();
       setAnalysisResult(data.analysis);
+      setParsedResumeText(data.resumeText || ''); // Store for document generation
       setCurrentStep(3);
 
       // Save scan if user is authenticated
@@ -144,6 +152,87 @@ const ResumeScanner = () => {
     navigator.clipboard.writeText(allMissing);
     setCopiedSkills(true);
     setTimeout(() => setCopiedSkills(false), 2000);
+  };
+
+  const downloadOptimizedResume = async () => {
+    if (!analysisResult) return;
+    
+    setGeneratingResume(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/generate/resume`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resume_text: parsedResumeText || jobDescription, // fallback
+          job_description: jobDescription,
+          job_title: jobTitle || 'Position',
+          company: company || 'Company',
+          analysis: analysisResult
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to generate resume');
+      }
+      
+      // Download the file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Optimized_Resume_${company || 'Job'}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGeneratingResume(false);
+    }
+  };
+
+  const downloadCoverLetter = async () => {
+    setGeneratingCoverLetter(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/generate/cover-letter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resume_text: parsedResumeText || jobDescription,
+          job_description: jobDescription,
+          job_title: jobTitle || 'Position',
+          company: company || 'Company'
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to generate cover letter');
+      }
+      
+      // Download the file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Cover_Letter_${company || 'Job'}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGeneratingCoverLetter(false);
+    }
   };
 
   const getScoreColor = (score) => {
@@ -311,6 +400,32 @@ const ResumeScanner = () => {
                 <ArrowLeft className="w-4 h-4" /> New Scan
               </Button>
               <h2>{jobTitle || 'Resume Analysis'} {company && `at ${company}`}</h2>
+            </div>
+
+            {/* Download Actions */}
+            <div className="download-actions">
+              <Button 
+                className="btn-primary download-btn"
+                onClick={downloadOptimizedResume}
+                disabled={generatingResume}
+              >
+                {generatingResume ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
+                ) : (
+                  <><Download className="w-4 h-4" /> Download Optimized Resume</>
+                )}
+              </Button>
+              <Button 
+                className="btn-secondary download-btn"
+                onClick={downloadCoverLetter}
+                disabled={generatingCoverLetter}
+              >
+                {generatingCoverLetter ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
+                ) : (
+                  <><FileDown className="w-4 h-4" /> Get Cover Letter</>
+                )}
+              </Button>
             </div>
 
             {/* Match Score */}
