@@ -7,10 +7,15 @@ import os
 import json
 import re
 import logging
+import asyncio
 from typing import Dict, Any, Optional
 import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
+
+# Retry configuration
+MAX_RETRIES = 3
+RETRY_DELAY = 7  # seconds to wait on rate limit
 
 # Configure Gemini
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
@@ -171,25 +176,36 @@ Important:
 - Return ONLY the JSON, no other text
 """
 
-    try:
-        response = gemini_model.generate_content(prompt)
-        json_text = clean_json_response(response.text)
-        result = json.loads(json_text)
-        return result
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse Gemini response as JSON: {e}")
-        logger.error(f"Raw response: {response.text[:500]}")
-        return {
-            "error": "Failed to parse analysis results",
-            "matchScore": 0,
-            "rawResponse": response.text[:1000]
-        }
-    except Exception as e:
-        logger.error(f"Gemini API error: {e}")
-        return {
-            "error": str(e),
-            "matchScore": 0
-        }
+    # Retry logic for rate limits
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = gemini_model.generate_content(prompt)
+            json_text = clean_json_response(response.text)
+            result = json.loads(json_text)
+            return result
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse Gemini response as JSON: {e}")
+            logger.error(f"Raw response: {response.text[:500]}")
+            return {
+                "error": "Failed to parse analysis results",
+                "matchScore": 0,
+                "rawResponse": response.text[:1000]
+            }
+        except Exception as e:
+            error_str = str(e).lower()
+            # Check if it's a rate limit error (429)
+            if "429" in str(e) or "quota" in error_str or "rate" in error_str:
+                if attempt < MAX_RETRIES - 1:
+                    logger.warning(f"Rate limit hit, waiting {RETRY_DELAY}s before retry {attempt + 2}/{MAX_RETRIES}")
+                    await asyncio.sleep(RETRY_DELAY)
+                    continue
+            logger.error(f"Gemini API error: {e}")
+            return {
+                "error": str(e),
+                "matchScore": 0
+            }
+    
+    return {"error": "Max retries exceeded", "matchScore": 0}
 
 
 async def extract_resume_data(resume_text: str) -> Dict[str, Any]:
