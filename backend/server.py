@@ -34,7 +34,7 @@ logging.basicConfig(level=logging.INFO)
 
 # MongoDB connection with error handling
 mongo_url = os.environ.get('MONGO_URL')
-db_name = os.environ.get('DB_NAME', 'nova_ninjas')
+db_name = os.environ.get('DB_NAME', 'novaninjas')
 
 if not mongo_url:
     logger.error("MONGO_URL environment variable is not set!")
@@ -1472,12 +1472,12 @@ class AIApplyResponse(BaseModel):
     tailoredCoverLetter: str
     suggestedAnswers: List[dict]
 
-async def get_user_usage_limits(user_email: str) -> dict:
+async def get_user_usage_limits(identifier: str) -> dict:
     """
     Calculate user's resume usage limits based on their plan and billing cycle.
+    Supports either email or userId as identifier.
     """
-    user = await db.users.find_one({"email": user_email})
-    if not user:
+    if not identifier:
         return {
             "tier": "free",
             "currentCount": 0,
@@ -1486,9 +1486,28 @@ async def get_user_usage_limits(user_email: str) -> dict:
             "resetDate": None,
             "totalResumes": 0
         }
+
+    # Try finding by email first, then by id
+    user = await db.users.find_one({
+        "$or": [
+            {"email": identifier},
+            {"id": identifier}
+        ]
+    })
+    
+    if not user:
+        return {
+            "tier": "free",
+            "currentCount": 0,
+            "limit": 5,
+            "canGenerate": True,
+            "resetDate": None,
+            "totalResumes": 0
+        }
     
     # Get all-time resume count
-    total_resumes = await db.resumes.count_documents({"userId": user['id']})
+    user_id = user.get('id') or user.get('_id')
+    total_resumes = await db.resumes.count_documents({"userId": str(user_id)})
     
     # Determine tier
     tier = user.get('plan', 'free')
@@ -1513,9 +1532,10 @@ async def get_user_usage_limits(user_email: str) -> dict:
     can_generate = False
     reset_date = None
     
-    if tier == 'pro':
+    if str(tier).strip().lower() == 'pro':
         limit = "Unlimited"
         can_generate = True
+        current_count = total_resumes 
     elif tier == 'beginner':
         limit = 200
         # Calculate monthly count based on billing cycle

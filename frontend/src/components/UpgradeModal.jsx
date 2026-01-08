@@ -27,6 +27,10 @@ const UpgradeModal = ({ tier, limit, resetDate, onClose }) => {
                         <p className="text-gray-600">
                             You've used all {limit} free resumes. Upgrade to a paid plan to keep generating tailored resumes!
                         </p>
+                    ) : tier === 'pro' || limit === 'Unlimited' ? (
+                        <p className="text-gray-600">
+                            It looks like there was a glitch fetching your Unlimited access. Please try refreshing the page.
+                        </p>
                     ) : (
                         <>
                             <p className="text-gray-600 mb-2">
