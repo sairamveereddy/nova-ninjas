@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { 
-  Upload, 
-  FileText, 
-  Briefcase, 
-  CheckCircle, 
+import {
+  Upload,
+  FileText,
+  Briefcase,
+  CheckCircle,
   AlertCircle,
   Loader2,
   ArrowRight,
@@ -30,6 +30,7 @@ import { BRAND } from '../config/branding';
 import { API_URL } from '../config/api';
 import SideMenu from './SideMenu';
 import Header from './Header';
+import UpgradeModal from './UpgradeModal';
 import './SideMenu.css';
 import './ResumeScanner.css';
 
@@ -37,30 +38,30 @@ const ResumeScanner = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
-  
+
   // Step state: 1 = Upload Resume, 2 = Add Job, 3 = View Results
   const [currentStep, setCurrentStep] = useState(1);
-  
+
   // Form state
   const [resumeFile, setResumeFile] = useState(null);
   const [resumeText, setResumeText] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [company, setCompany] = useState('');
-  
+
   // Analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [error, setError] = useState(null);
-  
+
   // Copy state
   const [copiedSkills, setCopiedSkills] = useState(false);
-  
+
   // Document generation state
   const [generatingResume, setGeneratingResume] = useState(false);
   const [generatingCoverLetter, setGeneratingCoverLetter] = useState(false);
   const [parsedResumeText, setParsedResumeText] = useState('');
-  
+
   // Saved resumes state
   const [savedResumes, setSavedResumes] = useState([]);
   const [loadingResumes, setLoadingResumes] = useState(false);
@@ -68,17 +69,32 @@ const ResumeScanner = () => {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [resumeName, setResumeName] = useState('');
   const [savingResume, setSavingResume] = useState(false);
+  const [usageLimits, setUsageLimits] = useState(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  // Fetch saved resumes on mount
+  // Fetch saved resumes and usage on mount
   useEffect(() => {
     if (isAuthenticated && user?.email) {
       fetchSavedResumes();
+      fetchUsageLimits();
     }
   }, [isAuthenticated, user]);
 
+  const fetchUsageLimits = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/usage/limits?email=${encodeURIComponent(user.email)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setUsageLimits(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch usage limits:', error);
+    }
+  };
+
   const fetchSavedResumes = async () => {
     if (!user?.email) return;
-    
+
     setLoadingResumes(true);
     try {
       const response = await fetch(`${API_URL}/api/resumes/${encodeURIComponent(user.email)}`);
@@ -110,7 +126,7 @@ const ResumeScanner = () => {
 
   const saveCurrentResume = async () => {
     if (!parsedResumeText || !resumeName.trim() || !user?.email) return;
-    
+
     setSavingResume(true);
     try {
       const response = await fetch(`${API_URL}/api/resumes/save`, {
@@ -123,7 +139,7 @@ const ResumeScanner = () => {
           file_name: resumeFile?.name || 'Saved Resume'
         })
       });
-      
+
       if (response.ok) {
         setShowSaveModal(false);
         setResumeName('');
@@ -142,12 +158,12 @@ const ResumeScanner = () => {
   const deleteSavedResume = async (resumeId, e) => {
     e.stopPropagation();
     if (!confirm('Delete this saved resume?')) return;
-    
+
     try {
       const response = await fetch(`${API_URL}/api/resumes/${resumeId}`, {
         method: 'DELETE'
       });
-      
+
       if (response.ok) {
         setSavedResumes(prev => prev.filter(r => r.id !== resumeId));
         if (selectedSavedResume?.id === resumeId) {
@@ -200,7 +216,7 @@ const ResumeScanner = () => {
 
     try {
       let data;
-      
+
       if (selectedSavedResume) {
         // Use saved resume text - call analyze with text directly
         const formData = new FormData();
@@ -260,7 +276,7 @@ const ResumeScanner = () => {
               analysis: data.analysis
             })
           });
-          
+
           // Also save to application tracker
           const applicationData = {
             userEmail: user.email,
@@ -275,15 +291,15 @@ const ResumeScanner = () => {
             status: 'materials_ready',
             createdAt: new Date().toISOString()
           };
-          
+
           console.log('Saving to application tracker:', applicationData);
-          
+
           const appResponse = await fetch(`${API_URL}/api/applications`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(applicationData)
           });
-          
+
           if (appResponse.ok) {
             console.log('Application saved to tracker');
           }
@@ -301,11 +317,11 @@ const ResumeScanner = () => {
 
   const copyAllSkills = () => {
     if (!analysisResult) return;
-    
+
     const missingHard = analysisResult.hardSkills?.missing?.map(s => s.skill) || [];
     const missingSoft = analysisResult.softSkills?.missing?.map(s => s.skill) || [];
     const allMissing = [...missingHard, ...missingSoft].join(', ');
-    
+
     navigator.clipboard.writeText(allMissing);
     setCopiedSkills(true);
     setTimeout(() => setCopiedSkills(false), 2000);
@@ -313,15 +329,16 @@ const ResumeScanner = () => {
 
   const downloadOptimizedResume = async () => {
     if (!analysisResult) return;
-    
+
     setGeneratingResume(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`${API_URL}/api/generate/resume`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          userId: user.id || user.email,
           resume_text: parsedResumeText || jobDescription, // fallback
           job_description: jobDescription,
           job_title: jobTitle || 'Position',
@@ -329,12 +346,16 @@ const ResumeScanner = () => {
           analysis: analysisResult
         })
       });
-      
+
       if (!response.ok) {
+        if (response.status === 403) {
+          setShowUpgradeModal(true);
+          throw new Error('You have reached your resume generation limit.');
+        }
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to generate resume');
       }
-      
+
       // Download the file
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -345,7 +366,7 @@ const ResumeScanner = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       a.remove();
-      
+
     } catch (err) {
       setError(err.message);
     } finally {
@@ -356,24 +377,25 @@ const ResumeScanner = () => {
   const downloadCoverLetter = async () => {
     setGeneratingCoverLetter(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`${API_URL}/api/generate/cover-letter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          userId: user.id || user.email,
           resume_text: parsedResumeText || jobDescription,
           job_description: jobDescription,
           job_title: jobTitle || 'Position',
           company: company || 'Company'
         })
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to generate cover letter');
       }
-      
+
       // Download the file
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -384,7 +406,7 @@ const ResumeScanner = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       a.remove();
-      
+
     } catch (err) {
       setError(err.message);
     } finally {
@@ -449,8 +471,8 @@ const ResumeScanner = () => {
                 <h3><FolderOpen className="w-5 h-5" /> Your Saved Resumes</h3>
                 <div className="saved-resumes-list">
                   {savedResumes.map((resume) => (
-                    <div 
-                      key={resume.id} 
+                    <div
+                      key={resume.id}
                       className={`saved-resume-card ${selectedSavedResume?.id === resume.id ? 'selected' : ''}`}
                       onClick={() => selectSavedResume(resume)}
                     >
@@ -462,7 +484,7 @@ const ResumeScanner = () => {
                           {new Date(resume.updatedAt).toLocaleDateString()}
                         </span>
                       </div>
-                      <button 
+                      <button
                         className="delete-resume-btn"
                         onClick={(e) => deleteSavedResume(resume.id, e)}
                       >
@@ -493,7 +515,7 @@ const ResumeScanner = () => {
 
             {/* Upload Zone - show only if no saved resume selected */}
             {!selectedSavedResume && (
-              <div 
+              <div
                 className={`upload-zone ${resumeFile ? 'has-file' : ''}`}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
@@ -512,11 +534,11 @@ const ResumeScanner = () => {
                     <Upload className="w-12 h-12" style={{ color: '#94a3b8' }} />
                     <p>Drag & Drop or <label className="choose-file">
                       Choose file
-                      <input 
-                        type="file" 
+                      <input
+                        type="file"
                         accept=".pdf,.docx,.txt"
                         onChange={handleFileUpload}
-                        hidden 
+                        hidden
                       />
                     </label> to upload</p>
                     <span className="file-types">as .pdf or .docx file</span>
@@ -525,7 +547,7 @@ const ResumeScanner = () => {
               </div>
             )}
 
-            <Button 
+            <Button
               className="btn-primary next-btn"
               disabled={!resumeFile && !selectedSavedResume}
               onClick={() => setCurrentStep(2)}
@@ -569,13 +591,13 @@ const ResumeScanner = () => {
             </div>
 
             <div className="step-buttons">
-              <Button 
+              <Button
                 variant="outline"
                 onClick={() => setCurrentStep(1)}
               >
                 <ArrowLeft className="w-4 h-4" /> Back
               </Button>
-              <Button 
+              <Button
                 className="btn-primary"
                 disabled={!jobDescription.trim() || isAnalyzing}
                 onClick={handleAnalyze}
@@ -606,7 +628,7 @@ const ResumeScanner = () => {
 
             {/* Download Actions */}
             <div className="download-actions">
-              <Button 
+              <Button
                 className="btn-primary download-btn"
                 onClick={downloadOptimizedResume}
                 disabled={generatingResume}
@@ -617,7 +639,7 @@ const ResumeScanner = () => {
                   <><Download className="w-4 h-4" /> Download Optimized Resume</>
                 )}
               </Button>
-              <Button 
+              <Button
                 className="btn-secondary download-btn"
                 onClick={downloadCoverLetter}
                 disabled={generatingCoverLetter}
@@ -629,7 +651,7 @@ const ResumeScanner = () => {
                 )}
               </Button>
               {isAuthenticated && !selectedSavedResume && parsedResumeText && (
-                <Button 
+                <Button
                   variant="outline"
                   className="save-resume-btn"
                   onClick={() => setShowSaveModal(true)}
@@ -638,7 +660,7 @@ const ResumeScanner = () => {
                 </Button>
               )}
             </div>
-            
+
             {/* Save Resume Modal */}
             {showSaveModal && (
               <div className="modal-overlay" onClick={() => setShowSaveModal(false)}>
@@ -656,7 +678,7 @@ const ResumeScanner = () => {
                     <Button variant="outline" onClick={() => setShowSaveModal(false)}>
                       Cancel
                     </Button>
-                    <Button 
+                    <Button
                       className="btn-primary"
                       onClick={saveCurrentResume}
                       disabled={!resumeName.trim() || savingResume}
@@ -833,7 +855,7 @@ const ResumeScanner = () => {
                 <h3>Recruiter Tips</h3>
                 <span className="section-badge important">IMPORTANT</span>
               </div>
-              
+
               <div className="tip-item">
                 <div className={`tip-status ${analysisResult.jobTitleMatch?.match ? 'pass' : 'fail'}`}>
                   {analysisResult.jobTitleMatch?.match ? <CheckCircle /> : <AlertTriangle />}
@@ -889,10 +911,20 @@ const ResumeScanner = () => {
             </Card>
           </div>
         )}
+        {/* Upgrade Modal */}
+        {showUpgradeModal && usageLimits && (
+          <UpgradeModal
+            tier={usageLimits.tier}
+            limit={usageLimits.limit}
+            resetDate={usageLimits.resetDate}
+            onClose={() => setShowUpgradeModal(false)}
+          />
+        )}
       </div>
     </div>
   );
 };
 
 export default ResumeScanner;
+
 

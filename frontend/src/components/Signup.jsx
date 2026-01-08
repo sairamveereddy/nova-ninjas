@@ -22,11 +22,11 @@ const Signup = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
-  
+
   // Redirect if already authenticated
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      navigate('/dashboard');
+      navigate('/');
     }
   }, [isAuthenticated, authLoading, navigate]);
 
@@ -56,7 +56,7 @@ const Signup = () => {
     try {
       const result = await signup(formData.email, formData.password, formData.name);
       if (result.success) {
-        navigate('/dashboard'); // Redirect to dashboard after signup
+        navigate('/'); // Redirect to home page after signup
       }
     } catch (err) {
       setError('Signup failed. Please try again.');
@@ -69,16 +69,16 @@ const Signup = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 relative">
       {/* Side Menu */}
       <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
-      
+
       {/* Hamburger Button */}
-      <button 
-        onClick={() => setSideMenuOpen(true)} 
+      <button
+        onClick={() => setSideMenuOpen(true)}
         className="fixed top-4 left-4 p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 z-10"
         aria-label="Open menu"
       >
         <Menu className="w-5 h-5 text-gray-600" />
       </button>
-      
+
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-4">
@@ -99,7 +99,7 @@ const Signup = () => {
                 {error}
               </div>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <Input
@@ -112,7 +112,7 @@ const Signup = () => {
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -125,7 +125,7 @@ const Signup = () => {
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input

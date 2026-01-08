@@ -13,14 +13,14 @@ import { BRAND } from '../config/branding';
 const Login = () => {
   const navigate = useNavigate();
   const { login, isAuthenticated, loading: authLoading } = useAuth();
-  
+
   // Redirect if already authenticated
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      navigate('/dashboard');
+      navigate('/');
     }
   }, [isAuthenticated, authLoading, navigate]);
-  
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -46,7 +46,7 @@ const Login = () => {
       if (result.success) {
         // Redirect based on user role
         if (result.user.role === 'customer') {
-          navigate('/dashboard');
+          navigate('/');
         } else if (result.user.role === 'employee') {
           navigate('/employee');
         } else if (result.user.role === 'admin') {
@@ -64,16 +64,16 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 relative">
       {/* Side Menu */}
       <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
-      
+
       {/* Hamburger Button */}
-      <button 
-        onClick={() => setSideMenuOpen(true)} 
+      <button
+        onClick={() => setSideMenuOpen(true)}
         className="fixed top-4 left-4 p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 z-10"
         aria-label="Open menu"
       >
         <Menu className="w-5 h-5 text-gray-600" />
       </button>
-      
+
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-4">
@@ -94,7 +94,7 @@ const Login = () => {
                 {error}
               </div>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -107,7 +107,7 @@ const Login = () => {
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input

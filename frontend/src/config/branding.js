@@ -9,23 +9,23 @@ export const BRAND = {
   name: 'Job Ninjas',
   oldName: 'Nova Ninjas', // For reference during migration
   domain: 'jobninjas.org',
-  
+
   // Taglines
   tagline: 'Human job squad, supercharged by AI. We apply for you, not bots.',
   shortTagline: 'Your Personal Job Ninja',
   heroTagline: 'Your Ninja. Your Job Search. Your Success.',
-  
+
   // Contact
   contactEmail: 'hello@jobninjas.org',
   supportEmail: 'support@jobninjas.org',
-  
+
   // Social/Links
   website: 'https://jobninjas.org',
-  
+
   // Logo (update path when new logo is ready)
   logoPath: '/logo.png',
   logoAlt: 'Job Ninjas Logo',
-  
+
   // Company info
   year: new Date().getFullYear(),
   copyright: `© ${new Date().getFullYear()} Job Ninjas. All rights reserved.`,
@@ -73,23 +73,41 @@ export const PRICING = {
       'All 5 applications appear in your Application Tracker',
     ],
   },
+  AI_BEGINNER: {
+    id: 'ai-beginner',
+    name: 'AI Ninja Beginner',
+    price: 19.99,
+    priceDisplay: '$19.99',
+    period: '/month',
+    applications: 200,
+    description: 'Perfect for job seekers who want more applications and voice interview prep.',
+    features: [
+      'Apply to up to 200 jobs per month using AI Ninja',
+      'Store and manage multiple resumes / profiles',
+      'Tailored resume + cover letter + Q&A for each application',
+      'Voice AI Interview practice',
+      'All applications logged in your Application Tracker',
+    ],
+  },
   AI_PRO: {
     id: 'ai-pro',
     name: 'AI Ninja Pro',
     price: 29.99,
     priceDisplay: '$29.99',
     period: '/month',
-    applications: 200,
+    applications: 'Unlimited',
     description: 'For active job seekers who want high-volume, tailored applications.',
     features: [
-      'Apply to up to 200 jobs per month using AI Ninja',
+      'Unlimited AI-powered job applications per month',
       'Store and manage multiple resumes / profiles',
       'Full access to "Apply with AI Ninja" on internal + external jobs',
       'Tailored resume + cover letter + Q&A for each application',
+      'AI Video Call Interview Prep (coming soon)',
+      'Voice AI Interview practice',
       'All applications logged in your Application Tracker',
     ],
   },
-  
+
   // ============================================
   // HUMAN NINJA PLANS (Done-for-You)
   // ============================================

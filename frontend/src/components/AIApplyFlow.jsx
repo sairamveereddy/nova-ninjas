@@ -6,12 +6,12 @@ import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { 
-  Bot, 
-  FileText, 
-  Upload, 
-  CheckCircle, 
-  Download, 
+import {
+  Bot,
+  FileText,
+  Upload,
+  CheckCircle,
+  Download,
   ExternalLink,
   ArrowLeft,
   ArrowRight,
@@ -29,6 +29,7 @@ import { BRAND } from '../config/branding';
 import { API_URL } from '../config/api';
 import SideMenu from './SideMenu';
 import Header from './Header';
+import UpgradeModal from './UpgradeModal';
 import './AIApplyFlow.css';
 
 // Helper function to get color based on score
@@ -43,13 +44,13 @@ const AIApplyFlow = () => {
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
-  
+
   // Get job details from navigation state
   const jobData = location.state || {};
-  
+
   // Steps: 1=Resume Selection, 2=Generating, 3=Results
   const [currentStep, setCurrentStep] = useState(1);
-  
+
   // Resume state
   const [savedResumes, setSavedResumes] = useState([]);
   const [selectedResume, setSelectedResume] = useState(null);
@@ -57,38 +58,62 @@ const AIApplyFlow = () => {
   const [resumeText, setResumeText] = useState('');
   const [isLoadingResumes, setIsLoadingResumes] = useState(false);
   const [isParsingResume, setIsParsingResume] = useState(false);
-  
+
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState('');
-  
+
   // Results state
   const [analysisResult, setAnalysisResult] = useState(null);
   const [optimizedResumeUrl, setOptimizedResumeUrl] = useState(null);
   const [coverLetterUrl, setCoverLetterUrl] = useState(null);
   const [isSavingApplication, setIsSavingApplication] = useState(false);
   const [applicationSaved, setApplicationSaved] = useState(false);
-  
-  // Save resume prompt state
+
   const [showSaveResumePrompt, setShowSaveResumePrompt] = useState(false);
   const [resumeName, setResumeName] = useState('');
   const [isSavingResume, setIsSavingResume] = useState(false);
   const [resumeSaved, setResumeSaved] = useState(false);
 
-  // Fetch saved resumes on mount
+  // New Usage & Company state
+  const [companyName, setCompanyName] = useState(jobData.company || '');
+  const [usageLimits, setUsageLimits] = useState(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login?redirect=' + encodeURIComponent(location.pathname));
+    }
+  }, [isAuthenticated, navigate, location.pathname]);
+
+  // Fetch usage and resumes on mount
   useEffect(() => {
     if (isAuthenticated && user?.email) {
       fetchSavedResumes();
+      fetchUsageLimits();
     }
   }, [isAuthenticated, user]);
+
+  const fetchUsageLimits = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/usage/limits?email=${encodeURIComponent(user.email)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setUsageLimits(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch usage limits:', error);
+    }
+  };
 
   const fetchSavedResumes = async () => {
     setIsLoadingResumes(true);
     try {
-      const response = await fetch(`${API_URL}/api/resumes/${encodeURIComponent(user.email)}`);
+      const response = await fetch(`${API_URL}/api/resumes?email=${encodeURIComponent(user.email)}`);
       if (response.ok) {
         const data = await response.json();
-        setSavedResumes(data.resumes || []);
+        setSavedResumes(data || []);
       }
     } catch (error) {
       console.error('Failed to fetch resumes:', error);
@@ -100,22 +125,22 @@ const AIApplyFlow = () => {
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     setResumeFile(file);
     setSelectedResume(null);
     setResumeText(''); // Reset while parsing
     setIsParsingResume(true);
-    
+
     // Parse the resume
     const formData = new FormData();
     formData.append('resume', file); // Backend expects 'resume' field
-    
+
     try {
       const response = await fetch(`${API_URL}/api/scan/parse`, {
         method: 'POST',
         body: formData
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setResumeText(data.text || data.resumeText || '');
@@ -143,18 +168,18 @@ const AIApplyFlow = () => {
   const handleStartGeneration = async () => {
     // If we have a file but no text, try to parse it again
     let textToUse = resumeText;
-    
+
     if (!textToUse && resumeFile) {
       // Try parsing the resume again
       const formData = new FormData();
       formData.append('resume', resumeFile);
-      
+
       try {
         const parseResponse = await fetch(`${API_URL}/api/scan/parse`, {
           method: 'POST',
           body: formData
         });
-        
+
         if (parseResponse.ok) {
           const parseData = await parseResponse.json();
           textToUse = parseData.text || parseData.resumeText || '';
@@ -163,31 +188,42 @@ const AIApplyFlow = () => {
       } catch (e) {
         console.error('Re-parse failed:', e);
       }
-      
+
       // If still no text, use fallback
       if (!textToUse) {
         textToUse = `[Resume uploaded: ${resumeFile.name}]`;
         setResumeText(textToUse);
       }
     }
-    
+
     if (!textToUse && !resumeFile && !selectedResume) {
       alert('Please upload a resume first');
       return;
     }
-    
+
     if (!jobData.description) {
       alert('Job description is missing');
       return;
     }
-    
+
+    if (!companyName.trim()) {
+      alert('Please enter the company name');
+      return;
+    }
+
+    // Check usage limits
+    if (usageLimits && !usageLimits.canGenerate) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     setCurrentStep(2);
     setIsGenerating(true);
-    
+
     try {
       // Step 1: Analyze resume
       setGenerationProgress('Analyzing your resume against the job description...');
-      
+
       // Create form data for analysis (backend expects file upload)
       const analyzeFormData = new FormData();
       if (resumeFile) {
@@ -201,12 +237,12 @@ const AIApplyFlow = () => {
         analyzeFormData.append('resume', blob, 'resume.txt');
       }
       analyzeFormData.append('job_description', jobData.description);
-      
+
       const analyzeResponse = await fetch(`${API_URL}/api/scan/analyze`, {
         method: 'POST',
         body: analyzeFormData
       });
-      
+
       if (!analyzeResponse.ok) {
         const errorData = await analyzeResponse.json().catch(() => ({}));
         throw new Error(errorData.detail || 'Analysis failed');
@@ -214,97 +250,68 @@ const AIApplyFlow = () => {
       const analysisData = await analyzeResponse.json();
       const analysis = analysisData.analysis || analysisData;
       setAnalysisResult(analysis);
-      
+
       // Use resume text from analysis if available (properly parsed from file)
       const parsedResumeText = analysisData.resumeText || textToUse;
-      
+
       // Update resumeText state so it's available for saving
       if (parsedResumeText && parsedResumeText !== resumeText) {
         setResumeText(parsedResumeText);
       }
-      
+
       // Step 2: Generate optimized resume
       setGenerationProgress('Creating your tailored resume...');
-      const resumeResponse = await fetch(`${API_URL}/api/generate/optimized-resume`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resume_text: parsedResumeText,
-          job_description: jobData.description,
-          analysis: analysis
-        })
-      });
-      
-      if (resumeResponse.ok) {
-        const resumeBlob = await resumeResponse.blob();
-        setOptimizedResumeUrl(URL.createObjectURL(resumeBlob));
+
+      const applyFormData = new FormData();
+      applyFormData.append('userId', user.id);
+      applyFormData.append('jobId', jobData.jobId || jobData.id || '');
+      applyFormData.append('jobTitle', jobData.jobTitle || jobData.title || '');
+      applyFormData.append('company', companyName);
+      applyFormData.append('jobDescription', jobData.description);
+      applyFormData.append('jobUrl', jobData.sourceUrl || jobData.url || '');
+
+      if (resumeFile) {
+        applyFormData.append('resume', resumeFile);
+      } else if (textToUse) {
+        const blob = new Blob([textToUse], { type: 'text/plain' });
+        applyFormData.append('resume', blob, 'resume.txt');
       }
-      
-      // Step 3: Generate cover letter
-      setGenerationProgress('Writing your custom cover letter...');
-      const coverResponse = await fetch(`${API_URL}/api/generate/cover-letter`, {
+
+      const applyResponse = await fetch(`${API_URL}/api/ai-ninja/apply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resume_text: parsedResumeText,
-          job_description: jobData.description,
-          job_title: jobData.jobTitle || 'the position',
-          company: jobData.company || 'the company'
-        })
+        body: applyFormData
       });
-      
-      if (coverResponse.ok) {
-        const coverBlob = await coverResponse.blob();
-        setCoverLetterUrl(URL.createObjectURL(coverBlob));
-      }
-      
-      // Auto-save application to tracker
-      setGenerationProgress('Saving to your application tracker...');
-      console.log('Auto-save check - isAuthenticated:', isAuthenticated, 'user:', user);
-      
-      if (isAuthenticated && user?.email) {
-        try {
-          const applicationData = {
-            userEmail: user.email,
-            jobId: jobData.jobId || jobData.id || null,
-            jobTitle: jobData.jobTitle || jobData.title || 'Unknown Position',
-            company: jobData.company || 'Unknown Company',
-            location: jobData.location || '',
-            jobDescription: (jobData.description || '').substring(0, 5000),
-            sourceUrl: jobData.sourceUrl || jobData.url || '',
-            salaryRange: jobData.salaryRange || jobData.salary || '',
-            matchScore: analysis?.matchScore || 0,
-            status: 'materials_ready',
-            createdAt: new Date().toISOString()
-          };
-          
-          console.log('Saving application:', applicationData);
-          
-          const saveResponse = await fetch(`${API_URL}/api/applications`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(applicationData)
-          });
-          
-          const saveResult = await saveResponse.json();
-          console.log('Save result:', saveResult);
-          
-          if (saveResponse.ok || saveResult.success) {
-            setApplicationSaved(true);
-            console.log('Application saved successfully!');
-          } else {
-            console.error('Failed to save application:', saveResult);
-          }
-        } catch (saveError) {
-          console.error('Failed to auto-save application:', saveError);
+
+      if (!applyResponse.ok) {
+        const errorData = await applyResponse.json().catch(() => ({}));
+        if (applyResponse.status === 403) {
+          setShowUpgradeModal(true);
+          throw new Error('Usage limit reached');
         }
-      } else {
-        console.log('Skipping auto-save - user not authenticated or no email');
+        throw new Error(errorData.detail || 'Application generation failed');
       }
-      
+
+      const applyData = await applyResponse.json();
+
+      // Update usage from response
+      if (applyData.usage) {
+        setUsageLimits(applyData.usage);
+      }
+
+      // Since we now get everything in one go from ai-ninja/apply
+      setOptimizedResumeUrl(null); // Will use text display for now or handle docx later
+      setCoverLetterUrl(null);
+      setAnalysisResult(analysis); // Keep analysis from first step
+
+      // Set results for display
+      setTailoredResume(applyData.tailoredResume);
+      setTailoredCoverLetter(applyData.tailoredCoverLetter);
+      setSuggestedAnswers(applyData.suggestedAnswers);
+      setApplicationSaved(true); // Backend saves it now
+
       setGenerationProgress('Done! Your application materials are ready.');
       setCurrentStep(3);
-      
+
       // Show save resume prompt if user uploaded a new resume (not using saved one)
       if (resumeFile && !selectedResume && isAuthenticated) {
         setTimeout(() => {
@@ -312,7 +319,7 @@ const AIApplyFlow = () => {
           setResumeName(resumeFile.name.replace(/\.[^/.]+$/, '') || 'My Resume');
         }, 500);
       }
-      
+
     } catch (error) {
       console.error('Generation failed:', error);
       setGenerationProgress('Something went wrong. Please try again.');
@@ -326,9 +333,9 @@ const AIApplyFlow = () => {
       navigate('/login');
       return;
     }
-    
+
     setIsSavingApplication(true);
-    
+
     try {
       const applicationData = {
         userEmail: user.email,
@@ -343,13 +350,13 @@ const AIApplyFlow = () => {
         status: 'materials_ready',
         createdAt: new Date().toISOString()
       };
-      
+
       const response = await fetch(`${API_URL}/api/applications`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(applicationData)
       });
-      
+
       if (response.ok) {
         setApplicationSaved(true);
       }
@@ -365,17 +372,17 @@ const AIApplyFlow = () => {
       alert('Please sign in to save your resume');
       return;
     }
-    
+
     // Use the current resume text, or fall back to any available text
     const textToSave = resumeText || selectedResume?.resumeText || '';
-    
+
     if (!textToSave) {
       alert('No resume content to save');
       return;
     }
-    
+
     setIsSavingResume(true);
-    
+
     try {
       const resumeData = {
         user_email: user.email,
@@ -383,20 +390,20 @@ const AIApplyFlow = () => {
         resume_text: textToSave,
         file_name: resumeFile?.name || ''
       };
-      
+
       console.log('Saving resume:', { ...resumeData, resume_text: `[${textToSave.length} chars]` });
       console.log('API URL:', `${API_URL}/api/resumes/save`);
-      
+
       const response = await fetch(`${API_URL}/api/resumes/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(resumeData)
       });
-      
+
       console.log('Response status:', response.status);
       const responseData = await response.json();
       console.log('Response data:', responseData);
-      
+
       if (response.ok || responseData.success) {
         setResumeSaved(true);
         setShowSaveResumePrompt(false);
@@ -446,7 +453,7 @@ const AIApplyFlow = () => {
     <div className="ai-apply-page">
       <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
       <Header onMenuClick={() => setSideMenuOpen(true)} />
-      
+
       <div className="ai-apply-container">
         {/* Job Info Header */}
         <Card className="job-info-card">
@@ -499,7 +506,7 @@ const AIApplyFlow = () => {
                 ) : savedResumes.length > 0 ? (
                   <div className="saved-resumes-grid">
                     {savedResumes.map(resume => (
-                      <div 
+                      <div
                         key={resume._id}
                         className={`saved-resume-item ${selectedResume?._id === resume._id ? 'selected' : ''}`}
                         onClick={() => handleSelectSavedResume(resume)}
@@ -520,9 +527,9 @@ const AIApplyFlow = () => {
             <div className="upload-section">
               <h3>Or Upload New Resume</h3>
               <label className="upload-zone">
-                <input 
-                  type="file" 
-                  accept=".pdf,.docx,.doc,.txt" 
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.doc,.txt"
                   onChange={handleFileUpload}
                   style={{ display: 'none' }}
                 />
@@ -547,6 +554,21 @@ const AIApplyFlow = () => {
               )}
             </div>
 
+            {/* Company Name Input */}
+            <div className="company-input-section mt-4 mb-6">
+              <Label htmlFor="companyName" className="text-sm font-semibold mb-2 block">
+                Applying to Company*
+              </Label>
+              <Input
+                id="companyName"
+                placeholder="Enter company name (e.g. Google)"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                className="w-full"
+                required
+              />
+            </div>
+
             {/* Job Description Preview */}
             <div className="job-description-section">
               <h3>Job Description</h3>
@@ -557,7 +579,7 @@ const AIApplyFlow = () => {
             </div>
 
             <div className="card-actions">
-              <Button 
+              <Button
                 className="btn-primary btn-large"
                 onClick={handleStartGeneration}
                 disabled={isParsingResume || (!resumeText && !resumeFile)}
@@ -607,8 +629,8 @@ const AIApplyFlow = () => {
             <div className="download-section">
               <div className="download-buttons">
                 {optimizedResumeUrl && (
-                  <a 
-                    href={optimizedResumeUrl} 
+                  <a
+                    href={optimizedResumeUrl}
                     download={`Resume_${jobData.company?.replace(/\s+/g, '_')}_${jobData.jobTitle?.replace(/\s+/g, '_')}.docx`}
                     className="download-btn resume-btn"
                   >
@@ -619,8 +641,8 @@ const AIApplyFlow = () => {
                   </a>
                 )}
                 {coverLetterUrl && (
-                  <a 
-                    href={coverLetterUrl} 
+                  <a
+                    href={coverLetterUrl}
                     download={`CoverLetter_${jobData.company?.replace(/\s+/g, '_')}.docx`}
                     className="download-btn cover-btn"
                   >
@@ -637,10 +659,10 @@ const AIApplyFlow = () => {
             {analysisResult && (
               <div className="full-analysis-section">
                 <h3 className="analysis-title">Resume Analysis</h3>
-                
+
                 {/* Match Score Circle with Summary */}
                 <div className="match-summary-card">
-                  <div className="score-circle-large" style={{ 
+                  <div className="score-circle-large" style={{
                     background: `conic-gradient(${getScoreColor(analysisResult.matchScore || 0)} ${(analysisResult.matchScore || 0) * 3.6}deg, #e5e7eb ${(analysisResult.matchScore || 0) * 3.6}deg)`
                   }}>
                     <div className="score-inner">
@@ -776,10 +798,10 @@ const AIApplyFlow = () => {
                   <ExternalLink className="w-5 h-5 mr-2" /> Go to Job Page & Apply
                 </Button>
               )}
-              
+
               {!applicationSaved ? (
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={handleSaveApplication}
                   disabled={isSavingApplication}
                 >
@@ -822,7 +844,7 @@ const AIApplyFlow = () => {
             </div>
             <div className="modal-content">
               <p>Would you like to save this resume for future job applications? You won't need to upload it again.</p>
-              
+
               <div className="form-group" style={{ marginTop: '1rem' }}>
                 <Label>Resume Name</Label>
                 <Input
@@ -836,7 +858,7 @@ const AIApplyFlow = () => {
               <Button variant="outline" onClick={() => setShowSaveResumePrompt(false)}>
                 No, Thanks
               </Button>
-              <Button 
+              <Button
                 className="btn-primary"
                 onClick={handleSaveResume}
                 disabled={isSavingResume || !resumeName.trim()}
@@ -871,6 +893,16 @@ const AIApplyFlow = () => {
           <CheckCircle className="w-5 h-5" />
           Resume saved! You can use it for future applications.
         </div>
+      )}
+
+      {/* Upgrade Modal */}
+      {showUpgradeModal && usageLimits && (
+        <UpgradeModal
+          tier={usageLimits.tier}
+          limit={usageLimits.limit}
+          resetDate={usageLimits.resetDate}
+          onClose={() => setShowUpgradeModal(false)}
+        />
       )}
     </div>
   );

@@ -44,25 +44,39 @@ function App() {
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/canceled" element={<PaymentCanceled />} />
             <Route path="/checkout" element={<Checkout />} />
-            
+
             {/* AI Ninja Routes */}
             <Route path="/ai-ninja" element={<AINinja />} />
             <Route path="/ai-ninja/jobs/:id" element={<JobDetail />} />
             <Route path="/ai-ninja/apply/:id" element={<AIApply />} />
-            <Route path="/ai-apply" element={<AIApplyFlow />} />
-            
+            <Route
+              path="/ai-apply"
+              element={
+                <ProtectedRoute allowedRoles={['customer']}>
+                  <AIApplyFlow />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Human Ninja Route */}
             <Route path="/human-ninja" element={<HumanNinja />} />
-            
+
             {/* Jobs Route */}
             <Route path="/jobs" element={<Jobs />} />
-            
+
             {/* Interview Prep Route */}
             <Route path="/interview-prep" element={<InterviewPrep />} />
-            
+
             {/* Resume Scanner Route */}
-            <Route path="/scanner" element={<ResumeScanner />} />
-            
+            <Route
+              path="/scanner"
+              element={
+                <ProtectedRoute allowedRoles={['customer']}>
+                  <ResumeScanner />
+                </ProtectedRoute>
+              }
+            />
+
             {/* My Resumes - Protected */}
             <Route
               path="/resumes"
@@ -72,7 +86,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             {/* Protected Routes - Customer */}
             <Route
               path="/dashboard"
@@ -82,7 +96,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             {/* Protected Routes - Employee */}
             <Route
               path="/employee"
@@ -92,7 +106,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             {/* Protected Routes - Admin */}
             <Route
               path="/admin"
@@ -102,7 +116,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             {/* Catch all - redirect to home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

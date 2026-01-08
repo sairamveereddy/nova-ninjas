@@ -5,15 +5,15 @@ import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
-import { 
-  Check, 
-  Bot, 
-  UserCheck, 
-  Zap, 
-  Clock, 
-  Shield, 
-  FileText, 
-  MessageSquare, 
+import {
+  Check,
+  Bot,
+  UserCheck,
+  Zap,
+  Clock,
+  Shield,
+  FileText,
+  MessageSquare,
   Sparkles,
   ArrowRight,
   Globe,
@@ -41,7 +41,7 @@ const LandingPage = () => {
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const [activeWord, setActiveWord] = useState(0);
   const rotatingWords = ['faster', 'smarter', 'easier', 'better'];
-  
+
   // Live application counter - starts at 15,500 and adds 10 every hour
   const baseApplications = 15500;
   const startDate = new Date('2026-01-01T00:00:00Z').getTime(); // Reference start date
@@ -200,11 +200,7 @@ const LandingPage = () => {
         <div className="nav-actions">
           {loading ? (
             <div style={{ width: '200px' }} /> /* Placeholder while loading */
-          ) : isAuthenticated ? (
-            <Button className="btn-primary-modern" onClick={() => navigate('/dashboard')}>
-              Dashboard
-            </Button>
-          ) : (
+          ) : !isAuthenticated && (
             <>
               <Button variant="ghost" className="btn-ghost" onClick={() => navigate('/login')}>
                 Log in
@@ -222,20 +218,20 @@ const LandingPage = () => {
         {/* Large Curved Blob Background - AiApply Style */}
         <div className="hero-blob-bg"></div>
         <div className="hero-blob-bg-2"></div>
-        
+
         <div className="hero-container-modern">
           <div className="hero-badge-modern">
             <Zap className="w-4 h-4" />
             <span>AI-powered job applications for visa seekers & busy professionals</span>
           </div>
-          
+
           <h1 className="hero-title-modern">
             Land your next role<br />
             <span className="hero-title-gradient rotating-word">{rotatingWords[activeWord]}</span>
           </h1>
-          
+
           <p className="hero-subtitle-modern">
-            Upload your resume. Pick a job. Get a tailored application in minutes — 
+            Upload your resume. Pick a job. Get a tailored application in minutes —
             or let our team handle everything while you prep for interviews.
           </p>
 
@@ -344,9 +340,9 @@ const LandingPage = () => {
             <div className="no-bots-content">
               <h3>We don't use mass-apply bots that get your resume blacklisted</h3>
               <p>
-                Unlike other services that spam hundreds of companies with the same resume, 
-                we use <strong>targeted, human-reviewed applications</strong>. Your Ninja applies 
-                strategically — one quality application per company, tailored for each role. 
+                Unlike other services that spam hundreds of companies with the same resume,
+                we use <strong>targeted, human-reviewed applications</strong>. Your Ninja applies
+                strategically — one quality application per company, tailored for each role.
                 Your professional reputation stays protected.
               </p>
             </div>
@@ -388,8 +384,8 @@ const LandingPage = () => {
               <Badge className="pillar-badge">Prepare</Badge>
               <h3 className="pillar-title">AI Resume & Cover Letter Creator</h3>
               <p className="pillar-description">
-                Generate tailored resumes and cover letters for each job application, 
-                based on your skills and experience. Our AI analyzes the job description 
+                Generate tailored resumes and cover letters for each job application,
+                based on your skills and experience. Our AI analyzes the job description
                 and optimizes your documents for ATS systems.
               </p>
               <Button className="btn-primary-modern" onClick={() => navigate('/ai-ninja')}>
@@ -426,8 +422,8 @@ const LandingPage = () => {
               <Badge className="pillar-badge orange">Apply</Badge>
               <h3 className="pillar-title">Auto Apply To Jobs</h3>
               <p className="pillar-description">
-                Let {BRAND.name} apply to hundreds of jobs for you automatically. 
-                Our Human Ninja service manually submits applications on your behalf, 
+                Let {BRAND.name} apply to hundreds of jobs for you automatically.
+                Our Human Ninja service manually submits applications on your behalf,
                 with AI-tailored documents for each role.
               </p>
               <Button className="btn-primary-modern" onClick={() => navigate('/human-ninja')}>
@@ -472,7 +468,7 @@ const LandingPage = () => {
               <Badge className="pillar-badge purple">Succeed</Badge>
               <h3 className="pillar-title">Interview Prep & Tracking</h3>
               <p className="pillar-description">
-                Track all your applications in one dashboard. Practice with AI-generated 
+                Track all your applications in one dashboard. Practice with AI-generated
                 interview questions and get real-time feedback to ace your interviews.
               </p>
               <Button className="btn-primary-modern" onClick={() => navigate('/interview-prep')}>
@@ -665,9 +661,9 @@ const LandingPage = () => {
       </footer>
 
       {/* Book Call Modal */}
-      <BookCallModal 
-        isOpen={isBookCallModalOpen} 
-        onClose={() => setIsBookCallModalOpen(false)} 
+      <BookCallModal
+        isOpen={isBookCallModalOpen}
+        onClose={() => setIsBookCallModalOpen(false)}
       />
     </div>
   );

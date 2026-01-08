@@ -2,9 +2,9 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
-import { 
-  Bot, 
-  UserCheck, 
+import {
+  Bot,
+  UserCheck,
   Briefcase,
   Menu
 } from 'lucide-react';
@@ -30,26 +30,26 @@ const Header = ({ onMenuClick }) => {
         </button>
       </div>
       <nav className="nav-links">
-        <button 
-          onClick={() => navigate('/ai-ninja')} 
+        <button
+          onClick={() => navigate('/ai-ninja')}
           className={`nav-link nav-link-highlight ${isActive('/ai-ninja') ? 'nav-link-active' : ''}`}
         >
           <Bot className="w-4 h-4" /> AI Ninja
         </button>
-        <button 
-          onClick={() => navigate('/human-ninja')} 
+        <button
+          onClick={() => navigate('/human-ninja')}
           className={`nav-link nav-link-highlight ${isActive('/human-ninja') ? 'nav-link-active' : ''}`}
         >
           <UserCheck className="w-4 h-4" /> Human Ninja
         </button>
-        <button 
-          onClick={() => navigate('/jobs')} 
+        <button
+          onClick={() => navigate('/jobs')}
           className={`nav-link ${isActive('/jobs') ? 'nav-link-active' : ''}`}
         >
           Job Board
         </button>
-        <button 
-          onClick={() => navigate('/pricing')} 
+        <button
+          onClick={() => navigate('/pricing')}
           className={`nav-link ${isActive('/pricing') ? 'nav-link-active' : ''}`}
         >
           Pricing
@@ -58,11 +58,7 @@ const Header = ({ onMenuClick }) => {
       <div className="nav-actions">
         {loading ? (
           <div style={{ width: '150px' }} /> /* Placeholder while loading */
-        ) : isAuthenticated ? (
-          <Button variant="secondary" className="btn-secondary" onClick={() => navigate('/dashboard')}>
-            Dashboard
-          </Button>
-        ) : (
+        ) : !isAuthenticated && (
           <>
             <Button variant="secondary" className="btn-secondary" onClick={() => navigate('/login')}>
               Login

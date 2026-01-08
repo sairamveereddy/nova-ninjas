@@ -12,7 +12,7 @@ import { API_URL } from '../config/api';
 import { BRAND, APPLICATION_STATUS_LABELS } from '../config/branding';
 import SideMenu from './SideMenu';
 import './SideMenu.css';
-import { 
+import {
   TrendingUp, Target, Users, Clock, LogOut, Settings, CreditCard, Loader2,
   User, Upload, Briefcase, Linkedin, Mail, Shield, Trash2, Save, CheckCircle,
   AlertCircle, Eye, EyeOff, FileText, ExternalLink, Download, Bot, UserCheck,
@@ -42,7 +42,7 @@ const Dashboard = () => {
     fullName: user?.name || '',
     email: user?.email || '',
     phone: '',
-    
+
     // Professional Info
     yearsOfExperience: '',
     currentRole: '',
@@ -50,57 +50,57 @@ const Dashboard = () => {
     expectedSalary: '',
     preferredLocations: '',
     remotePreference: '',
-    
+
     // Visa & Work Authorization
     visaStatus: '',
     workAuthorization: '',
     requiresSponsorship: '',
-    
+
     // Job Portal Credentials
     linkedinUrl: '',
     linkedinEmail: '',
     linkedinPassword: '',
-    
+
     // Additional portals
     indeedEmail: '',
     indeedPassword: '',
-    
+
     // Gmail for applications
     gmailEmail: '',
     gmailPassword: '',
-    
+
     // Resume & Documents
     resumeFile: null,
     resumeFileName: '',
-    
+
     // Skills & Background
     skills: '',
     education: '',
     certifications: '',
-    
+
     // Additional Info
     willingToRelocate: '',
     noticePeriod: '',
     availableStartDate: '',
     preferredJobTypes: '',
-    
+
     // Notes
     additionalNotes: ''
   });
-  
+
   // Fetch applications from Google Sheets via backend
   useEffect(() => {
     const fetchApplications = async () => {
       if (!user?.email) return;
-      
+
       try {
         setIsLoading(true);
-        
+
         const response = await fetch(`${API_URL}/api/applications/${encodeURIComponent(user.email)}`);
-        
+
         if (response.ok) {
           const data = await response.json();
-          
+
           // Transform applications to match component format
           const formattedApps = (data.applications || []).map((app, index) => ({
             id: app.id || index + 1,
@@ -111,11 +111,12 @@ const Dashboard = () => {
             date: app.createdAt ? new Date(app.createdAt).toLocaleDateString() : (app.submitted_date || '-'),
             location: app.location || '',
             matchScore: app.matchScore || 0,
-            notes: app.notes || ''
+            notes: app.notes || '',
+            resumeId: app.resumeId || null
           }));
-          
+
           setApplications(formattedApps);
-          
+
           // Use stats from new API format
           const stats = data.stats || {};
           setKpis({
@@ -135,9 +136,9 @@ const Dashboard = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchApplications();
-    
+
     // Refresh data every 2 minutes
     const interval = setInterval(fetchApplications, 120000);
     return () => clearInterval(interval);
@@ -147,10 +148,10 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user?.email) return;
-      
+
       try {
         const response = await fetch(`${API_URL}/api/profile/${encodeURIComponent(user.email)}`);
-        
+
         if (response.ok) {
           const data = await response.json();
           if (data.profile) {
@@ -161,7 +162,7 @@ const Dashboard = () => {
         console.error('Error fetching profile:', error);
       }
     };
-    
+
     fetchProfile();
   }, [user?.email]);
 
@@ -188,11 +189,11 @@ const Dashboard = () => {
   const handleSaveProfile = async () => {
     setIsSaving(true);
     setSaveMessage('');
-    
+
     try {
       // Create form data for file upload
       const formData = new FormData();
-      
+
       // Add all profile fields
       Object.keys(profile).forEach(key => {
         if (key === 'resumeFile' && profile.resumeFile) {
@@ -202,12 +203,12 @@ const Dashboard = () => {
         }
       });
       formData.append('email', user?.email);
-      
+
       const response = await fetch(`${API_URL}/api/profile`, {
         method: 'POST',
         body: formData
       });
-      
+
       if (response.ok) {
         setSaveMessage('Profile saved successfully!');
         setTimeout(() => setSaveMessage(''), 3000);
@@ -229,7 +230,7 @@ const Dashboard = () => {
           const response = await fetch(`${API_URL}/api/user/${encodeURIComponent(user?.email)}`, {
             method: 'DELETE'
           });
-          
+
           if (response.ok) {
             logout();
             navigate('/');
@@ -258,15 +259,15 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Side Menu */}
       <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
-      
+
       {/* Top Navigation */}
       <nav className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-8">
               {/* Hamburger Menu */}
-              <button 
-                onClick={() => setSideMenuOpen(true)} 
+              <button
+                onClick={() => setSideMenuOpen(true)}
                 className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50"
                 aria-label="Open menu"
               >
@@ -317,7 +318,7 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -329,7 +330,7 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -341,7 +342,7 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -364,66 +365,60 @@ const Dashboard = () => {
                 <nav className="space-y-1">
                   <button
                     onClick={() => setActiveTab('tracker')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${
-                      activeTab === 'tracker'
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'tracker'
                         ? 'bg-primary text-white'
                         : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                      }`}
                   >
                     <ClipboardList className="w-4 h-4" />
                     Application Tracker
                   </button>
                   <button
                     onClick={() => setActiveTab('pipeline')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${
-                      activeTab === 'pipeline'
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'pipeline'
                         ? 'bg-primary text-white'
                         : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                      }`}
                   >
                     <Target className="w-4 h-4" />
                     Human Ninja Pipeline
                   </button>
                   <button
                     onClick={() => setActiveTab('profile')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${
-                      activeTab === 'profile'
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'profile'
                         ? 'bg-primary text-white'
                         : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                      }`}
                   >
                     <User className="w-4 h-4" />
                     My Profile
                   </button>
                   <button
                     onClick={() => setActiveTab('queue')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${
-                      activeTab === 'queue'
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'queue'
                         ? 'bg-primary text-white'
                         : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                      }`}
                   >
                     <CheckCircle className="w-4 h-4" />
                     Approve Queue
                   </button>
                   <button
                     onClick={() => setActiveTab('billing')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${
-                      activeTab === 'billing'
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'billing'
                         ? 'bg-primary text-white'
                         : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                      }`}
                   >
                     <CreditCard className="w-4 h-4" />
                     Billing
                   </button>
                   <button
                     onClick={() => setActiveTab('settings')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${
-                      activeTab === 'settings'
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'settings'
                         ? 'bg-primary text-white'
                         : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                      }`}
                   >
                     <Settings className="w-4 h-4" />
                     Settings
@@ -458,6 +453,7 @@ const Dashboard = () => {
                             <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Role</th>
                             <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Location</th>
                             <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Match</th>
+                            <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Resume</th>
                             <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Job Link</th>
                             <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Status</th>
                           </tr>
@@ -465,14 +461,14 @@ const Dashboard = () => {
                         <tbody>
                           {isLoading ? (
                             <tr>
-                              <td colSpan="7" className="py-8 text-center">
+                              <td colSpan="8" className="py-8 text-center">
                                 <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
                                 <p className="text-sm text-gray-500 mt-2">Loading applications...</p>
                               </td>
                             </tr>
                           ) : applications.length === 0 ? (
                             <tr>
-                              <td colSpan="7" className="py-8 text-center">
+                              <td colSpan="8" className="py-8 text-center">
                                 <ClipboardList className="w-12 h-12 mx-auto text-gray-300 mb-4" />
                                 <p className="text-gray-500 font-medium">No applications yet</p>
                                 <p className="text-sm text-gray-400 mt-1">
@@ -495,6 +491,18 @@ const Dashboard = () => {
                                   ) : '-'}
                                 </td>
                                 <td className="py-3 px-4">
+                                  {app.resumeId ? (
+                                    <button
+                                      onClick={() => navigate('/resumes')}
+                                      className="text-primary hover:underline flex items-center gap-1"
+                                    >
+                                      <FileText className="w-4 h-4" /> Resume
+                                    </button>
+                                  ) : (
+                                    <span className="text-gray-400 text-xs italic">No resume</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4">
                                   {app.applicationLink ? (
                                     <a
                                       href={app.applicationLink}
@@ -507,16 +515,16 @@ const Dashboard = () => {
                                   ) : '-'}
                                 </td>
                                 <td className="py-3 px-4">
-                                  <Select 
-                                    value={app.status} 
+                                  <Select
+                                    value={app.status}
                                     onValueChange={async (value) => {
                                       try {
                                         await fetch(`${API_URL}/api/applications/${app.id}?status=${value}`, {
                                           method: 'PUT'
                                         });
                                         // Update local state
-                                        setApplications(prev => prev.map(a => 
-                                          a.id === app.id ? {...a, status: value} : a
+                                        setApplications(prev => prev.map(a =>
+                                          a.id === app.id ? { ...a, status: value } : a
                                         ));
                                       } catch (e) {
                                         console.error('Failed to update status:', e);
@@ -609,9 +617,8 @@ const Dashboard = () => {
               <div className="space-y-6">
                 {/* Save Message */}
                 {saveMessage && (
-                  <div className={`p-4 rounded-md flex items-center gap-2 ${
-                    saveMessage.includes('success') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-                  }`}>
+                  <div className={`p-4 rounded-md flex items-center gap-2 ${saveMessage.includes('success') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                    }`}>
                     {saveMessage.includes('success') ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                     {saveMessage}
                   </div>
@@ -628,24 +635,24 @@ const Dashboard = () => {
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label>Full Name</Label>
-                      <Input 
-                        value={profile.fullName} 
+                      <Input
+                        value={profile.fullName}
                         onChange={(e) => handleProfileChange('fullName', e.target.value)}
                         placeholder="John Doe"
                       />
                     </div>
                     <div>
                       <Label>Email</Label>
-                      <Input 
-                        value={profile.email} 
+                      <Input
+                        value={profile.email}
                         disabled
                         className="bg-gray-100"
                       />
                     </div>
                     <div>
                       <Label>Phone Number</Label>
-                      <Input 
-                        value={profile.phone} 
+                      <Input
+                        value={profile.phone}
                         onChange={(e) => handleProfileChange('phone', e.target.value)}
                         placeholder="+1 (555) 123-4567"
                       />
@@ -679,32 +686,32 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <Label>Current Role</Label>
-                      <Input 
-                        value={profile.currentRole} 
+                      <Input
+                        value={profile.currentRole}
                         onChange={(e) => handleProfileChange('currentRole', e.target.value)}
                         placeholder="e.g., Software Engineer"
                       />
                     </div>
                     <div>
                       <Label>Target Role</Label>
-                      <Input 
-                        value={profile.targetRole} 
+                      <Input
+                        value={profile.targetRole}
                         onChange={(e) => handleProfileChange('targetRole', e.target.value)}
                         placeholder="e.g., Senior Software Engineer"
                       />
                     </div>
                     <div>
                       <Label>Expected Salary</Label>
-                      <Input 
-                        value={profile.expectedSalary} 
+                      <Input
+                        value={profile.expectedSalary}
                         onChange={(e) => handleProfileChange('expectedSalary', e.target.value)}
                         placeholder="e.g., $120,000 - $150,000"
                       />
                     </div>
                     <div>
                       <Label>Preferred Locations</Label>
-                      <Input 
-                        value={profile.preferredLocations} 
+                      <Input
+                        value={profile.preferredLocations}
                         onChange={(e) => handleProfileChange('preferredLocations', e.target.value)}
                         placeholder="e.g., San Francisco, New York, Remote"
                       />
@@ -833,16 +840,16 @@ const Dashboard = () => {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <Label>Profile URL</Label>
-                          <Input 
-                            value={profile.linkedinUrl} 
+                          <Input
+                            value={profile.linkedinUrl}
                             onChange={(e) => handleProfileChange('linkedinUrl', e.target.value)}
                             placeholder="https://linkedin.com/in/yourprofile"
                           />
                         </div>
                         <div>
                           <Label>Email</Label>
-                          <Input 
-                            value={profile.linkedinEmail} 
+                          <Input
+                            value={profile.linkedinEmail}
                             onChange={(e) => handleProfileChange('linkedinEmail', e.target.value)}
                             placeholder="your@email.com"
                           />
@@ -850,13 +857,13 @@ const Dashboard = () => {
                         <div>
                           <Label>Password</Label>
                           <div className="relative">
-                            <Input 
+                            <Input
                               type={showPassword ? "text" : "password"}
-                              value={profile.linkedinPassword} 
+                              value={profile.linkedinPassword}
                               onChange={(e) => handleProfileChange('linkedinPassword', e.target.value)}
                               placeholder="••••••••"
                             />
-                            <button 
+                            <button
                               type="button"
                               className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
                               onClick={() => setShowPassword(!showPassword)}
@@ -881,8 +888,8 @@ const Dashboard = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label>Gmail Email</Label>
-                          <Input 
-                            value={profile.gmailEmail} 
+                          <Input
+                            value={profile.gmailEmail}
                             onChange={(e) => handleProfileChange('gmailEmail', e.target.value)}
                             placeholder="yourjobsearch@gmail.com"
                           />
@@ -890,13 +897,13 @@ const Dashboard = () => {
                         <div>
                           <Label>Gmail Password</Label>
                           <div className="relative">
-                            <Input 
+                            <Input
                               type={showPassword ? "text" : "password"}
-                              value={profile.gmailPassword} 
+                              value={profile.gmailPassword}
                               onChange={(e) => handleProfileChange('gmailPassword', e.target.value)}
                               placeholder="••••••••"
                             />
-                            <button 
+                            <button
                               type="button"
                               className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
                               onClick={() => setShowPassword(!showPassword)}
@@ -917,8 +924,8 @@ const Dashboard = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label>Email</Label>
-                          <Input 
-                            value={profile.indeedEmail} 
+                          <Input
+                            value={profile.indeedEmail}
                             onChange={(e) => handleProfileChange('indeedEmail', e.target.value)}
                             placeholder="your@email.com"
                           />
@@ -926,9 +933,9 @@ const Dashboard = () => {
                         <div>
                           <Label>Password</Label>
                           <div className="relative">
-                            <Input 
+                            <Input
                               type={showPassword ? "text" : "password"}
-                              value={profile.indeedPassword} 
+                              value={profile.indeedPassword}
                               onChange={(e) => handleProfileChange('indeedPassword', e.target.value)}
                               placeholder="••••••••"
                             />
@@ -976,8 +983,8 @@ const Dashboard = () => {
                   <CardContent className="space-y-4">
                     <div>
                       <Label>Key Skills</Label>
-                      <Textarea 
-                        value={profile.skills} 
+                      <Textarea
+                        value={profile.skills}
                         onChange={(e) => handleProfileChange('skills', e.target.value)}
                         placeholder="e.g., JavaScript, React, Node.js, Python, AWS, etc."
                         rows={3}
@@ -985,8 +992,8 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <Label>Education</Label>
-                      <Textarea 
-                        value={profile.education} 
+                      <Textarea
+                        value={profile.education}
                         onChange={(e) => handleProfileChange('education', e.target.value)}
                         placeholder="e.g., M.S. Computer Science, Stanford University, 2023"
                         rows={2}
@@ -994,8 +1001,8 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <Label>Certifications</Label>
-                      <Textarea 
-                        value={profile.certifications} 
+                      <Textarea
+                        value={profile.certifications}
                         onChange={(e) => handleProfileChange('certifications', e.target.value)}
                         placeholder="e.g., AWS Solutions Architect, Google Cloud Professional"
                         rows={2}
@@ -1003,8 +1010,8 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <Label>Additional Notes for Your Ninja</Label>
-                      <Textarea 
-                        value={profile.additionalNotes} 
+                      <Textarea
+                        value={profile.additionalNotes}
                         onChange={(e) => handleProfileChange('additionalNotes', e.target.value)}
                         placeholder="Any specific preferences, companies to avoid, or other instructions for your Ninja..."
                         rows={3}

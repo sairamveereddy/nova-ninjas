@@ -8,9 +8,10 @@ import logging
 import asyncio
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Union
 import uuid
 from datetime import datetime, timezone
+from dateutil.relativedelta import relativedelta
 import aiohttp
 from models import CheckoutRequest, SubscriptionData, WebhookEvent
 from payment_service import create_checkout_session, verify_webhook_signature, create_customer_portal_session
@@ -1441,11 +1442,153 @@ class Application(BaseModel):
     createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class Resume(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    resumeName: str
+    resumeHtml: str
+    resumeJson: Optional[dict] = None
+    jobTitle: str
+    companyName: str
+    jobDescription: Optional[str] = None
+    jobUrl: Optional[str] = None
+    isSystemGenerated: bool = True
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ResumeUsage(BaseModel):
+    tier: str
+    currentCount: int
+    limit: Union[int, str]  # int or "Unlimited"
+    canGenerate: bool
+    resetDate: Optional[datetime] = None
+    totalResumes: int
+
 class AIApplyResponse(BaseModel):
     applicationId: str
     tailoredResume: str
     tailoredCoverLetter: str
     suggestedAnswers: List[dict]
+
+async def get_user_usage_limits(user_email: str) -> dict:
+    """
+    Calculate user's resume usage limits based on their plan and billing cycle.
+    """
+    user = await db.users.find_one({"email": user_email})
+    if not user:
+        return {
+            "tier": "free",
+            "currentCount": 0,
+            "limit": 5,
+            "canGenerate": False,
+            "resetDate": None,
+            "totalResumes": 0
+        }
+    
+    # Get all-time resume count
+    total_resumes = await db.resumes.count_documents({"userId": user['id']})
+    
+    # Determine tier
+    tier = user.get('plan', 'free')
+    if not tier: tier = 'free'
+    
+    # Simple check for subscription field which might be more accurate if present
+    sub = user.get('subscription', {})
+    if sub and sub.get('status') == 'active':
+        tier_id = sub.get('plan_id', tier)
+        if 'pro' in tier_id.lower():
+            tier = 'pro'
+        elif 'beginner' in tier_id.lower():
+            tier = 'beginner'
+
+    # Hardcoded limits for now as per user instruction
+    # Free: 5 total
+    # Beginner: 200 per month
+    # Pro: Unlimited
+    
+    limit = 5
+    current_count = total_resumes
+    can_generate = False
+    reset_date = None
+    
+    if tier == 'pro':
+        limit = "Unlimited"
+        can_generate = True
+    elif tier == 'beginner':
+        limit = 200
+        # Calculate monthly count based on billing cycle
+        activated_at = sub.get('activated_at')
+        if isinstance(activated_at, str):
+            activated_at = datetime.fromisoformat(activated_at.replace('Z', '+00:00'))
+        
+        if activated_at:
+            # Find the start of the current billing cycle
+            now = datetime.now(timezone.utc)
+            months_diff = (now.year - activated_at.year) * 12 + now.month - activated_at.month
+            if now.day < activated_at.day:
+                months_diff -= 1
+            
+            # Start of current cycle
+            from dateutil.relativedelta import relativedelta
+            cycle_start = activated_at + relativedelta(months=months_diff)
+            cycle_end = cycle_start + relativedelta(months=1)
+            reset_date = cycle_end
+            
+            current_count = await db.resumes.count_documents({
+                "userId": user['id'],
+                "createdAt": {"$gte": cycle_start}
+            })
+        else:
+            # Fallback to total if no activation date
+            current_count = total_resumes
+            
+        can_generate = current_count < limit
+    else: # free
+        limit = 5
+        can_generate = total_resumes < limit
+        
+    return {
+        "tier": tier,
+        "currentCount": current_count,
+        "limit": limit,
+        "canGenerate": can_generate,
+        "resetDate": reset_date,
+        "totalResumes": total_resumes
+    }
+
+@api_router.get("/usage/limits")
+async def get_usage_limits(email: str = Query(...)):
+    """
+    Get current user's resume usage limits.
+    """
+    try:
+        usage = await get_user_usage_limits(email)
+        return usage
+    except Exception as e:
+        logger.error(f"Error getting usage limits: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/resumes")
+async def get_resumes(email: str = Query(...)):
+    """
+    Get all resumes for the user.
+    """
+    try:
+        user = await db.users.find_one({"email": email})
+        if not user:
+            return []
+        
+        resumes = await db.resumes.find(
+            {"userId": user['id']},
+            {"_id": 0}
+        ).sort("createdAt", -1).to_list(1000)
+        
+        return resumes
+    except Exception as e:
+        logger.error(f"Error getting resumes: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/ai-ninja/apply")
 async def ai_ninja_apply(request: Request):
@@ -1456,11 +1599,31 @@ async def ai_ninja_apply(request: Request):
     try:
         form = await request.form()
         
-        userId = form.get('userId', 'guest')
+        userId = form.get('userId')
+        if not userId or userId == 'guest':
+            raise HTTPException(status_code=401, detail="Authentication required to use AI Ninja")
+            
+        # Get user to verify tier and usage
+        user = await db.users.find_one({"id": userId})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        # Check usage limits
+        usage = await get_user_usage_limits(user['email'])
+        if not usage['canGenerate']:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"Usage limit reached ({usage['limit']} resumes). Please upgrade to continue."
+            )
+
         jobId = form.get('jobId', '')
         jobTitle = form.get('jobTitle', '')
         company = form.get('company', '')
+        if not company:
+            raise HTTPException(status_code=400, detail="Company name is required")
+            
         jobDescription = form.get('jobDescription', '')
+        jobUrl = form.get('jobUrl', '')
         yearsOfExperience = form.get('yearsOfExperience', '')
         primarySkills = form.get('primarySkills', '')
         visaStatus = form.get('visaStatus', '')
@@ -1545,6 +1708,25 @@ Best regards,
             }
         ]
         
+        # Save resume to database
+        resume_id = str(uuid.uuid4())
+        resume = Resume(
+            id=resume_id,
+            userId=userId,
+            resumeName=f"Resume for {jobTitle} at {company}",
+            resumeHtml=tailoredResume,
+            jobTitle=jobTitle,
+            companyName=company,
+            jobDescription=jobDescription,
+            jobUrl=jobUrl,
+            isSystemGenerated=True
+        )
+        
+        resume_doc = resume.model_dump()
+        resume_doc['createdAt'] = resume_doc['createdAt'].isoformat()
+        resume_doc['updatedAt'] = resume_doc['updatedAt'].isoformat()
+        await db.resumes.insert_one(resume_doc)
+        
         # Save application to database
         application = Application(
             id=applicationId,
@@ -1553,6 +1735,7 @@ Best regards,
             jobTitle=jobTitle,
             company=company,
             workType=preferredWorkType,
+            resumeId=resume_id,
             status="applied"
         )
         
@@ -1562,13 +1745,18 @@ Best regards,
         
         await db.applications.insert_one(doc)
         
-        logger.info(f"AI Ninja application created: {applicationId} for {jobTitle} at {company}")
+        logger.info(f"AI Ninja application and resume created: {applicationId} for {jobTitle} at {company}")
+        
+        # Get updated usage
+        new_usage = await get_user_usage_limits(user['email'])
         
         return {
             "applicationId": applicationId,
+            "resumeId": resume_id,
             "tailoredResume": tailoredResume,
             "tailoredCoverLetter": tailoredCoverLetter,
-            "suggestedAnswers": suggestedAnswers
+            "suggestedAnswers": suggestedAnswers,
+            "usage": new_usage
         }
         
     except Exception as e:
@@ -1579,19 +1767,31 @@ Best regards,
 async def get_user_applications(user_id: str):
     """
     Get all applications for a user (both AI Ninja and Human Ninja).
+    Supports either UUID or email as user_id.
     """
     try:
+        # Check if user_id is an email or UUID
+        query = {"userId": user_id}
+        if "@" in user_id:
+            user = await db.users.find_one({"email": user_id})
+            if user:
+                query = {"userId": user['id']}
+        
         applications = await db.applications.find(
-            {"userId": user_id},
+            query,
             {"_id": 0}
         ).sort("createdAt", -1).to_list(1000)
         
         # Convert datetime strings
         for app in applications:
             if isinstance(app.get('createdAt'), str):
-                app['createdAt'] = datetime.fromisoformat(app['createdAt'])
+                try:
+                    app['createdAt'] = datetime.fromisoformat(app['createdAt'].replace('Z', '+00:00'))
+                except: pass
             if isinstance(app.get('updatedAt'), str):
-                app['updatedAt'] = datetime.fromisoformat(app['updatedAt'])
+                try:
+                    app['updatedAt'] = datetime.fromisoformat(app['updatedAt'].replace('Z', '+00:00'))
+                except: pass
         
         return {
             "applications": applications,
@@ -2030,6 +2230,7 @@ async def parse_resume_endpoint(
 
 
 class GenerateResumeRequest(BaseModel):
+    userId: str
     resume_text: str
     job_description: str
     job_title: str = "Position"
@@ -2043,6 +2244,14 @@ async def generate_resume_docx(request: GenerateResumeRequest):
     Generate an optimized resume as a Word document
     """
     try:
+        # Check usage limits
+        usage = await get_user_usage_limits(request.userId)
+        if not usage['canGenerate']:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"You have reached your limit of {usage['limit']} resumes for your {usage['tier']} plan."
+            )
+            
         # Generate optimized content
         resume_data = await generate_optimized_resume_content(
             request.resume_text,
@@ -2073,6 +2282,7 @@ async def generate_resume_docx(request: GenerateResumeRequest):
 
 
 class GenerateCoverLetterRequest(BaseModel):
+    userId: str
     resume_text: str
     job_description: str
     job_title: str = "Position"
@@ -2085,6 +2295,11 @@ async def generate_cover_letter_docx(request: GenerateCoverLetterRequest):
     Generate a cover letter as a Word document
     """
     try:
+        # Check usage limits (optional if we don't want to limit cover letters, but good for consistency)
+        # For now, let's keep cover letters unlimited or tied to the same check?
+        # User said "Resume generation limit", but usually they go together.
+        # Let's just do it for resumes for now to be strict about the request.
+        
         # Generate cover letter content
         cover_letter_text = await generate_cover_letter_content(
             request.resume_text,
