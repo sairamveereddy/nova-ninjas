@@ -190,6 +190,8 @@ const AIApplyFlow = () => {
         if (data.description) setCustomJobDescription(data.description);
         if (data.jobTitle) setCustomJobTitle(data.jobTitle);
         if (data.company) setCompanyName(data.company);
+      } else {
+        alert(data.error || 'Failed to fetch job description. Please paste it manually.');
       }
     } catch (error) {
       console.error('Failed to fetch job description:', error);
@@ -356,7 +358,7 @@ const AIApplyFlow = () => {
 
     } catch (error) {
       console.error('Generation failed:', error);
-      setGenerationProgress('Something went wrong. Please try again.');
+      setGenerationProgress(error.message || 'Something went wrong. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -461,27 +463,28 @@ const AIApplyFlow = () => {
     }
   };
 
-  // If no job data, redirect back
-  if (!jobData.jobTitle && !jobData.description) {
+  // Job Info Header component
+  const JobHeader = () => {
+    const title = customJobTitle || jobData.jobTitle || "New Application";
+    const company = companyName || jobData.company;
+
     return (
-      <div className="ai-apply-page">
-        <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
-        <Header onMenuClick={() => setSideMenuOpen(true)} />
-        <div className="ai-apply-container">
-          <Card className="ai-apply-card">
-            <div className="empty-state">
-              <Bot className="w-16 h-16 text-gray-300 mb-4" />
-              <h2>No Job Selected</h2>
-              <p>Please select a job from the job board to apply with AI Ninja.</p>
-              <Button className="btn-primary" onClick={() => navigate('/ai-ninja')}>
-                <ArrowLeft className="w-4 h-4 mr-2" /> Go to Job Board
-              </Button>
+      <Card className="job-info-card">
+        <div className="job-info-header">
+          <div>
+            <h1 className="job-title">{title}</h1>
+            <div className="job-meta">
+              {company && <span><Building2 className="w-4 h-4" /> {company}</span>}
+              {jobData.location && <span><MapPin className="w-4 h-4" /> {jobData.location}</span>}
             </div>
-          </Card>
+          </div>
+          <Button variant="ghost" onClick={() => navigate('/ai-ninja')}>
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back
+          </Button>
         </div>
-      </div>
+      </Card>
     );
-  }
+  };
 
   return (
     <div className="ai-apply-page">
@@ -490,20 +493,7 @@ const AIApplyFlow = () => {
 
       <div className="ai-apply-container">
         {/* Job Info Header */}
-        <Card className="job-info-card">
-          <div className="job-info-header">
-            <div>
-              <h1 className="job-title">{jobData.jobTitle}</h1>
-              <div className="job-meta">
-                <span><Building2 className="w-4 h-4" /> {jobData.company}</span>
-                {jobData.location && <span><MapPin className="w-4 h-4" /> {jobData.location}</span>}
-              </div>
-            </div>
-            <Button variant="ghost" onClick={() => navigate('/ai-ninja')}>
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back
-            </Button>
-          </div>
-        </Card>
+        <JobHeader />
 
         {/* Progress Steps */}
         <div className="progress-steps">

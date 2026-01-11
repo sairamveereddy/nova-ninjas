@@ -9,22 +9,63 @@ import json
 logger = logging.getLogger(__name__)
 
 async def fetch_url_content(url: str) -> Optional[str]:
-    """Fetch raw HTML content from a URL"""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    """Fetch raw HTML content from a URL with improved headers to bypass bot detection"""
+    
+    # Common browser headers
+    desktop_headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "DNT": "1",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Cache-Control": "max-age=0",
     }
-    try:
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(url, timeout=15, allow_redirects=True) as response:
-                if response.status != 200:
-                    logger.error(f"Failed to fetch URL {url}: Status {response.status}")
-                    return None
-                return await response.text()
-    except Exception as e:
-        logger.error(f"Error fetching URL {url}: {e}")
-        return None
+    
+    # Mobile User-Agent (often less restricted)
+    mobile_headers = {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+    }
+    
+    headers_list = [desktop_headers, mobile_headers]
+    
+    # If it's monster.com, try mobile headers first as it often works better
+    if "monster.com" in url.lower():
+        headers_list = [mobile_headers, desktop_headers]
+
+    for headers in headers_list:
+        try:
+            timeout = aiohttp.ClientTimeout(total=15)
+            async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
+                async with session.get(url, allow_redirects=True) as response:
+                    if response.status == 200:
+                        content = await response.text()
+                        # Check if we got a "JS required" or "Blocked" shell
+                        if len(content) < 2000 and ("enable JavaScript" in content or "Access blocked" in content or "Verification Required" in content):
+                            logger.warning(f"Got JS-required shell for {url} with current headers. Retrying...")
+                            continue
+                        return content
+                    elif response.status == 403:
+                        logger.warning(f"403 Forbidden for {url} with current headers. Retrying...")
+                        continue
+                    else:
+                        logger.error(f"Failed to fetch URL {url}: Status {response.status}")
+                        return None
+        except Exception as e:
+            logger.error(f"Error fetching URL {url} with current headers: {e}")
+            continue
+            
+    return None
 
 def extract_main_text(html: str) -> str:
     """Extract readable text from HTML, removing scripts and styles"""
@@ -51,11 +92,38 @@ async def scrape_job_description(url: str) -> Dict[str, Any]:
     """
     Scrape a job URL and use AI to extract the job description.
     """
-    html = await fetch_url_content(url)
+    processed_url = url
+    
+    # Specific handling for Monster.com search results with specific IDs
+    if "monster.com/jobs/search" in url.lower() and "id=" in url.lower():
+        match = re.search(r'id=([a-f0-9-]+)', url.lower())
+        if match:
+            job_id = match.group(1)
+            # Try to construct a more direct URL if it's a search page pointing to an ID
+            processed_url = f"https://www.monster.com/job-openings/job-description--{job_id}"
+            logger.info(f"Targeting direct Monster job link: {processed_url}")
+
+    html = await fetch_url_content(processed_url)
+    
+    # If the direct link failed, try the original URL as fallback
+    if not html and processed_url != url:
+        logger.info(f"Direct link failed, falling back to original URL: {url}")
+        html = await fetch_url_content(url)
+
     if not html:
-        return {"success": False, "error": "Could not access the URL. The site might be blocking scrapers."}
+        return {
+            "success": False, 
+            "error": "Access blocked by the job board. This site (like Monster, LinkedIn, or Indeed) has strong anti-scraping measures. Please copy and paste the job description manually."
+        }
 
     raw_text = extract_main_text(html)
+    
+    # Check if text is too short or just boilerplate
+    if len(raw_text) < 300:
+        return {
+            "success": False,
+            "error": "The page content could not be read properly (likely needs JavaScript). Please paste the description manually."
+        }
     
     prompt = f"""
 Extract the job title, company name, and full job description from the following raw text scraped from a job board URL ({url}).
