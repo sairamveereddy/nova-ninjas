@@ -6,7 +6,7 @@
 
 export const BRAND = {
   // Core branding
-  name: 'Job Ninjas',
+  name: 'jobninjas.org',
   oldName: 'Nova Ninjas', // For reference during migration
   domain: 'jobninjas.org',
 
@@ -28,7 +28,7 @@ export const BRAND = {
 
   // Company info
   year: new Date().getFullYear(),
-  copyright: `© ${new Date().getFullYear()} Job Ninjas. All rights reserved.`,
+  copyright: `© ${new Date().getFullYear()} jobninjas.org. All rights reserved.`,
 };
 
 // ============================================
@@ -65,7 +65,7 @@ export const PRICING = {
     priceDisplay: 'Free',
     period: '',
     applications: 5,
-    description: 'Try Job Ninjas with a few applications before upgrading.',
+    description: 'Try jobninjas.org with a few applications before upgrading.',
     features: [
       'Apply to up to 5 jobs using AI Ninja',
       'Upload 1 base resume',

@@ -134,8 +134,8 @@ const Admin = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
               <button onClick={() => navigate('/')} className="flex items-center gap-2">
-                <img src="/logo.png" alt="Job Ninjas" className="h-8" />
-                <span className="text-xl font-bold">Job Ninjas</span>
+                <img src="/logo.png" alt="jobninjas.org" className="h-8" />
+                <span className="text-xl font-bold">jobninjas.org</span>
               </button>
               <Badge variant="secondary" className="bg-white/20 text-white border-0">
                 <Shield className="w-3 h-3 mr-1" />
@@ -172,8 +172,8 @@ const Admin = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${activeTab === tab.id
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
                   }`}
               >
                 <tab.icon className="w-4 h-4" />
