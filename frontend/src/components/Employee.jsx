@@ -9,9 +9,9 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { API_URL } from '../config/api';
-import { 
-  Users, LogOut, Briefcase, Plus, Search, ChevronRight, 
-  Loader2, Target, Mail, Phone, MapPin, 
+import {
+  Users, LogOut, Briefcase, Plus, Search, ChevronRight,
+  Loader2, Target, Mail, Phone, MapPin,
   ExternalLink, Trash2, X, Check, Clock, User
 } from 'lucide-react';
 
@@ -25,7 +25,7 @@ const Employee = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Add Application Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [newApplication, setNewApplication] = useState({
@@ -42,11 +42,11 @@ const Employee = () => {
   useEffect(() => {
     const fetchCustomers = async () => {
       if (!user?.email) return;
-      
+
       try {
         setIsLoading(true);
         const response = await fetch(`${API_URL}/api/employee/customers/${encodeURIComponent(user.email)}`);
-        
+
         if (response.ok) {
           const data = await response.json();
           setCustomers(data.customers || []);
@@ -57,7 +57,7 @@ const Employee = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchCustomers();
   }, [user?.email, API_URL]);
 
@@ -66,7 +66,7 @@ const Employee = () => {
     try {
       setIsLoadingDetails(true);
       const response = await fetch(`${API_URL}/api/employee/customer/${encodeURIComponent(customerEmail)}`);
-      
+
       if (response.ok) {
         const data = await response.json();
         setCustomerDetails(data);
@@ -91,7 +91,7 @@ const Employee = () => {
   const handleAddApplication = async (e) => {
     e.preventDefault();
     if (!selectedCustomer) return;
-    
+
     setIsSubmitting(true);
     try {
       const response = await fetch(`${API_URL}/api/employee/application?employee_email=${encodeURIComponent(user.email)}`, {
@@ -102,7 +102,7 @@ const Employee = () => {
           ...newApplication
         })
       });
-      
+
       if (response.ok) {
         // Refresh customer details
         fetchCustomerDetails(selectedCustomer.user.email);
@@ -128,7 +128,7 @@ const Employee = () => {
       const response = await fetch(`${API_URL}/api/employee/application/${applicationId}?status=${newStatus}`, {
         method: 'PATCH'
       });
-      
+
       if (response.ok && selectedCustomer) {
         fetchCustomerDetails(selectedCustomer.user.email);
       }
@@ -139,12 +139,12 @@ const Employee = () => {
 
   const handleDeleteApplication = async (applicationId) => {
     if (!window.confirm('Are you sure you want to delete this application?')) return;
-    
+
     try {
       const response = await fetch(`${API_URL}/api/employee/application/${applicationId}`, {
         method: 'DELETE'
       });
-      
+
       if (response.ok && selectedCustomer) {
         fetchCustomerDetails(selectedCustomer.user.email);
       }
@@ -166,7 +166,7 @@ const Employee = () => {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const filteredCustomers = customers.filter(c => 
+  const filteredCustomers = customers.filter(c =>
     c.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.user.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -182,8 +182,8 @@ const Employee = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
               <button onClick={() => navigate('/')} className="flex items-center gap-2">
-                <img src="/logo.png" alt="Nova Ninjas" className="h-8" />
-                <span className="text-xl font-bold text-primary">Nova Ninjas</span>
+                <img src="/logo.png" alt="Job Ninjas" className="h-8" />
+                <span className="text-xl font-bold text-primary">Job Ninjas</span>
               </button>
               <Badge variant="outline">Employee Portal</Badge>
             </div>
@@ -212,7 +212,7 @@ const Employee = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -224,7 +224,7 @@ const Employee = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -249,8 +249,8 @@ const Employee = () => {
                 </CardTitle>
                 <div className="relative mt-3">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input 
-                    placeholder="Search customers..." 
+                  <Input
+                    placeholder="Search customers..."
                     className="pl-9"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -274,9 +274,8 @@ const Employee = () => {
                       <button
                         key={customer.user.email}
                         onClick={() => handleSelectCustomer(customer)}
-                        className={`w-full p-4 text-left hover:bg-gray-50 transition flex items-center justify-between ${
-                          selectedCustomer?.user.email === customer.user.email ? 'bg-primary/5 border-l-4 border-primary' : ''
-                        }`}
+                        className={`w-full p-4 text-left hover:bg-gray-50 transition flex items-center justify-between ${selectedCustomer?.user.email === customer.user.email ? 'bg-primary/5 border-l-4 border-primary' : ''
+                          }`}
                       >
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{customer.user.name}</p>
@@ -451,8 +450,8 @@ const Employee = () => {
                                 </td>
                                 <td className="py-3 px-4">{app.job_title}</td>
                                 <td className="py-3 px-4">
-                                  <Select 
-                                    value={app.status} 
+                                  <Select
+                                    value={app.status}
                                     onValueChange={(v) => handleUpdateStatus(app.id, v)}
                                   >
                                     <SelectTrigger className="w-32 h-8">
@@ -474,16 +473,16 @@ const Employee = () => {
                                 <td className="py-3 px-4">
                                   <div className="flex items-center gap-2">
                                     {app.job_url && (
-                                      <a 
-                                        href={app.job_url} 
-                                        target="_blank" 
+                                      <a
+                                        href={app.job_url}
+                                        target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-primary hover:underline"
                                       >
                                         <ExternalLink className="w-4 h-4" />
                                       </a>
                                     )}
-                                    <button 
+                                    <button
                                       onClick={() => handleDeleteApplication(app.id)}
                                       className="text-red-500 hover:text-red-700"
                                     >
@@ -520,7 +519,7 @@ const Employee = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Company Name *</Label>
-                    <Input 
+                    <Input
                       required
                       value={newApplication.company_name}
                       onChange={(e) => setNewApplication(prev => ({ ...prev, company_name: e.target.value }))}
@@ -529,7 +528,7 @@ const Employee = () => {
                   </div>
                   <div>
                     <Label>Job Title *</Label>
-                    <Input 
+                    <Input
                       required
                       value={newApplication.job_title}
                       onChange={(e) => setNewApplication(prev => ({ ...prev, job_title: e.target.value }))}
@@ -537,10 +536,10 @@ const Employee = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <Label>Job URL *</Label>
-                  <Input 
+                  <Input
                     required
                     type="url"
                     value={newApplication.job_url}
@@ -548,11 +547,11 @@ const Employee = () => {
                     placeholder="https://..."
                   />
                 </div>
-                
+
                 <div>
                   <Label>Status</Label>
-                  <Select 
-                    value={newApplication.status} 
+                  <Select
+                    value={newApplication.status}
                     onValueChange={(v) => setNewApplication(prev => ({ ...prev, status: v }))}
                   >
                     <SelectTrigger>
@@ -565,27 +564,27 @@ const Employee = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div>
                   <Label>Notes</Label>
-                  <Textarea 
+                  <Textarea
                     value={newApplication.notes}
                     onChange={(e) => setNewApplication(prev => ({ ...prev, notes: e.target.value }))}
                     placeholder="Any notes about this application..."
                     rows={2}
                   />
                 </div>
-                
+
                 <div>
                   <Label>Job Description (Optional)</Label>
-                  <Textarea 
+                  <Textarea
                     value={newApplication.job_description}
                     onChange={(e) => setNewApplication(prev => ({ ...prev, job_description: e.target.value }))}
                     placeholder="Paste job description here..."
                     rows={3}
                   />
                 </div>
-                
+
                 <div className="flex justify-end gap-3 pt-4">
                   <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>
                     Cancel

@@ -7,7 +7,7 @@ import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { API_URL } from '../config/api';
-import { 
+import {
   Shield, LogOut, Users, Target, CreditCard, Phone, Mail,
   TrendingUp, Clock, Search, ChevronDown, ChevronUp, Loader2,
   UserPlus, Briefcase, RefreshCw
@@ -77,7 +77,7 @@ const Admin = () => {
         `${API_URL}/api/admin/assign-customer?customer_email=${encodeURIComponent(customerEmail)}&employee_email=${encodeURIComponent(employeeEmail)}`,
         { method: 'POST' }
       );
-      
+
       if (response.ok) {
         fetchAllData(); // Refresh data
       }
@@ -92,7 +92,7 @@ const Admin = () => {
         `${API_URL}/api/admin/user/${userId}/role?role=${newRole}`,
         { method: 'PATCH' }
       );
-      
+
       if (response.ok) {
         fetchAllData(); // Refresh data
       }
@@ -107,7 +107,7 @@ const Admin = () => {
         `${API_URL}/api/call-bookings/${bookingId}?status=${newStatus}`,
         { method: 'PATCH' }
       );
-      
+
       if (response.ok) {
         fetchAllData(); // Refresh data
       }
@@ -116,12 +116,12 @@ const Admin = () => {
     }
   };
 
-  const filteredCustomers = customers.filter(c => 
+  const filteredCustomers = customers.filter(c =>
     c.user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.user.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredBookings = bookings.filter(b => 
+  const filteredBookings = bookings.filter(b =>
     b.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     b.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -134,8 +134,8 @@ const Admin = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
               <button onClick={() => navigate('/')} className="flex items-center gap-2">
-                <img src="/logo.png" alt="Nova Ninjas" className="h-8" />
-                <span className="text-xl font-bold">Nova Ninjas</span>
+                <img src="/logo.png" alt="Job Ninjas" className="h-8" />
+                <span className="text-xl font-bold">Job Ninjas</span>
               </button>
               <Badge variant="secondary" className="bg-white/20 text-white border-0">
                 <Shield className="w-3 h-3 mr-1" />
@@ -171,11 +171,10 @@ const Admin = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
-                  activeTab === tab.id 
-                    ? 'border-primary text-primary' 
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${activeTab === tab.id
+                    ? 'border-primary text-primary'
                     : 'border-transparent text-gray-600 hover:text-gray-900'
-                }`}
+                  }`}
               >
                 <tab.icon className="w-4 h-4" />
                 {tab.label}
@@ -208,7 +207,7 @@ const Admin = () => {
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card>
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between">
@@ -220,7 +219,7 @@ const Admin = () => {
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card>
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between">
@@ -232,7 +231,7 @@ const Admin = () => {
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card>
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between">
@@ -355,8 +354,8 @@ const Admin = () => {
                     <CardTitle>All Customers ({customers.length})</CardTitle>
                     <div className="relative w-64">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <Input 
-                        placeholder="Search customers..." 
+                      <Input
+                        placeholder="Search customers..."
                         className="pl-9"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -398,7 +397,7 @@ const Admin = () => {
                                   <Badge variant="outline">{customer.application_count || 0}</Badge>
                                 </td>
                                 <td className="py-3 px-4">
-                                  <Select 
+                                  <Select
                                     value={customer.assigned_employee || 'unassigned'}
                                     onValueChange={(v) => v !== 'unassigned' && handleAssignCustomer(customer.user.email, v)}
                                   >
@@ -532,8 +531,8 @@ const Admin = () => {
                     <CardTitle>Call Bookings ({bookings.length})</CardTitle>
                     <div className="relative w-64">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <Input 
-                        placeholder="Search bookings..." 
+                      <Input
+                        placeholder="Search bookings..."
                         className="pl-9"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -579,7 +578,7 @@ const Admin = () => {
                                 <Badge variant="outline">{booking.years_of_experience}</Badge>
                               </td>
                               <td className="py-3 px-4">
-                                <Select 
+                                <Select
                                   value={booking.status}
                                   onValueChange={(v) => handleUpdateBookingStatus(booking.id, v)}
                                 >
@@ -596,7 +595,7 @@ const Admin = () => {
                               </td>
                               <td className="py-3 px-4">
                                 <div className="flex gap-2">
-                                  <a 
+                                  <a
                                     href={`mailto:${booking.email}`}
                                     className="text-primary hover:underline text-sm"
                                   >

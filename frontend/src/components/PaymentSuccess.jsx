@@ -27,7 +27,7 @@ const PaymentSuccess = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-gray-600">
-            Thank you for subscribing to Nova Ninjas! Your subscription is now active.
+            Thank you for subscribing to Job Ninjas! Your subscription is now active.
           </p>
           <p className="text-sm text-gray-500">
             You'll receive a confirmation email shortly with your subscription details.
