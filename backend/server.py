@@ -2233,7 +2233,7 @@ async def parse_resume_endpoint(
         return {
             "success": True,
             "data": parsed_data,
-            "rawText": resume_text[:2000]  # Return first 2000 chars for preview
+            "resumeText": resume_text  # Changed from rawText to match frontend
         }
         
     except HTTPException:
@@ -2443,7 +2443,7 @@ async def get_user_resumes(user_email: str):
         
         for resume in resumes:
             resume["id"] = str(resume.pop("_id"))
-            # Don't send full text in list view
+            # Keep resumeText so frontend can use it when selected
             resume["textPreview"] = resume.get("resumeText", "")[:200] + "..."
         
         return {

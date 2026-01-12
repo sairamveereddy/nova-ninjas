@@ -180,6 +180,7 @@ const AIApplyFlow = () => {
     setSelectedResume(resume);
     setResumeFile(null);
     setResumeText(resume.resumeText || '');
+    setResumeName(resume.resumeName || resume.fileName || 'Resume');
   };
 
   const handleFetchJobDescription = async () => {
@@ -678,18 +679,18 @@ const AIApplyFlow = () => {
               <div className="saved-resumes-section">
                 <h3>Your Saved Resumes</h3>
                 {isLoadingResumes ? (
-                  <p className="loading-text"><Loader2 className="w-4 h-4 animate-spin" /> Loading...</p>
+                  <p className="loading-text"><Loader2 className="w-4 h-4 animate-spin" /> Loading your resumes...</p>
                 ) : savedResumes.length > 0 ? (
                   <div className="saved-resumes-grid">
                     {savedResumes.map(resume => (
                       <div
-                        key={resume._id}
-                        className={`saved-resume-item ${selectedResume?._id === resume._id ? 'selected' : ''}`}
+                        key={resume.id}
+                        className={`saved-resume-item ${selectedResume?.id === resume.id ? 'selected' : ''}`}
                         onClick={() => handleSelectSavedResume(resume)}
                       >
-                        <FileText className="w-5 h-5" />
-                        <span>{resume.fileName || 'Resume'}</span>
-                        {selectedResume?._id === resume._id && <CheckCircle className="w-4 h-4 text-green-500" />}
+                        <FileText className="w-5 h-5 text-indigo-500" />
+                        <span>{resume.resumeName || resume.fileName || 'Resume'}</span>
+                        {selectedResume?.id === resume.id && <CheckCircle className="w-4 h-4 text-green-500" />}
                       </div>
                     ))}
                   </div>
