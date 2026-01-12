@@ -14,6 +14,7 @@ import asyncio
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Union
 import uuid
+import traceback
 from datetime import datetime, timezone
 from dateutil.relativedelta import relativedelta
 import aiohttp
@@ -1607,7 +1608,8 @@ async def fetch_job_desc(request: JobUrlFetchRequest):
         result = await scrape_job_description(url)
         return result
     except Exception as e:
-        logger.error(f"Error in fetch_job_desc: {e}")
+        error_details = traceback.format_exc()
+        logger.error(f"Error in fetch_job_desc: {e}\n{error_details}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/resumes")
