@@ -199,7 +199,8 @@ async def scrape_job_description(url: str) -> Dict[str, Any]:
         }
     
     # Truncate text to avoid hitting token limits
-    truncated_text = raw_text[:7000]
+    # Reduced to 4000 to drastically reduce token usage and rate limits
+    truncated_text = raw_text[:4000]
     
     prompt = f"""Extract job details from the following raw text scraped from {url}:
 ---
@@ -233,7 +234,17 @@ Important:
         # Use 3 retries max instead of the global 7
         response_text = await call_groq_api(prompt, max_tokens=2000, model="groq/compound-mini", max_retries=3)
         if not response_text:
-            return {"success": False, "error": "AI extraction failed. (No response from AI)"}
+            logger.warning("AI extraction failed (rate limit or timeout). Falling back to raw text.")
+            # FALLBACK: If AI fails, return the raw text so the user at least gets the content
+            return {
+                "success": True,
+                "jobTitle": "Job details found (AI busy)",
+                "company": "Detected from URL",
+                "description": raw_text,  # Return the full clean text
+                "location": "",
+                "salary": "",
+                "note": "AI rate limit reached, showing raw text."
+            }
         
         json_text = clean_json_response(response_text)
         result = json.loads(json_text, strict=False)
