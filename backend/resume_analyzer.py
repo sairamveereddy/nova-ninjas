@@ -81,11 +81,26 @@ async def call_groq_api(prompt: str) -> Optional[str]:
 
 
 def clean_json_response(text: str) -> str:
-    """Clean up Gemini response to extract valid JSON"""
+    """Clean up AI response to extract valid JSON and handle control characters"""
+    if not text:
+        return ""
+        
     # Remove markdown code blocks if present
     text = re.sub(r'```json\s*', '', text)
     text = re.sub(r'```\s*', '', text)
+    
+    # Try to find the first '{' and last '}'
+    start_index = text.find('{')
+    end_index = text.rfind('}')
+    
+    if start_index != -1 and end_index != -1 and end_index > start_index:
+        text = text[start_index:end_index+1]
+        
     text = text.strip()
+    
+    # Remove problematic control characters (0-31) except for tab, newline, carriage return
+    # This helps avoid "Invalid control character" errors in json.loads
+    # However, json.loads(..., strict=False) is also used for better resilience
     return text
 
 
@@ -210,7 +225,7 @@ Important:
             }
         
         json_text = clean_json_response(response_text)
-        result = json.loads(json_text)
+        result = json.loads(json_text, strict=False)
         return result
         
     except json.JSONDecodeError as e:
@@ -290,7 +305,7 @@ Return ONLY the JSON, no other text.
         if not response_text:
             return {"error": "Failed to get response from AI"}
         json_text = clean_json_response(response_text)
-        result = json.loads(json_text)
+        result = json.loads(json_text, strict=False)
         return result
     except Exception as e:
         logger.error(f"Failed to extract resume data: {e}")
@@ -342,7 +357,7 @@ Return ONLY the JSON, no other text.
         if not response_text:
             return {"error": "Failed to get response from AI"}
         json_text = clean_json_response(response_text)
-        result = json.loads(json_text)
+        result = json.loads(json_text, strict=False)
         return result
     except Exception as e:
         logger.error(f"Failed to generate optimized resume: {e}")

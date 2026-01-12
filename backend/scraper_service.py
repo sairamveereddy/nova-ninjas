@@ -176,7 +176,7 @@ Important:
             return {"success": False, "error": "AI extraction failed."}
         
         json_text = clean_json_response(response_text)
-        result = json.loads(json_text)
+        result = json.loads(json_text, strict=False)
         return result
     except Exception as e:
         logger.error(f"Error extracting job data from URL: {e}")
