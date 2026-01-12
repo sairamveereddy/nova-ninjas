@@ -127,7 +127,8 @@ GENERATE THE ENHANCED RESUME JSON NOW:
 """
 
     try:
-        response = await call_groq_api(prompt, max_tokens=8000)
+        # Use fast model for drafting
+        response = await call_groq_api(prompt, max_tokens=8000, model="llama-3.1-8b-instant")
         if not response:
             return None
         
