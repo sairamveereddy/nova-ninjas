@@ -95,11 +95,30 @@ def extract_main_text(html: str) -> str:
     lines = (line.strip() for line in text.splitlines())
     # Break multi-headlines into a line each
     chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-    # Drop blank lines
-    text = '\n'.join(chunk for chunk in chunks if chunk)
     
-    # Limit text length to avoid overwhelmed AI context (approx 10k chars)
-    return text[:12000]
+    # Aggressive noise filtering
+    clean_chunks = []
+    noise_patterns = [
+        "sign in", "welcome back", "email or phone", "password", "forgot password",
+        "join now", "new to linkedin", "user agreement", "privacy policy", "cookie policy",
+        "security verification", "sign in to evaluate", "sign in to tailor", "skip to main",
+        "save report", "share this job", "get notified about", "similar jobs"
+    ]
+    
+    for chunk in chunks:
+        if not chunk: continue
+        # Skip chunks that are purely noise
+        if any(pattern in chunk.lower() for pattern in noise_patterns):
+            continue
+        # Skip very short fragments that are usually navigation
+        if len(chunk) < 4 and not chunk.isdigit():
+            continue
+        clean_chunks.append(chunk)
+
+    text = '\n'.join(clean_chunks)
+    
+    # Limit text length to avoid overwhelmed AI context
+    return text[:10000]
 
 async def scrape_job_description(url: str) -> Dict[str, Any]:
     """
@@ -169,52 +188,20 @@ async def scrape_job_description(url: str) -> Dict[str, Any]:
         }
 
     raw_text = extract_main_text(html)
-    logger.info(f"Extracted {len(raw_text)} chars of raw text from {processed_url}")
-    
-    # Check if text is too short or just boilerplate
-    if len(raw_text) < 300:
-        logger.warning(f"Extracted text too short ({len(raw_text)} chars). Sample: {raw_text[:200]}")
-        return {
-            "success": False,
-            "error": "The page content could not be read properly (likely needs JavaScript). Please paste the description manually."
-        }
-    
-    prompt = f"""
-Extract the job title, company name, and full job description from the following raw text scraped from a job board URL ({url}).
-
-RAW TEXT:
-{raw_text}
-
-Return ONLY valid JSON with this structure:
-{{
-    "success": true,
-    "jobTitle": "...",
-    "company": "...",
-    "description": "...",
-    "location": "...",
-    "salary": "..."
-}}
-
-If you cannot find clear job information, return:
-{{
-    "success": false,
-    "error": "Could not identify job information in the page content."
-}}
-
-Important:
-- The description should be the full job details, responsibilities, and requirements.
-- Use newlines in the description for readability.
-- Clean up any residual website navigation text.
-"""
-
-    raw_text = extract_main_text(html)
     logger.info(f"Extracted {len(raw_text)} chars from {url}")
     
-    # Truncate text to avoid hitting token limits, especially for messy LinkedIn pages
-    # 8000 chars is roughly 1500-2000 tokens, which is plenty for a job description
-    truncated_text = raw_text[:8000]
+    # Check if text is too short or just boilerplate after cleaning
+    if len(raw_text) < 300:
+        logger.warning(f"Extracted text too short or blocked ({len(raw_text)} chars). Sample: {raw_text[:200]}")
+        return {
+            "success": False,
+            "error": "LinkedIn is blocking access to this job's details. Please copy the job description and paste it manually into the field below."
+        }
     
-    prompt = f"""Extract job details from the following raw text:
+    # Truncate text to avoid hitting token limits
+    truncated_text = raw_text[:7000]
+    
+    prompt = f"""Extract job details from the following raw text scraped from {url}:
 ---
 {truncated_text}
 ---
@@ -242,9 +229,9 @@ Important:
 """
 
     try:
-        # Use a higher-limit model for extraction to avoid 429 errors
-        # groq/compound-mini has much higher RPM/TPM than 70B models
-        response_text = await call_groq_api(prompt, max_tokens=2000, model="groq/compound-mini")
+        # For scraping, we want to fail faster if Groq is overloaded
+        # Use 3 retries max instead of the global 7
+        response_text = await call_groq_api(prompt, max_tokens=2000, model="groq/compound-mini", max_retries=3)
         if not response_text:
             return {"success": False, "error": "AI extraction failed. (No response from AI)"}
         

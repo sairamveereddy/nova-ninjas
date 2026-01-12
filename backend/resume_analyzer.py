@@ -37,7 +37,7 @@ GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "llama-3.3-70b-versatile"  # Latest and most powerful
 
 
-async def call_groq_api(prompt: str, max_tokens: int = 4000, model: str = None) -> Optional[str]:
+async def call_groq_api(prompt: str, max_tokens: int = 4000, model: str = None, max_retries: int = None) -> Optional[str]:
     """Call Groq API for text generation with exponential backoff"""
     target_model = model or GROQ_MODEL
     
@@ -63,10 +63,12 @@ async def call_groq_api(prompt: str, max_tokens: int = 4000, model: str = None) 
         "temperature": 0.1
     }
     
-    max_retries = 7
+    # Use global default if not specifically overridden
+    if max_retries is None:
+        max_retries = 7
     base_delay = 4
     
-    logger.info(f"Calling Groq API with model: {target_model}")
+    logger.info(f"Calling Groq API with model: {target_model} (max_retries: {max_retries})")
     
     async with aiohttp.ClientSession() as session:
         for attempt in range(max_retries):
