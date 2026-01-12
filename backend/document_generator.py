@@ -219,94 +219,126 @@ Return ONLY the cover letter text, no JSON or markdown.
         return None
 
 
-async def generate_expert_documents(resume_text: str, job_description: str) -> Optional[Dict[str, str]]:
-    """Generate ATS Resume and Detailed CV using the expert prompt"""
-    
+async def extract_compliance_facts(resume_text: str) -> Dict[str, Any]:
+    """Stage 1: Extract verbatim facts from resume into a strict JSON schema"""
     prompt = f"""
-You are a strict ATS resume writer for a senior AI Architect / GenAI Architect role.
+SYSTEM:
+You are a fact extractor. Output JSON ONLY. No prose.
 
-CRITICAL TRUTH RULES (NO EXCEPTIONS):
-- Use ONLY the facts explicitly found in the candidate’s Base Resume text below.
-- DO NOT claim: industries (finance/banking/telecom/apparel), clients, outcomes, certifications, tools, cloud services, or platforms unless the Base Resume explicitly contains them.
-- If the Job Description mentions a tool and the Base Resume does NOT, you may include it ONLY in a "Familiarity / Exposure" line IF the Base Resume implies it (e.g., worked on cloud but no specific service). Otherwise omit it.
-- Never use phrases like “state-of-the-art,” “cutting-edge,” “proven expertise,” “industry-leading” unless supported by specific evidence.
-- Avoid vague claims. Every bullet must include WHAT you built + HOW you built it (tools) + WHY it mattered (impact). If no metric exists in Base Resume, write impact qualitatively (e.g., “reduced manual effort,” “improved response consistency”) without numbers.
-- Do NOT add new KPIs. Keep numbers only if they appear in Base Resume.
-- If any section lacks enough facts, keep it short rather than inventing.
-
-INPUTS:
-[JOB_DESCRIPTION]
-<<<
-{job_description}
->>>
+USER:
+Extract ONLY what is explicitly in the candidate resume.
 
 [CANDIDATE_BASE_RESUME]
 <<<
 {resume_text}
 >>>
 
-TASKS:
-Produce three outputs:
-1) ATS RESUME (1–2 pages)
-2) DETAILED CV (2–4 pages)
-3) COVER LETTER (NOT offer letter): 250–350 words, tailored to the target company.
+Return JSON with this exact schema:
+{{
+  "name": "",
+  "location": "",
+  "email": "",
+  "phone": "",
+  "links": {{"linkedin":"", "github":"", "portfolio":""}},
+  "industries_explicit": [],
+  "employers": [{{"company":"","title":"","location":"","start":"","end":"","bullets":[] }}],
+  "projects": [{{"name":"","bullets":[],"tools":[],"metrics":[] }}],
+  "skills": {{"languages":[], "llm_frameworks":[], "ml_frameworks":[], "vector_dbs":[], "cloud":[], "devops":[]}},
+  "metrics_explicit": [],
+  "evidence": {{
+     "industries_explicit": [],
+     "cloud": [],
+     "metrics_explicit": []
+  }}
+}}
 
-STRUCTURE (STRICT — FOLLOW EXACTLY):
-Return exactly this structure formatted as JSON with three keys: "ats_resume", "detailed_cv", and "cover_letter".
+Rules:
+- If a field is not explicitly present, use "" or [].
+- evidence fields must contain verbatim quotes from the resume text supporting the claims in industries_explicit, cloud, and metrics_explicit.
+"""
+    try:
+        response = await call_groq_api(prompt)
+        if not response:
+            return {}
+        # Clean JSON
+        response = response.strip()
+        if response.startswith("```"):
+            lines = response.split("```")
+            response = lines[1] if len(lines) > 1 else lines[0]
+            if response.startswith("json"):
+                response = response[4:]
+        response = response.strip()
+        return json.loads(response)
+    except Exception as e:
+        logger.error(f"Fact extraction failed: {e}")
+        return {}
 
-The values for "ats_resume" and "detailed_cv" should be raw text strings containing:
 
-=== FACT CHECK SUMMARY (READ FIRST) ===
-- Industries explicitly supported by Base Resume: [list]
-- Industries NOT supported (must NOT be claimed): [list]
-- Cloud platforms explicitly supported: [list]
-- Tools/frameworks explicitly supported: [list]
-- Metrics explicitly supported: [list]
-- Top 8 JD keywords used that are supported by Base Resume: [list]
+async def generate_expert_documents(resume_text: str, job_description: str) -> Optional[Dict[str, str]]:
+    """Generate ATS Resume and Detailed CV using the compliance-grade two-stage pipeline"""
+    
+    # Stage 1: Extract Facts
+    logger.info("Stage 1: Extracting compliance-grade facts")
+    facts_json = await extract_compliance_facts(resume_text)
+    
+    if not facts_json:
+        logger.error("Fact extraction returned empty results")
+        return None
+
+    # Stage 2: Strict Drafting
+    logger.info("Stage 2: Drafting documents from facts")
+    prompt = f"""
+SYSTEM:
+You are a strict resume writer. You can ONLY use facts from the JSON provided. No invention.
+
+USER:
+Create ATS RESUME + DETAILED CV + COVER LETTER for the target role.
+Use ONLY the JSON facts below. If a skill/tool/industry is missing from JSON, do not mention it.
+
+[JOB_DESCRIPTION]
+<<<
+{job_description}
+>>>
+
+[FACTS_JSON]
+<<<
+{json.dumps(facts_json, indent=2)}
+>>>
+
+Output Structure (Return ONLY valid JSON with these keys):
+{{
+  "ats_resume": "string",
+  "detailed_cv": "string",
+  "cover_letter": "string"
+}}
+
+Hard rules:
+- Do NOT mention banking/finance/telecom/apparel unless included in facts_json.industries_explicit
+- Do NOT mention Azure unless included in facts_json.skills.cloud
+- Do NOT use "state-of-the-art" or "cutting-edge"
+- Metrics only from facts_json.metrics_explicit
+- Every document must start with a === EVIDENCE TABLE === mapping the claims to the evidence found in facts_json.evidence.
 
 === ATS RESUME ===
-NAME | LOCATION | EMAIL | PHONE | LINKEDIN | GITHUB (only if in base resume)
-
-TITLE: AI Architect / GenAI Solutions Architect
-
-SUMMARY (3–4 lines)
-- Must be specific, no fluff, and grounded in Base Resume facts.
-- DO NOT mention finance/banking unless supported.
-
-CORE SKILLS (grouped, 12–18 total bullets max; ONLY from base resume)
-- GenAI & LLM:
-- Agentic Workflows:
-- Retrieval / Search:
-- Cloud / MLOps:
-- ML / Data:
-- Programming:
-
-EXPERIENCE
-For each role:
-COMPANY — TITLE | LOCATION
-DATES
-4–6 bullets (each bullet must include: action + tools + impact)
-
-PROJECTS (2–4)
-For each:
-PROJECT NAME
-2–4 bullets with architecture + tools + outcome
-
-EDUCATION
-CERTIFICATIONS (only if present)
+(1–2 pages plain text ATS friendly)
+- Summary: 3–4 lines, MUST NOT include any industry unless supported
+- Skills: only supported tools
+- Experience: 4–6 bullets per role, each bullet must include: action + tools + outcome (no invented numbers)
+- Projects: 2–4, only supported
 
 === DETAILED CV ===
-NAME + CONTACT
-... (Detailed CV content following similar strict rules) ...
+(2–4 pages)
+Expanded experience + project portfolio (no invented claims)
 
 === COVER LETTER ===
-The "cover_letter" key should contain the tailored 250-350 word cover letter.
+250–350 words, 3 paragraphs + 4 bullet highlights
+Mention Azure OpenAI ONLY if Azure is in facts_json.skills.cloud; otherwise say “cloud-based GenAI deployments”.
 
 Return ONLY valid JSON.
 """
 
     try:
-        # Using a higher max_tokens for two documents
+        # Using a higher max_tokens for the full generation
         response = await call_groq_api(prompt, max_tokens=8000)
         if not response:
             return None
@@ -322,7 +354,7 @@ Return ONLY valid JSON.
         
         return json.loads(response)
     except Exception as e:
-        logger.error(f"Failed in generate_expert_documents: {e}")
+        logger.error(f"Failed in generate_expert_documents drafting stage: {e}")
         return None
 
 
