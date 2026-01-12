@@ -2739,6 +2739,16 @@ async def delete_application(application_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/health-check")
+async def health_check():
+    from resume_analyzer import GROQ_API_KEY
+    return {
+        "status": "ok",
+        "mongodb": "connected" if db is not None else "failed",
+        "groq_api_key_set": GROQ_API_KEY is not None and len(GROQ_API_KEY) > 0,
+        "env_check": os.environ.get('GROQ_API_KEY') is not None
+    }
+
 # ============================================
 # APP STARTUP & SHUTDOWN
 # ============================================
