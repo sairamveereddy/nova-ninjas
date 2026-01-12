@@ -36,6 +36,10 @@ import CareerChangeTool from "./components/CareerChangeTool";
 import ChatGPTResume from "./components/ChatGPTResume";
 import ChatGPTCoverLetter from "./components/ChatGPTCoverLetter";
 import LinkedInExamples from "./components/LinkedInExamples";
+// Phase 3 Tools
+import ResumeTemplates from "./components/ResumeTemplates";
+import CoverLetterTemplates from "./components/CoverLetterTemplates";
+import ATSGuides from "./components/ATSGuides";
 import "./components/Jobs.css";
 import "./components/InterviewPrep.css";
 import "./components/ResumeScanner.css";
@@ -90,6 +94,11 @@ function App() {
             <Route path="/chatgpt-resume" element={<ChatGPTResume />} />
             <Route path="/chatgpt-cover-letter" element={<ChatGPTCoverLetter />} />
             <Route path="/linkedin-examples" element={<LinkedInExamples />} />
+
+            {/* Phase 3 Tools Routes */}
+            <Route path="/resume-templates" element={<ResumeTemplates />} />
+            <Route path="/cover-letter-templates" element={<CoverLetterTemplates />} />
+            <Route path="/ats-guides" element={<ATSGuides />} />
 
             {/* Resume Scanner Route */}
             <Route

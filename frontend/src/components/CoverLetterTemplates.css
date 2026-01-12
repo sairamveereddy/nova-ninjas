@@ -1,0 +1,282 @@
+.cl-templates-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%);
+}
+
+.cl-templates-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.cl-templates-hero {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.cl-templates-hero .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.cl-templates-hero h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 1rem;
+}
+
+.cl-templates-hero .text-gradient {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.cl-templates-hero p {
+    color: #64748b;
+    font-size: 1.125rem;
+}
+
+/* Category Filter */
+.cl-templates-page .category-filter {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+.cl-templates-page .category-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cl-templates-page .category-btn:hover {
+    border-color: #f59e0b;
+    color: #f59e0b;
+}
+
+.cl-templates-page .category-btn.active {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-color: transparent;
+    color: white;
+}
+
+/* Templates Grid */
+.cl-templates-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.cl-template-card {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.cl-template-header {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.cl-template-header svg {
+    color: #f59e0b;
+    flex-shrink: 0;
+}
+
+.cl-template-header h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.25rem;
+}
+
+.cl-template-header p {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.cl-template-preview {
+    background: #fffbeb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-left: 3px solid #f59e0b;
+}
+
+.cl-template-preview pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: inherit;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: #475569;
+    margin: 0;
+}
+
+.cl-template-meta {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.cl-template-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.cl-template-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.cl-template-actions button {
+    flex: 1;
+}
+
+.cl-templates-page .use-btn {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    color: white !important;
+}
+
+/* Tips Section */
+.cl-templates-page .tips-section {
+    text-align: center;
+}
+
+.cl-templates-page .tips-section h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 1.5rem;
+}
+
+.cl-templates-page .tips-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+}
+
+.cl-templates-page .tip-card {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.cl-templates-page .tip-card h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0.75rem 0 0.5rem;
+}
+
+.cl-templates-page .tip-card p {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+/* Preview Modal */
+.cl-templates-page .preview-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 2rem;
+}
+
+.cl-templates-page .modal-content {
+    background: white;
+    border-radius: 1rem;
+    max-width: 600px;
+    width: 100%;
+    max-height: 80vh;
+    overflow: auto;
+}
+
+.cl-templates-page .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.cl-templates-page .modal-header h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.cl-templates-page .modal-header button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.cl-templates-page .modal-body {
+    padding: 1.5rem;
+    background: #fffbeb;
+}
+
+.cl-templates-page .modal-body pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: inherit;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: #1e293b;
+    margin: 0;
+}
+
+.cl-templates-page .modal-actions {
+    padding: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .cl-templates-page .tips-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cl-templates-hero h1 {
+        font-size: 1.75rem;
+    }
+}
