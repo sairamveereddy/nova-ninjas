@@ -181,6 +181,9 @@ Return ONLY the cover letter text, no JSON or markdown.
 
 async def extract_compliance_facts(resume_text: str) -> Dict[str, Any]:
     """Stage 1: Extract verbatim facts from resume into a strict JSON schema"""
+    # Truncate resume text to keep it manageable and avoid TPM limits
+    truncated_resume = resume_text[:10000]
+    
     prompt = f"""
 SYSTEM:
 You are a fact extractor. Output JSON ONLY. No prose.
@@ -190,7 +193,7 @@ Extract ONLY what is explicitly in the candidate resume.
 
 [CANDIDATE_BASE_RESUME]
 <<<
-{resume_text}
+{truncated_resume}
 >>>
 
 Return JSON with this exact schema:
@@ -217,7 +220,8 @@ Rules:
 - evidence fields must contain verbatim quotes from the resume text supporting the claims in industries_explicit, cloud, and metrics_explicit.
 """
     try:
-        response_text = await call_groq_api(prompt, max_tokens=2000)
+        # Stage 1: Fact extraction - Using high-availability compound model
+        response_text = await call_groq_api(prompt, max_tokens=1000, model="groq/compound")
         if not response_text:
             return {}
         
@@ -301,8 +305,8 @@ Return ONLY valid JSON.
 """
 
     try:
-        # Using a higher max_tokens for the full generation
-        response_text = await call_groq_api(prompt, max_tokens=8000)
+        # Stage 2: Drafting - Using high-availability compound model
+        response_text = await call_groq_api(prompt, max_tokens=6000, model="groq/compound")
         if not response_text:
             return None
         

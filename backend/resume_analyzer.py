@@ -14,6 +14,17 @@ from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
+# Add file handler for persistent AI debug logs
+try:
+    log_path = os.path.join(os.path.dirname(__file__), "ai_debug.log")
+    fh = logging.FileHandler(log_path)
+    fh.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+except Exception as e:
+    print(f"Failed to set up file logging: {e}")
+
 # Load environment variables
 load_dotenv()
 
@@ -25,13 +36,11 @@ GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "llama-3.3-70b-versatile"  # Latest and most powerful
 
-# Retry configuration
-MAX_RETRIES = 3
-RETRY_DELAY = 2  # seconds
 
-
-async def call_groq_api(prompt: str, max_tokens: int = 4000) -> Optional[str]:
-    """Call Groq API for text generation"""
+async def call_groq_api(prompt: str, max_tokens: int = 4000, model: str = None) -> Optional[str]:
+    """Call Groq API for text generation with exponential backoff"""
+    target_model = model or GROQ_MODEL
+    
     # Re-check key in case it was loaded later
     api_key = GROQ_API_KEY or os.environ.get('GROQ_API_KEY')
     
@@ -45,51 +54,60 @@ async def call_groq_api(prompt: str, max_tokens: int = 4000) -> Optional[str]:
     }
     
     payload = {
-        "model": GROQ_MODEL,
+        "model": target_model,
         "messages": [
-            {
-                "role": "system",
-                "content": "You are an expert ATS resume analyzer and optimization specialist. Always respond with valid JSON only when requested, otherwise respond with clear, expert text."
-            },
-            {
-                "role": "user", 
-                "content": prompt
-            }
+            {"role": "system", "content": "You are an expert ATS resume analyzer and optimization specialist. Always respond with valid JSON only when requested, otherwise respond with clear, expert text."},
+            {"role": "user", "content": prompt}
         ],
-        "temperature": 0.3,
-        "max_tokens": max_tokens
+        "max_tokens": max_tokens,
+        "temperature": 0.1
     }
     
-    for attempt in range(MAX_RETRIES):
-        try:
-            async with aiohttp.ClientSession() as session:
+    max_retries = 7
+    base_delay = 4
+    
+    logger.info(f"Calling Groq API with model: {target_model}")
+    
+    async with aiohttp.ClientSession() as session:
+        for attempt in range(max_retries):
+            try:
                 async with session.post(GROQ_API_URL, headers=headers, json=payload) as response:
-                    if response.status == 200:
+                    status = response.status
+                    
+                    if status == 200:
                         data = await response.json()
-                        if "choices" in data and len(data["choices"]) > 0:
-                            return data["choices"][0]["message"]["content"]
-                        logger.error(f"Groq API returned empty choices: {data}")
+                        if 'choices' in data and len(data['choices']) > 0:
+                            return data['choices'][0]['message']['content']
+                        else:
+                            logger.error(f"Empty choices in Groq response: {data}")
+                            return None
+                    
+                    elif status == 429:
+                        delay = base_delay * (2 ** attempt)
+                        logger.warning(f"Groq rate limit (429), retrying in {delay}s (Attempt {attempt+1}/{max_retries})...")
+                        await asyncio.sleep(delay)
+                        continue
+                        
+                    elif status == 401:
+                        logger.error("Groq API Authentication failed (401). Check GROQ_API_KEY.")
                         return None
-                    elif response.status == 429:
-                        # Rate limited, wait and retry
-                        if attempt < MAX_RETRIES - 1:
-                            logger.warning(f"Groq rate limit, retrying in {RETRY_DELAY}s...")
-                            await asyncio.sleep(RETRY_DELAY)
-                            continue
+                        
                     else:
                         error_text = await response.text()
-                        logger.error(f"Groq API error {response.status}: {error_text}")
-                        # Log the full request for debugging if it's a 400
-                        if response.status == 400:
-                            logger.error(f"Bad Request Payload: {json.dumps(payload)[:1000]}...")
+                        logger.error(f"Groq API error {status}: {error_text}")
+                        # Other errors might be temporary, but limit retries
+                        if attempt < max_retries - 1:
+                            await asyncio.sleep(base_delay)
+                            continue
                         return None
-        except Exception as e:
-            logger.error(f"Groq API request failed: {e}")
-            if attempt < MAX_RETRIES - 1:
-                await asyncio.sleep(RETRY_DELAY)
-                continue
-            return None
-    
+                        
+            except Exception as e:
+                logger.error(f"Error on attempt {attempt+1} calling Groq API: {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(base_delay)
+                    continue
+                return None
+                
     return None
 
 
@@ -234,7 +252,8 @@ Important:
 """
 
     try:
-        response_text = await call_groq_api(prompt)
+        # Use 3.3-70b specifically for analysis as it requires better reasoning
+        response_text = await call_groq_api(prompt, model="llama-3.3-70b-versatile")
         
         if not response_text:
             return {
@@ -319,7 +338,8 @@ Return ONLY the JSON, no other text.
 """
 
     try:
-        response_text = await call_groq_api(prompt)
+        # Use high-availability compound model for extraction
+        response_text = await call_groq_api(prompt, max_tokens=1000, model="groq/compound-mini")
         if not response_text:
             return {"error": "Failed to get response from AI"}
         json_text = clean_json_response(response_text)

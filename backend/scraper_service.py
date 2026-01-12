@@ -207,10 +207,46 @@ Important:
 - Clean up any residual website navigation text.
 """
 
+    raw_text = extract_main_text(html)
+    logger.info(f"Extracted {len(raw_text)} chars from {url}")
+    
+    # Truncate text to avoid hitting token limits, especially for messy LinkedIn pages
+    # 8000 chars is roughly 1500-2000 tokens, which is plenty for a job description
+    truncated_text = raw_text[:8000]
+    
+    prompt = f"""Extract job details from the following raw text:
+---
+{truncated_text}
+---
+
+Return ONLY a JSON object with this exact structure:
+{{
+    "success": true,
+    "jobTitle": "...",
+    "company": "...",
+    "description": "...",
+    "location": "...",
+    "salary": "..."
+}}
+
+If you cannot find clear job information, return:
+{{
+    "success": false,
+    "error": "Could not identify job information in the page content. This might be a login wall or an inactive job post."
+}}
+
+Important:
+- The description should be the full job details, responsibilities, and requirements.
+- Use newlines in the description for readability.
+- Clean up any residual website navigation text.
+"""
+
     try:
-        response_text = await call_groq_api(prompt)
+        # Use a higher-limit model for extraction to avoid 429 errors
+        # groq/compound-mini has much higher RPM/TPM than 70B models
+        response_text = await call_groq_api(prompt, max_tokens=2000, model="groq/compound-mini")
         if not response_text:
-            return {"success": False, "error": "AI extraction failed."}
+            return {"success": False, "error": "AI extraction failed. (No response from AI)"}
         
         json_text = clean_json_response(response_text)
         result = json.loads(json_text, strict=False)
