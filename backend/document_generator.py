@@ -12,54 +12,14 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.style import WD_STYLE_TYPE
 import aiohttp
 import json
+from resume_analyzer import call_groq_api, clean_json_response
 
 logger = logging.getLogger(__name__)
 
-GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
-GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama-3.3-70b-versatile"
-
-
-async def call_groq_api(prompt: str, max_tokens: int = 8000) -> Optional[str]:
-    """Call Groq API for text generation"""
-    if not GROQ_API_KEY:
-        logger.warning("GROQ_API_KEY not set")
-        return None
-    
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "model": GROQ_MODEL,
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are an expert ATS resume optimization specialist. Your job is to enhance resumes to match job descriptions while preserving ALL original content, experience, and achievements. Never remove or shorten existing content - only enhance and reorganize."
-            },
-            {
-                "role": "user", 
-                "content": prompt
-            }
-        ],
-        "temperature": 0.3,
-        "max_tokens": max_tokens
-    }
-    
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(GROQ_API_URL, headers=headers, json=payload) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return data["choices"][0]["message"]["content"]
-                else:
-                    error_text = await response.text()
-                    logger.error(f"Groq API error {response.status}: {error_text}")
-                    return None
-    except Exception as e:
-        logger.error(f"Groq API request failed: {e}")
-        return None
+# These are now imported from resume_analyzer.py
+# GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
+# GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+# GROQ_MODEL = "llama-3.3-70b-versatile"
 
 
 async def generate_optimized_resume_content(resume_text: str, job_description: str, analysis: Dict) -> Optional[Dict]:
@@ -257,18 +217,12 @@ Rules:
 - evidence fields must contain verbatim quotes from the resume text supporting the claims in industries_explicit, cloud, and metrics_explicit.
 """
     try:
-        response = await call_groq_api(prompt)
-        if not response:
+        response_text = await call_groq_api(prompt, max_tokens=2000)
+        if not response_text:
             return {}
-        # Clean JSON
-        response = response.strip()
-        if response.startswith("```"):
-            lines = response.split("```")
-            response = lines[1] if len(lines) > 1 else lines[0]
-            if response.startswith("json"):
-                response = response[4:]
-        response = response.strip()
-        return json.loads(response)
+        
+        json_text = clean_json_response(response_text)
+        return json.loads(json_text)
     except Exception as e:
         logger.error(f"Fact extraction failed: {e}")
         return {}
@@ -348,20 +302,13 @@ Return ONLY valid JSON.
 
     try:
         # Using a higher max_tokens for the full generation
-        response = await call_groq_api(prompt, max_tokens=8000)
-        if not response:
+        response_text = await call_groq_api(prompt, max_tokens=8000)
+        if not response_text:
             return None
         
-        # Clean and parse JSON
-        response = response.strip()
-        if response.startswith("```"):
-            lines = response.split("```")
-            response = lines[1] if len(lines) > 1 else lines[0]
-            if response.startswith("json"):
-                response = response[4:]
-        response = response.strip()
-        
-        return json.loads(response)
+        # Clean and parse JSON using robust standardized logic
+        json_text = clean_json_response(response_text)
+        return json.loads(json_text, strict=False)
     except Exception as e:
         logger.error(f"Failed in generate_expert_documents drafting stage: {e}")
         return None

@@ -26,7 +26,7 @@ MAX_RETRIES = 3
 RETRY_DELAY = 2  # seconds
 
 
-async def call_groq_api(prompt: str) -> Optional[str]:
+async def call_groq_api(prompt: str, max_tokens: int = 4000) -> Optional[str]:
     """Call Groq API for text generation"""
     if not GROQ_API_KEY:
         logger.warning("GROQ_API_KEY not set")
@@ -42,7 +42,7 @@ async def call_groq_api(prompt: str) -> Optional[str]:
         "messages": [
             {
                 "role": "system",
-                "content": "You are an expert ATS resume analyzer. Always respond with valid JSON only, no markdown or explanation."
+                "content": "You are an expert ATS resume analyzer and optimization specialist. Always respond with valid JSON only when requested, otherwise respond with clear, expert text."
             },
             {
                 "role": "user", 
@@ -50,7 +50,7 @@ async def call_groq_api(prompt: str) -> Optional[str]:
             }
         ],
         "temperature": 0.3,
-        "max_tokens": 4000
+        "max_tokens": max_tokens
     }
     
     for attempt in range(MAX_RETRIES):
@@ -59,7 +59,10 @@ async def call_groq_api(prompt: str) -> Optional[str]:
                 async with session.post(GROQ_API_URL, headers=headers, json=payload) as response:
                     if response.status == 200:
                         data = await response.json()
-                        return data["choices"][0]["message"]["content"]
+                        if "choices" in data and len(data["choices"]) > 0:
+                            return data["choices"][0]["message"]["content"]
+                        logger.error(f"Groq API returned empty choices: {data}")
+                        return None
                     elif response.status == 429:
                         # Rate limited, wait and retry
                         if attempt < MAX_RETRIES - 1:
