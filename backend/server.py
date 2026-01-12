@@ -1670,81 +1670,52 @@ async def ai_ninja_apply(request: Request):
         targetSalary = form.get('targetSalary', '')
         preferredWorkType = form.get('preferredWorkType', '')
         
-        # Get resume file if uploaded
+        # Get resume file if uploaded or text provided
         resumeFile = form.get('resume')
-        resumeText = ""
-        if resumeFile:
-            # In production, parse the resume file content
-            # For now, we'll use placeholder text
-            resumeText = f"[Resume content from {resumeFile.filename}]"
+        resumeText = form.get('resumeText', '')
         
+        if resumeFile and not isinstance(resumeFile, str):
+            from resume_parser import parse_resume
+            file_content = await resumeFile.read()
+            resumeText = await parse_resume(file_content, resumeFile.filename)
+        elif not resumeText and resumeFile:
+            resumeText = str(resumeFile)
+            
+        if not resumeText:
+            raise HTTPException(status_code=400, detail="Resume content is missing. Please upload a resume.")
+            
         # Generate application ID
         applicationId = str(uuid.uuid4())
         
-        # TODO: In production, call LLM API (OpenAI, Claude, etc.) to generate tailored content
-        # For now, return stub data that's tailored to the input
+        # Call Expert AI Ninja for tailored documents
+        logger.info(f"Generating expert documents for {company} - {jobTitle}")
+        expert_docs = await generate_expert_documents(resumeText, jobDescription)
         
-        tailoredResume = f"""# Professional Resume
+        if not expert_docs or "ats_resume" not in expert_docs:
+            logger.error("Expert AI generation failed to return documents")
+            # Fallback to simple tailoring if expert fails
+            tailoredResume = f"Professional Resume for {jobTitle} at {company} (Tailored)\n\n" + resumeText[:1000]
+            detailedCv = tailoredResume
+        else:
+            tailoredResume = expert_docs.get("ats_resume", "")
+            detailedCv = expert_docs.get("detailed_cv", "")
 
-## Summary
-Experienced {primarySkills or 'professional'} with {yearsOfExperience or '3+'} years of experience, 
-seeking to contribute to {company} as a {jobTitle}.
-
-## Key Qualifications
-- {primarySkills or 'Technical expertise relevant to this role'}
-- Proven track record of delivering results
-- Strong communication and collaboration skills
-- Adaptable and quick learner
-
-## Professional Experience
-[Your experience tailored for {company}]
-
-## Why I'm a Great Fit for {company}
-- Strong alignment with the role requirements
-- Relevant industry experience
-- Passionate about the company's mission
-
----
-*This resume has been tailored by Job Ninjas AI Ninja for the {jobTitle} position at {company}.*
-"""
+        # Generate cover letter
+        tailoredCoverLetter = await generate_cover_letter_content(
+            resumeText, jobDescription, jobTitle, company
+        )
         
-        tailoredCoverLetter = f"""Dear Hiring Manager,
-
-I am excited to apply for the {jobTitle} position at {company}. With {yearsOfExperience or 'several'} years of experience in {primarySkills or 'this field'}, I am confident in my ability to contribute meaningfully to your team.
-
-{jobDescription[:500] if jobDescription else 'I have reviewed the job requirements carefully and believe my background aligns well with what you are seeking.'}
-
-My background includes extensive experience that directly relates to your requirements. I am particularly drawn to {company}'s commitment to innovation and excellence in the industry.
-
-{f'Regarding work authorization: I am currently on {visaStatus} status and am authorized to work in the United States.' if visaStatus else ''}
-
-{f'My target compensation range is {targetSalary}, though I am open to discussing this as part of a complete package.' if targetSalary else ''}
-
-I would welcome the opportunity to discuss how my skills and experience can benefit your team. Thank you for considering my application.
-
-Best regards,
-[Your Name]
-
----
-*This cover letter has been tailored by Job Ninjas AI Ninja for the {jobTitle} position at {company}.*
-"""
+        if not tailoredCoverLetter:
+            tailoredCoverLetter = f"Dear Hiring Manager,\n\nI am excited to apply for the {jobTitle} at {company}..."
         
         suggestedAnswers = [
             {
                 "question": "Why are you interested in this role?",
-                "answer": f"I'm drawn to the {jobTitle} role at {company} because it perfectly aligns with my {primarySkills or 'professional'} background and career goals. The opportunity to work on innovative solutions while contributing to a dynamic team is exactly what I'm looking for."
+                "answer": f"I'm drawn to the {jobTitle} role at {company} because it perfectly aligns with my professional background and career goals. The opportunity to work on innovative solutions while contributing to a dynamic team is exactly what I'm looking for."
             },
             {
                 "question": "Why do you want to work at this company?",
-                "answer": f"{company} stands out for its reputation for innovation and commitment to employee growth. The company's focus on impactful work and collaborative culture makes it an ideal environment where I can contribute meaningfully while continuing to develop my skills."
-            },
-            {
-                "question": "What is your work authorization status?",
-                "answer": f"I am currently on {visaStatus} status and am authorized to work in the United States." if visaStatus else "I am authorized to work in the United States without requiring sponsorship."
-            },
-            {
-                "question": "What are your salary expectations?",
-                "answer": f"Based on my research and experience level, I'm targeting a salary in the range of {targetSalary}. However, I'm open to discussing compensation as part of a complete package." if targetSalary else "I'm open to discussing compensation based on the full scope of the role and benefits package."
+                "answer": f"{company} stands out for its reputation for innovation and commitment to excellence. The company's focus on impactful work and collaborative culture makes it an ideal environment where I can contribute meaningfully."
             }
         ]
         
@@ -1794,6 +1765,7 @@ Best regards,
             "applicationId": applicationId,
             "resumeId": resume_id,
             "tailoredResume": tailoredResume,
+            "detailedCv": detailedCv,
             "tailoredCoverLetter": tailoredCoverLetter,
             "suggestedAnswers": suggestedAnswers,
             "usage": new_usage
@@ -2182,8 +2154,10 @@ from resume_analyzer import analyze_resume, extract_resume_data
 from document_generator import (
     generate_optimized_resume_content,
     generate_cover_letter_content,
+    generate_expert_documents,
     create_resume_docx,
-    create_cover_letter_docx
+    create_cover_letter_docx,
+    create_text_docx
 )
 from fastapi.responses import StreamingResponse
 
@@ -2284,26 +2258,23 @@ async def generate_resume_docx(request: GenerateResumeRequest):
     Generate an optimized resume as a Word document
     """
     try:
-        # Check usage limits
-        usage = await get_user_usage_limits(request.userId)
-        if not usage['canGenerate']:
-            raise HTTPException(
-                status_code=403, 
-                detail=f"You have reached your limit of {usage['limit']} resumes for your {usage['tier']} plan."
+        # Check if we should use raw text or structured data
+        if hasattr(request, 'resume_text') and not request.resume_text.startswith('{'):
+            # It's raw text from Expert AI
+            docx_file = create_text_docx(request.resume_text, "ATS_Resume")
+        else:
+            # Generate optimized content from structured data (original flow)
+            resume_data = await generate_optimized_resume_content(
+                request.resume_text,
+                request.job_description,
+                request.analysis
             )
             
-        # Generate optimized content
-        resume_data = await generate_optimized_resume_content(
-            request.resume_text,
-            request.job_description,
-            request.analysis
-        )
-        
-        if not resume_data:
-            raise HTTPException(status_code=500, detail="Failed to generate resume content")
-        
-        # Create Word document
-        docx_file = create_resume_docx(resume_data)
+            if not resume_data:
+                raise HTTPException(status_code=500, detail="Failed to generate resume content")
+            
+            # Create Word document
+            docx_file = create_resume_docx(resume_data)
         
         # Return as downloadable file
         return StreamingResponse(
@@ -2318,6 +2289,34 @@ async def generate_resume_docx(request: GenerateResumeRequest):
         raise
     except Exception as e:
         logger.error(f"Resume generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/generate/cv")
+async def generate_cv_docx(request: GenerateResumeRequest):
+    """
+    Generate a detailed CV as a Word document
+    """
+    try:
+        if not request.resume_text:
+             raise HTTPException(status_code=400, detail="CV text is missing")
+             
+        # Create Word document from the detailed CV text
+        docx_file = create_text_docx(request.resume_text, "Detailed_CV")
+        
+        # Return as downloadable file
+        return StreamingResponse(
+            docx_file,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f"attachment; filename=Detailed_CV_{request.company.replace(' ', '_')}.docx"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"CV generation error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

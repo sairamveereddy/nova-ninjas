@@ -71,6 +71,7 @@ const AIApplyFlow = () => {
   const [isSavingApplication, setIsSavingApplication] = useState(false);
   const [applicationSaved, setApplicationSaved] = useState(false);
   const [tailoredResume, setTailoredResume] = useState('');
+  const [detailedCv, setDetailedCv] = useState('');
   const [tailoredCoverLetter, setTailoredCoverLetter] = useState('');
   const [suggestedAnswers, setSuggestedAnswers] = useState([]);
 
@@ -83,6 +84,8 @@ const AIApplyFlow = () => {
   const [companyName, setCompanyName] = useState(jobData.company || '');
   const [jobUrl, setJobUrl] = useState('');
   const [isFetchingUrl, setIsFetchingUrl] = useState(false);
+  const [activeTab, setActiveTab] = useState('resume');
+  const [isDownloading, setIsDownloading] = useState(null);
   const [customJobDescription, setCustomJobDescription] = useState(jobData.description || '');
   const [customJobTitle, setCustomJobTitle] = useState(jobData.jobTitle || jobData.title || '');
   const [usageLimits, setUsageLimits] = useState(null);
@@ -153,15 +156,21 @@ const AIApplyFlow = () => {
         const data = await response.json();
         setResumeText(data.text || data.resumeText || '');
         console.log('Resume parsed successfully, text length:', (data.text || data.resumeText || '').length);
+
+        // Auto-set resume name to original file name (without extension)
+        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+        setResumeName(nameWithoutExt);
       } else {
         console.error('Failed to parse resume:', response.status);
         // Fallback: use a placeholder so button is enabled
         setResumeText(`[Resume content from: ${file.name}]`);
+        setResumeName(file.name.replace(/\.[^/.]+$/, ''));
       }
     } catch (error) {
       console.error('Failed to parse resume:', error);
       // Fallback: use a placeholder so button is enabled
       setResumeText(`[Resume content from: ${file.name}]`);
+      setResumeName(file.name.replace(/\.[^/.]+$/, ''));
     } finally {
       setIsParsingResume(false);
     }
@@ -337,13 +346,9 @@ const AIApplyFlow = () => {
         setUsageLimits(applyData.usage);
       }
 
-      // Since we now get everything in one go from ai-ninja/apply
-      setOptimizedResumeUrl(null); // Will use text display for now or handle docx later
-      setCoverLetterUrl(null);
-      setAnalysisResult(analysis); // Keep analysis from first step
-
       // Set results for display
       setTailoredResume(applyData.tailoredResume);
+      setDetailedCv(applyData.detailedCv || '');
       setTailoredCoverLetter(applyData.tailoredCoverLetter);
       setSuggestedAnswers(applyData.suggestedAnswers);
       setApplicationSaved(true); // Backend saves it now
@@ -457,6 +462,72 @@ const AIApplyFlow = () => {
     } finally {
       console.log('Save complete, stopping loading');
       setIsSavingResume(false);
+    }
+  };
+
+  const handleDownload = async (type) => {
+    setIsDownloading(type);
+    try {
+      let endpoint = '';
+      let payload = {};
+      let fileName = '';
+
+      if (type === 'resume') {
+        endpoint = `${API_URL}/api/generate/resume`;
+        payload = {
+          userId: user.id,
+          resume_text: tailoredResume,
+          company: companyName,
+          job_description: customJobDescription,
+          analysis: {}
+        };
+        fileName = `Optimized_Resume_${companyName.replace(/\s+/g, '_')}.docx`;
+      } else if (type === 'cv') {
+        endpoint = `${API_URL}/api/generate/cv`;
+        payload = {
+          userId: user.id,
+          resume_text: detailedCv,
+          company: companyName,
+          job_description: customJobDescription,
+          analysis: {}
+        };
+        fileName = `Detailed_CV_${companyName.replace(/\s+/g, '_')}.docx`;
+      } else if (type === 'cover') {
+        endpoint = `${API_URL}/api/generate/cover-letter`;
+        payload = {
+          userId: user.id,
+          resume_text: tailoredResume, // Base resume for context
+          job_description: customJobDescription,
+          job_title: customJobTitle,
+          company: companyName
+        };
+        fileName = `Cover_Letter_${companyName.replace(/\s+/g, '_')}.docx`;
+      }
+
+      console.log(`Downloading ${type} from ${endpoint}`);
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error(`Failed to generate ${type}`);
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error(`Download failed:`, error);
+      alert(`Failed to download ${type}. Please try again.`);
+    } finally {
+      setIsDownloading(null);
     }
   };
 
@@ -706,56 +777,87 @@ const AIApplyFlow = () => {
               <p>Download your tailored resume and cover letter, then apply to the job.</p>
             </div>
 
-            {/* Download Buttons - Moved to top */}
-            <div className="download-section">
-              <div className="download-buttons">
-                {optimizedResumeUrl && (
-                  <a
-                    href={optimizedResumeUrl}
-                    download={`Resume_${jobData.company?.replace(/\s+/g, '_')}_${jobData.jobTitle?.replace(/\s+/g, '_')}.docx`}
-                    className="download-btn resume-btn"
-                  >
-                    <Download className="w-5 h-5" />
-                    <div>
-                      <strong>Download Optimized Resume</strong>
-                    </div>
-                  </a>
-                )}
-                {coverLetterUrl && (
-                  <a
-                    href={coverLetterUrl}
-                    download={`CoverLetter_${jobData.company?.replace(/\s+/g, '_')}.docx`}
-                    className="download-btn cover-btn"
-                  >
-                    <Download className="w-5 h-5" />
-                    <div>
-                      <strong>Get Cover Letter</strong>
-                    </div>
-                  </a>
-                )}
+            {/* Download Buttons - Restored & Fixed */}
+            <div className="download-section bg-indigo-50 p-6 rounded-2xl border border-indigo-100 mb-8">
+              <div className="flex flex-col md:flex-row gap-4">
+                <Button
+                  className="flex-1 h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-3"
+                  onClick={() => handleDownload('resume')}
+                  disabled={!tailoredResume || isDownloading === 'resume'}
+                >
+                  {isDownloading === 'resume' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                  Download ATS Resume
+                </Button>
+
+                <Button
+                  className="flex-1 h-14 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-3"
+                  onClick={() => handleDownload('cv')}
+                  disabled={!detailedCv || isDownloading === 'cv'}
+                >
+                  {isDownloading === 'cv' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                  Download Detailed CV
+                </Button>
+
+                <Button
+                  className="flex-1 h-14 bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-200 font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-3"
+                  onClick={() => handleDownload('cover')}
+                  disabled={!tailoredCoverLetter || isDownloading === 'cover'}
+                >
+                  {isDownloading === 'cover' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                  Download Cover Letter
+                </Button>
               </div>
+              <p className="text-center mt-4 text-xs font-semibold text-indigo-400 uppercase tracking-widest">
+                DOCX FORMAT • ATS FRIENDLY • ZERO HALLUCINATIONS
+              </p>
             </div>
 
             {/* AI Generated Content Tabs */}
             <div className="generated-content-tabs mt-8">
-              <div className="flex border-b border-slate-200 mb-6">
+              <div className="flex border-b border-slate-200 mb-6 gap-2">
                 <button
-                  className={`px-6 py-3 font-semibold text-sm transition-all border-b-2 ${!analysisResult ? 'border-green-600 text-green-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                  className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${!activeTab || activeTab === 'resume' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                   style={{ marginBottom: '-2px' }}
+                  onClick={() => setActiveTab('resume')}
                 >
-                  <FileText className="w-4 h-4 inline mr-2" /> Tailored Resume
+                  <FileText className="w-4 h-4 inline mr-2" /> ATS Resume
+                </button>
+                <button
+                  className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${activeTab === 'cv' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                  style={{ marginBottom: '-2px' }}
+                  onClick={() => setActiveTab('cv')}
+                >
+                  <Briefcase className="w-4 h-4 inline mr-2" /> Detailed CV
+                </button>
+                <button
+                  className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${activeTab === 'cover' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                  style={{ marginBottom: '-2px' }}
+                  onClick={() => setActiveTab('cover')}
+                >
+                  <FileText className="w-4 h-4 inline mr-2" /> Cover Letter
                 </button>
               </div>
 
-              <div className="content-display bg-slate-50 rounded-xl p-6 border border-slate-200">
-                {tailoredResume && (
-                  <div className="resume-preview whitespace-pre-wrap font-serif text-slate-800 leading-relaxed max-h-[500px] overflow-y-auto">
+              <div className="content-display bg-white rounded-xl p-8 border border-slate-200 shadow-sm min-h-[400px]">
+                {(!activeTab || activeTab === 'resume') && tailoredResume && (
+                  <div className="resume-preview whitespace-pre-wrap font-serif text-slate-800 leading-relaxed max-h-[600px] overflow-y-auto pr-2">
                     {tailoredResume}
                   </div>
                 )}
-                {tailoredCoverLetter && !tailoredResume && (
-                  <div className="cover-letter-preview whitespace-pre-wrap font-serif text-slate-800 leading-relaxed max-h-[500px] overflow-y-auto">
+                {activeTab === 'cv' && detailedCv && (
+                  <div className="cv-preview whitespace-pre-wrap font-serif text-slate-800 leading-relaxed max-h-[600px] overflow-y-auto pr-2">
+                    {detailedCv}
+                  </div>
+                )}
+                {activeTab === 'cover' && tailoredCoverLetter && (
+                  <div className="cover-letter-preview whitespace-pre-wrap font-serif text-slate-800 leading-relaxed max-h-[600px] overflow-y-auto pr-2">
                     {tailoredCoverLetter}
+                  </div>
+                )}
+                {((activeTab === 'resume' && !tailoredResume) || (activeTab === 'cv' && !detailedCv) || (activeTab === 'cover' && !tailoredCoverLetter)) && (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-400 py-12">
+                    <Loader2 className="w-8 h-8 animate-spin mb-4" />
+                    <p>Document content is loading or not available...</p>
                   </div>
                 )}
               </div>
@@ -938,49 +1040,80 @@ const AIApplyFlow = () => {
         )}
       </div>
 
-      {/* Save Resume Prompt Modal */}
-      {
-        showSaveResumePrompt && (
-          <div className="modal-overlay" onClick={() => setShowSaveResumePrompt(false)}>
-            <Card className="save-resume-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2><Save className="w-5 h-5" /> Save Resume for Future Use?</h2>
-                <button className="modal-close" onClick={() => setShowSaveResumePrompt(false)}>
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="modal-content">
-                <p>Would you like to save this resume for future job applications? You won't need to upload it again.</p>
+      {/* REDESIGNED: Save Resume Prompt Modal */}
+      {showSaveResumePrompt && (
+        <div className="modal-overlay glassmorphism" onClick={() => setShowSaveResumePrompt(false)}>
+          <Card
+            className="save-resume-modal mt-8 md:mt-20 premium-shadow"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              borderRadius: '24px',
+              overflow: 'hidden',
+              border: 'none',
+              maxWidth: '450px',
+              width: '90%'
+            }}
+          >
+            <div className="p-0">
+              <div className="bg-slate-900 p-6 text-white relative overflow-hidden">
+                {/* Decorative background circle */}
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500 rounded-full blur-[60px] opacity-40"></div>
 
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                  <Label>Resume Name</Label>
-                  <Input
-                    placeholder="e.g., Software Engineer Resume"
-                    value={resumeName}
-                    onChange={(e) => setResumeName(e.target.value)}
-                  />
+                <div className="flex justify-between items-center relative z-10">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-500 rounded-lg">
+                      <Save className="w-5 h-5" />
+                    </div>
+                    <h2 className="text-xl font-bold tracking-tight">Save Resume</h2>
+                  </div>
+                  <button className="text-slate-400 hover:text-white transition-colors" onClick={() => setShowSaveResumePrompt(false)}>
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
-              <div className="modal-footer">
-                <Button variant="outline" onClick={() => setShowSaveResumePrompt(false)}>
-                  No, Thanks
-                </Button>
-                <Button
-                  className="btn-primary"
-                  onClick={handleSaveResume}
-                  disabled={isSavingResume || !resumeName.trim()}
-                >
-                  {isSavingResume ? (
-                    <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving...</>
-                  ) : (
-                    <><Save className="w-4 h-4 mr-2" /> Save Resume</>
-                  )}
-                </Button>
+
+              <div className="p-8 bg-white">
+                <p className="text-slate-600 leading-relaxed mb-6">
+                  Would you like to save <span className="font-semibold text-slate-800">"{resumeName}"</span> for future job applications?
+                </p>
+
+                <div className="space-y-4">
+                  <div className="form-group">
+                    <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Resume Name</Label>
+                    <Input
+                      placeholder="e.g., Software Engineer Resume"
+                      value={resumeName}
+                      onChange={(e) => setResumeName(e.target.value)}
+                      className="h-12 border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 text-slate-800 font-medium px-4 bg-slate-50"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-4 mt-10">
+                  <Button
+                    variant="ghost"
+                    className="flex-1 h-12 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-semibold"
+                    onClick={() => setShowSaveResumePrompt(false)}
+                  >
+                    No, Thanks
+                  </Button>
+                  <Button
+                    className="flex-1 h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg shadow-indigo-100 transition-all transform hover:-translate-y-1 active:translate-y-0"
+                    onClick={handleSaveResume}
+                    disabled={isSavingResume || !resumeName.trim()}
+                  >
+                    {isSavingResume ? (
+                      <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving...</>
+                    ) : (
+                      <><Save className="w-4 h-4 mr-2" /> Save Now</>
+                    )}
+                  </Button>
+                </div>
               </div>
-            </Card>
-          </div>
-        )
-      }
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Resume Saved Toast */}
       {
