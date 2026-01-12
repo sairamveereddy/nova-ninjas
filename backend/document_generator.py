@@ -223,23 +223,18 @@ async def generate_expert_documents(resume_text: str, job_description: str) -> O
     """Generate ATS Resume and Detailed CV using the expert prompt"""
     
     prompt = f"""
-You are an expert AI resume writer and ATS optimization specialist for senior GenAI roles.
+You are a strict ATS resume writer for a senior AI Architect / GenAI Architect role.
 
-GOAL
-Create TWO documents tailored to the provided Job Description:
-1) ATS Resume (1–2 pages)
-2) Detailed CV (2–4 pages)
+CRITICAL TRUTH RULES (NO EXCEPTIONS):
+- Use ONLY the facts explicitly found in the candidate’s Base Resume text below.
+- DO NOT claim: industries (finance/banking/telecom/apparel), clients, outcomes, certifications, tools, cloud services, or platforms unless the Base Resume explicitly contains them.
+- If the Job Description mentions a tool and the Base Resume does NOT, you may include it ONLY in a "Familiarity / Exposure" line IF the Base Resume implies it (e.g., worked on cloud but no specific service). Otherwise omit it.
+- Never use phrases like “state-of-the-art,” “cutting-edge,” “proven expertise,” “industry-leading” unless supported by specific evidence.
+- Avoid vague claims. Every bullet must include WHAT you built + HOW you built it (tools) + WHY it mattered (impact). If no metric exists in Base Resume, write impact qualitatively (e.g., “reduced manual effort,” “improved response consistency”) without numbers.
+- Do NOT add new KPIs. Keep numbers only if they appear in Base Resume.
+- If any section lacks enough facts, keep it short rather than inventing.
 
-HARD RULES (DO NOT BREAK)
-- Use ONLY facts from the candidate’s base resume text. Do NOT invent employers, dates, degrees, tools, achievements, certifications, or metrics.
-- If the base resume has impact metrics, keep them ONLY if they are explicitly present. If a metric looks vague/unprovable, rewrite it as a qualitative outcome without numbers.
-- You may reword, reorder, and reframe bullets to match the job. You may merge or split bullets. You may rename project titles ONLY if the underlying project is present.
-- Prefer the job’s keywords only when they match real experience from the base resume.
-- Finance industry experience is “preferred but not required”: do NOT pretend the candidate worked in finance unless explicitly in base resume.
-- Output must be clean, professional, and ATS-friendly (no tables for the resume body, no icons, no fancy formatting).
-- Tone: confident, direct, and technical. No fluff.
-
-INPUTS
+INPUTS:
 [JOB_DESCRIPTION]
 <<<
 {job_description}
@@ -250,77 +245,64 @@ INPUTS
 {resume_text}
 >>>
 
-TARGET ROLE
-AI Architect / GenAI Solutions Architect (Azure-focused), emphasis on: GenAI chatbots, agentic workflows, embeddings/vector DB, semantic search, MLOps/CI-CD, cloud scaling.
+TASKS:
+Produce three outputs:
+1) ATS RESUME (1–2 pages)
+2) DETAILED CV (2–4 pages)
+3) COVER LETTER (NOT offer letter): 250–350 words, tailored to the target company.
 
-WHAT TO OPTIMIZE FOR (PRIORITY ORDER)
-1) Match the JD responsibilities (architecture + hands-on build)
-2) Azure OpenAI / Azure AI services + infra
-3) Agentic workflows (planning, tool use, orchestration)
-4) Embeddings + vector databases + RAG + evaluation/monitoring
-5) Communication with stakeholders + measurable outcomes
-6) MLOps governance, CI/CD, reliability
+STRUCTURE (STRICT — FOLLOW EXACTLY):
+Return exactly this structure formatted as JSON with three keys: "ats_resume", "detailed_cv", and "cover_letter".
 
-OUTPUT FORMAT (STRICT)
-Return the output in JSON format with two keys: "ats_resume" and "detailed_cv".
-The values should be the raw text follows this structure:
+The values for "ats_resume" and "detailed_cv" should be raw text strings containing:
 
-=== ATS RESUME (1–2 pages) ===
-NAME: {{from base resume}}
-LOCATION | EMAIL | PHONE | LINKEDIN | GITHUB/PORTFOLIO (only if present in base resume)
+=== FACT CHECK SUMMARY (READ FIRST) ===
+- Industries explicitly supported by Base Resume: [list]
+- Industries NOT supported (must NOT be claimed): [list]
+- Cloud platforms explicitly supported: [list]
+- Tools/frameworks explicitly supported: [list]
+- Metrics explicitly supported: [list]
+- Top 8 JD keywords used that are supported by Base Resume: [list]
 
-TITLE LINE (one line): AI Architect / GenAI Solutions Architect
+=== ATS RESUME ===
+NAME | LOCATION | EMAIL | PHONE | LINKEDIN | GITHUB (only if in base resume)
 
-SUMMARY (3–4 lines, must be specific to JD and truthful)
+TITLE: AI Architect / GenAI Solutions Architect
 
-CORE SKILLS (12–18 bullets max; grouped by category; ONLY skills present in base resume)
-- GenAI & LLMs:
+SUMMARY (3–4 lines)
+- Must be specific, no fluff, and grounded in Base Resume facts.
+- DO NOT mention finance/banking unless supported.
+
+CORE SKILLS (grouped, 12–18 total bullets max; ONLY from base resume)
+- GenAI & LLM:
 - Agentic Workflows:
 - Retrieval / Search:
-- Cloud & MLOps:
-- Data / Analytics:
+- Cloud / MLOps:
+- ML / Data:
 - Programming:
 
-PROFESSIONAL EXPERIENCE
+EXPERIENCE
 For each role:
 COMPANY — TITLE | LOCATION
 DATES
-4–6 bullets per role, each bullet must start with a strong verb and include: WHAT you built + HOW (tools) + WHY (business value).
-Add Azure keywords ONLY if candidate resume supports it.
+4–6 bullets (each bullet must include: action + tools + impact)
 
-SELECTED PROJECTS (2–4)
-For each project:
-PROJECT NAME — 2–4 bullets (problem -> architecture -> tools -> outcome)
-Include RAG/embeddings/agents if present in base resume.
-No fake KPIs.
+PROJECTS (2–4)
+For each:
+PROJECT NAME
+2–4 bullets with architecture + tools + outcome
 
 EDUCATION
 CERTIFICATIONS (only if present)
-OPTIONAL: Publications / Patents (only if present)
 
-=== DETAILED CV (2–4 pages) ===
-NAME + CONTACT (same as resume)
+=== DETAILED CV ===
+NAME + CONTACT
+... (Detailed CV content following similar strict rules) ...
 
-PROFILE (5–6 lines, more detailed than resume)
+=== COVER LETTER ===
+The "cover_letter" key should contain the tailored 250-350 word cover letter.
 
-AREAS OF EXPERTISE (10–14 bullets; must be backed by base resume)
-
-TECHNICAL SKILLS (categorized list)
-
-PROFESSIONAL EXPERIENCE (expanded)
-For each role:
-6–10 bullets, include architecture details, decision points, and operational concerns (monitoring, reliability, governance) ONLY if supported.
-
-PROJECT PORTFOLIO (expanded)
-3–6 projects with: architecture, components, stack, deployment pattern, evaluation/monitoring approach (only if supported).
-
-EDUCATION + CERTIFICATIONS
-
-FINAL QUALITY CHECK (one short paragraph at the end):
-- List 6–10 JD keywords you included that are supported by the base resume.
-- List 3–5 JD requirements that were NOT supported and therefore were NOT claimed.
-
-DO NOT include any other text outside this exact structure. Return ONLY valid JSON.
+Return ONLY valid JSON.
 """
 
     try:

@@ -1696,14 +1696,19 @@ async def ai_ninja_apply(request: Request):
             # Fallback to simple tailoring if expert fails
             tailoredResume = f"Professional Resume for {jobTitle} at {company} (Tailored)\n\n" + resumeText[:1000]
             detailedCv = tailoredResume
+            # Generate cover letter as fallback
+            tailoredCoverLetter = await generate_cover_letter_content(
+                resumeText, jobDescription, jobTitle, company
+            )
         else:
             tailoredResume = expert_docs.get("ats_resume", "")
             detailedCv = expert_docs.get("detailed_cv", "")
-
-        # Generate cover letter
-        tailoredCoverLetter = await generate_cover_letter_content(
-            resumeText, jobDescription, jobTitle, company
-        )
+            tailoredCoverLetter = expert_docs.get("cover_letter", "")
+            # If cover letter is missing from expert_docs, try to generate it
+            if not tailoredCoverLetter:
+                tailoredCoverLetter = await generate_cover_letter_content(
+                    resumeText, jobDescription, jobTitle, company
+                )
         
         if not tailoredCoverLetter:
             tailoredCoverLetter = f"Dear Hiring Manager,\n\nI am excited to apply for the {jobTitle} at {company}..."
