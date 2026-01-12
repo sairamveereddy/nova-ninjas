@@ -130,8 +130,8 @@ def validate_resume_file(filename: str, file_size: int) -> Optional[str]:
     if file_size > max_size:
         return "File too large. Maximum size is 10MB"
     
-    # Check file size (min 1KB - to catch empty files)
-    min_size = 1024  # 1KB
+    # Check file size (min 10 bytes - to catch truly empty files)
+    min_size = 10
     if file_size < min_size:
         return "File appears to be empty or too small"
     
