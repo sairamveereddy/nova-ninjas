@@ -1,6 +1,7 @@
 .summary-page {
     min-height: 100vh;
     background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 50%, #ecfccb 100%);
+    padding-top: 5rem;
 }
 
 .summary-container {

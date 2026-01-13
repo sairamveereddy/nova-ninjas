@@ -2,6 +2,7 @@
 .jobs-page {
   background: var(--bg-page);
   min-height: 100vh;
+  padding-top: 5rem;
 }
 
 /* Nav Left */
@@ -263,13 +264,12 @@
   .filters-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .jobs-title {
     font-size: 2rem;
   }
-  
+
   .nav-links {
     display: none;
   }
 }
-

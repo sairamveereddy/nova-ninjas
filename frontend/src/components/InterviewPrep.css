@@ -2,6 +2,7 @@
 .interview-prep-page {
   background: var(--bg-page);
   min-height: 100vh;
+  padding-top: 5rem;
 }
 
 /* Hero */
@@ -217,19 +218,16 @@
   .interview-title {
     font-size: 2rem;
   }
-  
+
   .features-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .email-form {
     flex-direction: column;
   }
-  
+
   .nav-links {
     display: none;
   }
 }
-
-
-

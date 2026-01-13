@@ -3,6 +3,7 @@
 .scanner-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding-top: 5rem;
 }
 
 .scanner-container {
@@ -121,7 +122,7 @@
   margin-bottom: 0.5rem;
 }
 
-.scanner-step-content > p {
+.scanner-step-content>p {
   color: #64748b;
   margin-bottom: 2rem;
 }
@@ -922,4 +923,3 @@
     text-align: center;
   }
 }
-

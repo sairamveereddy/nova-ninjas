@@ -1,6 +1,7 @@
 .career-page {
     min-height: 100vh;
     background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 50%, #f5d0fe 100%);
+    padding-top: 5rem;
 }
 
 .career-container {

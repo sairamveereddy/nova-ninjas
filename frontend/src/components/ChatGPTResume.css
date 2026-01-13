@@ -1,6 +1,7 @@
 .chatgpt-page {
     min-height: 100vh;
     background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #d1fae5 100%);
+    padding-top: 5rem;
 }
 
 .chatgpt-container {

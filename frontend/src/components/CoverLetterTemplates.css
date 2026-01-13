@@ -1,6 +1,7 @@
 .cl-templates-page {
     min-height: 100vh;
     background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%);
+    padding-top: 5rem;
 }
 
 .cl-templates-container {
