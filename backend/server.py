@@ -323,12 +323,12 @@ async def send_waitlist_email(name: str, email: str):
     <div class="container">
         <div class="header">
             <div class="emoji">🥷</div>
-            <h1>Welcome to Nova Ninjas!</h1>
+            <h1>Welcome to jobNinjas!</h1>
         </div>
         <div class="content">
             <p>Hi <strong>{name}</strong>,</p>
             
-            <p>Thank you for joining the Nova Ninjas waitlist! We're excited to have you on board.</p>
+            <p>Thank you for joining the jobNinjas waitlist! We're excited to have you on board.</p>
             
             <div class="highlight">
                 <strong>What happens next:</strong>
@@ -343,7 +343,7 @@ async def send_waitlist_email(name: str, email: str):
             
             <p>If you have any questions, simply reply to this email.</p>
             
-            <p>Best regards,<br><strong>The Nova Ninjas Team</strong></p>
+            <p>Best regards,<br><strong>The jobNinjas Team</strong></p>
         </div>
         <div class="footer">
             <p>Apply Smarter, Land Faster - AI Resume Tools & Human Job Application Service</p>
@@ -353,7 +353,7 @@ async def send_waitlist_email(name: str, email: str):
 </html>
     """
     
-    return await send_email_resend(email, "Welcome to Nova Ninjas Waitlist! 🥷", html_content)
+    return await send_email_resend(email, "Welcome to jobNinjas Waitlist! 🥷", html_content)
 
 
 async def send_booking_email(name: str, email: str):
