@@ -23,7 +23,7 @@ export const BRAND = {
   website: 'https://jobNinjas.org',
 
   // Logo (update path when new logo is ready)
-  logoPath: '/logo.png',
+  logoPath: '/logo.png?v=2',
   logoAlt: 'Job Ninjas Logo',
 
   // Company info
