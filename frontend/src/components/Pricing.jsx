@@ -221,7 +221,7 @@ const Pricing = () => {
                       } else if (plan.price === 0) {
                         navigate('/ai-ninja');
                       } else {
-                        navigate(`/checkout?plan=${plan.id}`);
+                        navigate(`/checkout?plan=${plan.id}&auto=true`);
                       }
                     }}
                   >

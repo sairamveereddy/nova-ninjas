@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from './ui/card';
 import { Badge } from './ui/badge';
-import { 
-  CreditCard, 
-  Check, 
-  Shield, 
-  Loader2, 
+import {
+  CreditCard,
+  Check,
+  Shield,
+  Loader2,
   ArrowLeft,
   Bot,
   UserCheck,
@@ -33,7 +33,21 @@ const Checkout = () => {
 
   // Get plan from URL params
   const planId = searchParams.get('plan') || 'ai-pro';
-  
+
+  // Get auto-checkout flag
+  const shouldAutoCheckout = searchParams.get('auto') === 'true';
+
+  // State to track if auto-checkout has been attempted to prevent infinite loops
+  const [autoCheckoutAttempted, setAutoCheckoutAttempted] = useState(false);
+
+  // Auto-checkout effect
+  useEffect(() => {
+    if (shouldAutoCheckout && isAuthenticated && !autoCheckoutAttempted && !isLoading) {
+      setAutoCheckoutAttempted(true);
+      handlePayment();
+    }
+  }, [shouldAutoCheckout, isAuthenticated, autoCheckoutAttempted, isLoading]);
+
   // Plan details mapping
   const planDetails = {
     'ai-free': {
@@ -248,8 +262,8 @@ const Checkout = () => {
       <header className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setSideMenuOpen(true)} 
+            <button
+              onClick={() => setSideMenuOpen(true)}
               className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50"
             >
               <Menu className="w-5 h-5 text-gray-600" />
@@ -268,20 +282,18 @@ const Checkout = () => {
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 py-8">
         <div className="grid md:grid-cols-2 gap-8">
-          
+
           {/* Order Summary */}
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-6">Complete Your Purchase</h1>
-            
+
             <Card className="mb-6">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    selectedPlan.color === 'green' ? 'bg-green-100' : 'bg-blue-100'
-                  }`}>
-                    <PlanIcon className={`w-6 h-6 ${
-                      selectedPlan.color === 'green' ? 'text-green-600' : 'text-blue-600'
-                    }`} />
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${selectedPlan.color === 'green' ? 'bg-green-100' : 'bg-blue-100'
+                    }`}>
+                    <PlanIcon className={`w-6 h-6 ${selectedPlan.color === 'green' ? 'text-green-600' : 'text-blue-600'
+                      }`} />
                   </div>
                   <div>
                     <CardTitle>{selectedPlan.name}</CardTitle>
@@ -323,7 +335,7 @@ const Checkout = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                
+
                 {/* Price Summary */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex justify-between items-center mb-2">
@@ -346,8 +358,8 @@ const Checkout = () => {
                 </div>
 
                 {/* Pay Button */}
-                <Button 
-                  onClick={handlePayment} 
+                <Button
+                  onClick={handlePayment}
                   disabled={isLoading}
                   className="w-full h-12 text-lg bg-green-600 hover:bg-green-700"
                 >
