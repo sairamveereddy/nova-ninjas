@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import BookCallModal from './BookCallModal';
 import SideMenu from './SideMenu';
+import Header from './Header';
 import { BRAND } from '../config/branding';
 import './SideMenu.css';
 
@@ -174,44 +175,8 @@ const LandingPage = () => {
       {/* Side Menu */}
       <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
 
-      {/* Navigation Header */}
-      <header className="nav-header nav-modern">
-        <div className="nav-left">
-          <button className="hamburger-btn" onClick={() => setSideMenuOpen(true)}>
-            <Menu className="w-5 h-5" />
-          </button>
-          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="nav-logo">
-            <img src={BRAND.logoPath} alt={BRAND.logoAlt} className="logo-image" />
-            <span className="logo-text">{BRAND.name}</span>
-          </button>
-        </div>
-        <nav className="nav-links-modern">
-          <button onClick={() => navigate('/ai-ninja')} className="nav-link-modern nav-ninja-btn ai">
-            <Bot className="w-5 h-5" />
-            <span>AI Ninja</span>
-          </button>
-          <button onClick={() => navigate('/human-ninja')} className="nav-link-modern nav-ninja-btn human">
-            <UserCheck className="w-5 h-5" />
-            <span>Human Ninja</span>
-          </button>
-          <button onClick={() => navigate('/jobs')} className="nav-link-modern">Job Board</button>
-          <button onClick={() => navigate('/pricing')} className="nav-link-modern">Pricing</button>
-        </nav>
-        <div className="nav-actions">
-          {loading ? (
-            <div style={{ width: '200px' }} /> /* Placeholder while loading */
-          ) : !isAuthenticated && (
-            <>
-              <Button variant="ghost" className="btn-ghost" onClick={() => navigate('/login')}>
-                Log in
-              </Button>
-              <Button className="btn-primary-modern" onClick={() => navigate('/signup')}>
-                Start now for free
-              </Button>
-            </>
-          )}
-        </div>
-      </header>
+      {/* Navigation Header - Using shared Header component */}
+      <Header onMenuClick={() => setSideMenuOpen(true)} />
 
       {/* Hero Section */}
       <section className="hero-modern">

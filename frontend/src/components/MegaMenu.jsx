@@ -12,7 +12,9 @@ import {
     FileText,
     BookOpen,
     Layout,
-    Download
+    Download,
+    Briefcase,
+    Users
 } from 'lucide-react';
 import './MegaMenu.css';
 
@@ -146,6 +148,22 @@ const MegaMenu = () => {
                     )}
                 </div>
             ))}
+
+            {/* Direct Navigation Buttons */}
+            <button
+                className="menu-trigger nav-button"
+                onClick={() => navigate('/jobs')}
+            >
+                <Briefcase className="w-4 h-4" />
+                Job Board
+            </button>
+            <button
+                className="menu-trigger nav-button"
+                onClick={() => navigate('/human-ninja')}
+            >
+                <Users className="w-4 h-4" />
+                Human Ninjas
+            </button>
         </nav>
     );
 };

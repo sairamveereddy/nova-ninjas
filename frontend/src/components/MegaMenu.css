@@ -148,6 +148,16 @@
     color: #64748b;
 }
 
+/* Direct navigation button styles */
+.menu-trigger.nav-button {
+    gap: 0.5rem;
+}
+
+.menu-trigger.nav-button:hover {
+    color: #10b981;
+    background: #f0fdf4;
+}
+
 @media (max-width: 768px) {
     .mega-menu {
         display: none;

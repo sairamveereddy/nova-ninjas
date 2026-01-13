@@ -36,12 +36,6 @@ const Header = ({ onMenuClick }) => {
 
       <nav className="nav-links">
         <button
-          onClick={() => navigate('/jobs')}
-          className={`nav-link ${isActive('/jobs') ? 'nav-link-active' : ''}`}
-        >
-          Job Board
-        </button>
-        <button
           onClick={() => navigate('/pricing')}
           className={`nav-link ${isActive('/pricing') ? 'nav-link-active' : ''}`}
         >
