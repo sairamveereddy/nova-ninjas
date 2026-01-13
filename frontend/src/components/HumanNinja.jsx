@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
-import { Card } from './ui/card';
+import { Card, CardHeader, CardContent, CardFooter, CardTitle, CardDescription } from './ui/card';
 import {
   Bot,
   UserCheck,
@@ -137,49 +137,62 @@ const HumanNinja = () => {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section className="pricing-section">
-        <div className="container">
-          <h2 className="section-title">Human Ninja Pricing</h2>
-          <p className="section-subtitle">Pay for results, not promises</p>
+      {/* Pricing Section - Shadcn Style */}
+      <section className="py-16 md:py-24 bg-slate-50">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="mx-auto max-w-2xl space-y-4 text-center mb-12">
+            <h2 className="text-center text-3xl font-semibold lg:text-4xl text-gray-900">Human Ninja Pricing</h2>
+            <p className="text-gray-600">Pay for results, not promises. Our team applies for you using AI + human judgment.</p>
+          </div>
 
-          <div className="pricing-grid pricing-grid-4">
+          <div className="mt-8 grid gap-6 md:mt-12 md:grid-cols-2 lg:grid-cols-4">
             {humanNinjaPlans.map((plan, index) => (
-              <Card key={plan.id} className={`pricing-card ${plan.popular ? 'popular' : ''} ${plan.isEnterprise ? 'enterprise' : ''}`}>
-                {plan.popular && <div className="popular-badge">Most Popular</div>}
-                <div className="pricing-card-header">
-                  <span className="plan-badge">{plan.name.toUpperCase()}</span>
-                </div>
-                <h3 className="plan-name">{plan.name}</h3>
-                <div className="plan-price">
-                  <span className="price-amount">{plan.priceDisplay}</span>
-                  {!plan.isEnterprise && (
-                    <span className="price-apps">for {plan.applications} applications</span>
-                  )}
-                  {plan.isEnterprise && (
-                    <span className="price-apps">for custom volume</span>
-                  )}
-                </div>
-                <ul className="plan-features">
-                  {plan.features.map((feature, i) => (
-                    <li key={i}>
-                      <Check className="w-4 h-4" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className={plan.popular ? 'btn-primary w-full' : 'btn-outline w-full'}
-                  variant={plan.popular ? 'default' : 'outline'}
-                  onClick={() => setIsBookCallModalOpen(true)}
-                >
-                  {plan.isEnterprise ? 'Contact Us' : 'Get Started'} <ArrowRight className="w-4 h-4" />
-                </Button>
+              <Card key={plan.id} className={`flex flex-col bg-white border ${plan.popular ? 'border-orange-400 ring-2 ring-orange-400' : 'border-gray-200'} ${plan.isEnterprise ? 'border-purple-400' : ''} relative`}>
+                {plan.popular && (
+                  <span className="absolute inset-x-0 -top-3 mx-auto flex h-6 w-fit items-center rounded-full bg-gradient-to-br from-orange-400 to-amber-500 px-3 py-1 text-xs font-medium text-white shadow-lg">Most Popular</span>
+                )}
+
+                <CardHeader className={plan.popular ? 'pt-8' : ''}>
+                  <div className="flex items-center justify-between">
+                    <span className={`inline-block px-2 py-1 text-xs font-semibold rounded ${plan.popular ? 'bg-orange-100 text-orange-700' : plan.isEnterprise ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {plan.name.toUpperCase()}
+                    </span>
+                    <UserCheck className="w-5 h-5 text-orange-500" />
+                  </div>
+                  <CardTitle className="font-semibold text-lg mt-3">{plan.name}</CardTitle>
+                  <span className="my-3 block text-3xl font-bold text-orange-500">{plan.priceDisplay}</span>
+                  <CardDescription className="text-sm text-gray-500">
+                    {plan.isEnterprise ? 'for custom volume' : `for ${plan.applications} applications`}
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="space-y-4 flex-1">
+                  <hr className="border-dashed border-gray-200" />
+                  <ul className="list-outside space-y-3 text-sm">
+                    {plan.features.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2 text-gray-700">
+                        <Check className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+
+                <CardFooter className="mt-auto">
+                  <Button
+                    variant={plan.popular ? 'default' : 'outline'}
+                    className={`w-full ${plan.popular ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                    onClick={() => setIsBookCallModalOpen(true)}
+                  >
+                    {plan.isEnterprise ? 'Contact Us' : 'Get Started'}
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </CardFooter>
               </Card>
             ))}
           </div>
 
-          <p className="pricing-disclaimer">
+          <p className="text-center text-sm text-gray-500 mt-8 bg-orange-50 py-3 px-4 rounded-lg border border-orange-200">
             We do not guarantee a job or visa outcome. We run a serious, structured job search process so you're not doing this alone.
           </p>
         </div>
