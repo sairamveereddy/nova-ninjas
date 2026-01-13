@@ -6,14 +6,14 @@
 
 export const BRAND = {
   // Core branding
-  name: 'jobNinjas.org',
+  name: 'jobNinjas',
   oldName: 'Nova Ninjas', // For reference during migration
   domain: 'jobNinjas.org',
 
   // Taglines
-  tagline: 'Human job squad, supercharged by AI. We apply for you, not bots.',
+  tagline: 'Apply Smarter, Land Faster',
   shortTagline: 'Your Personal Job Ninja',
-  heroTagline: 'Your Ninja. Your Job Search. Your Success.',
+  heroTagline: 'AI-Powered Resume Tools & Human Job Application Service',
 
   // Contact
   contactEmail: 'hello@jobNinjas.org',
