@@ -26,6 +26,7 @@ import Checkout from "./components/Checkout";
 import ResumeScanner from "./components/ResumeScanner";
 import AIApplyFlow from "./components/AIApplyFlow";
 import RefundPolicy from "./components/RefundPolicy";
+import VerifyEmail from "./components/VerifyEmail";
 // Phase 1 Tools
 import OneClickOptimize from "./components/OneClickOptimize";
 import BulletPointsGenerator from "./components/BulletPointsGenerator";
@@ -60,6 +61,7 @@ function App() {
             <Route path="/payment/canceled" element={<PaymentCanceled />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/refund-policy" element={<RefundPolicy />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
 
             {/* AI Ninja Routes */}
             <Route path="/ai-ninja" element={<AINinja />} />
