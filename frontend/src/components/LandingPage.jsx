@@ -45,17 +45,28 @@ const LandingPage = () => {
 
   // Live application counter - starts at 15,500 and adds 10 every hour
   const baseApplications = 15500;
+  const baseInterviews = 800; // New base interviews
   const startDate = new Date('2026-01-01T00:00:00Z').getTime(); // Reference start date
+
   const [applicationCount, setApplicationCount] = useState(() => {
     const hoursSinceStart = Math.floor((Date.now() - startDate) / (1000 * 60 * 60));
     return baseApplications + (hoursSinceStart * 10);
   });
 
+  const [interviewCount, setInterviewCount] = useState(() => {
+    const daysSinceStart = Math.floor((Date.now() - startDate) / (1000 * 60 * 60 * 24));
+    return baseInterviews + (daysSinceStart * 9);
+  });
+
   // Update counter every hour (check every minute for smoother UX)
   useEffect(() => {
     const interval = setInterval(() => {
-      const hoursSinceStart = Math.floor((Date.now() - startDate) / (1000 * 60 * 60));
+      const now = Date.now();
+      const hoursSinceStart = Math.floor((now - startDate) / (1000 * 60 * 60));
+      const daysSinceStart = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
+
       setApplicationCount(baseApplications + (hoursSinceStart * 10));
+      setInterviewCount(baseInterviews + (daysSinceStart * 9));
     }, 60000); // Check every minute
     return () => clearInterval(interval);
   }, []);
@@ -134,7 +145,7 @@ const LandingPage = () => {
 
   const stats = [
     { number: applicationCount.toLocaleString() + '+', label: 'Applications Submitted', live: true },
-    { number: '340+', label: 'Interviews Secured' },
+    { number: interviewCount.toLocaleString() + '+', label: 'Interviews Cracked', live: true },
     { number: '3x', label: 'More Responses' },
     { number: '20hrs', label: 'Saved Per Week' }
   ];
