@@ -13,10 +13,9 @@ import { BRAND, APPLICATION_STATUS_LABELS } from '../config/branding';
 import SideMenu from './SideMenu';
 import './SideMenu.css';
 import {
-  TrendingUp, Target, Users, Clock, LogOut, Settings, CreditCard, Loader2,
   User, Upload, Briefcase, Linkedin, Mail, Shield, Trash2, Save, CheckCircle,
   AlertCircle, Eye, EyeOff, FileText, ExternalLink, Download, Bot, UserCheck,
-  ClipboardList, Menu
+  ClipboardList, Menu, Share2, Gift
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -366,8 +365,8 @@ const Dashboard = () => {
                   <button
                     onClick={() => setActiveTab('tracker')}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'tracker'
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-primary text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
                       }`}
                   >
                     <ClipboardList className="w-4 h-4" />
@@ -376,8 +375,8 @@ const Dashboard = () => {
                   <button
                     onClick={() => setActiveTab('pipeline')}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'pipeline'
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-primary text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
                       }`}
                   >
                     <Target className="w-4 h-4" />
@@ -386,8 +385,8 @@ const Dashboard = () => {
                   <button
                     onClick={() => setActiveTab('profile')}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'profile'
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-primary text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
                       }`}
                   >
                     <User className="w-4 h-4" />
@@ -396,8 +395,8 @@ const Dashboard = () => {
                   <button
                     onClick={() => setActiveTab('queue')}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'queue'
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-primary text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
                       }`}
                   >
                     <CheckCircle className="w-4 h-4" />
@@ -406,18 +405,28 @@ const Dashboard = () => {
                   <button
                     onClick={() => setActiveTab('billing')}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'billing'
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-primary text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
                       }`}
                   >
                     <CreditCard className="w-4 h-4" />
                     Billing
                   </button>
                   <button
+                    onClick={() => setActiveTab('referrals')}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'referrals'
+                      ? 'bg-primary text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                  >
+                    <Gift className="w-4 h-4" />
+                    Invite & Earn
+                  </button>
+                  <button
                     onClick={() => setActiveTab('settings')}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'settings'
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-primary text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
                       }`}
                   >
                     <Settings className="w-4 h-4" />
@@ -1080,6 +1089,99 @@ const Dashboard = () => {
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {/* Referrals Tab */}
+            {activeTab === 'referrals' && (
+              <div className="space-y-6">
+                <Card className="border-blue-100 bg-blue-50/30">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-blue-700">
+                      <Gift className="w-6 h-6" />
+                      Invite Friends & Get Bonus AI Applications
+                    </CardTitle>
+                    <p className="text-sm text-blue-600 mt-1">
+                      Share the jobNinjas magic! For every friend who signs up and subscribes, you'll earn 5 extra AI-tailored applications.
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                      <div className="space-y-6">
+                        <div className="space-y-2">
+                          <Label className="text-gray-600">Your Unique Referral Code</Label>
+                          <div className="flex gap-2">
+                            <div className="bg-white border-2 border-dashed border-blue-200 rounded-lg px-4 py-3 flex-1 flex justify-center items-center font-mono text-xl font-bold text-blue-800">
+                              {user?.referral_code || 'INV-XXXXXX'}
+                            </div>
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                navigator.clipboard.writeText(user?.referral_code || '');
+                                alert('Code copied to clipboard!');
+                              }}
+                            >
+                              Copy
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-gray-600">Referral Link</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              readOnly
+                              value={`${window.location.origin}/signup?ref=${user?.referral_code}`}
+                              className="bg-white"
+                            />
+                            <Button
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/signup?ref=${user?.referral_code}`);
+                                alert('Link copied to clipboard!');
+                              }}
+                            >
+                              Copy Link
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="pt-4 flex gap-4">
+                          <div className="bg-white p-4 rounded-xl border border-blue-100 flex-1 text-center">
+                            <p className="text-xs text-gray-500 uppercase font-semibold">Bonus AI Applications</p>
+                            <p className="text-3xl font-bold text-blue-600 mt-1">{user?.ai_applications_bonus || 0}</p>
+                          </div>
+                          <div className="bg-white p-4 rounded-xl border border-blue-100 flex-1 text-center">
+                            <p className="text-xs text-gray-500 uppercase font-semibold">Total Referrals</p>
+                            <p className="text-3xl font-bold text-gray-700 mt-1">0</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-6 rounded-2xl border border-blue-100 shadow-sm space-y-4">
+                        <h3 className="font-bold text-gray-800">How it works:</h3>
+                        <div className="space-y-4">
+                          <div className="flex gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 font-bold">1</div>
+                            <p className="text-sm text-gray-600 pt-1">Share your link or code with friends who are looking for jobs.</p>
+                          </div>
+                          <div className="flex gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 font-bold">2</div>
+                            <p className="text-sm text-gray-600 pt-1">They sign up and start a subscription (Starter, Pro, or Urgent).</p>
+                          </div>
+                          <div className="flex gap-3">
+                            <div className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center shrink-0 font-bold">3</div>
+                            <p className="text-sm text-gray-600 pt-1">You automatically get 5 bonus AI applications added to your account!</p>
+                          </div>
+                        </div>
+                        <div className="pt-4 border-t">
+                          <Button className="w-full bg-blue-600 hover:bg-blue-700 flex gap-2">
+                            <Share2 className="w-4 h-4" /> Share on Social Media
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             )}
 
             {activeTab === 'settings' && (

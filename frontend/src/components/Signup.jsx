@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -12,7 +12,9 @@ import { BRAND } from '../config/branding';
 
 const Signup = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signup, isAuthenticated, loading: authLoading } = useAuth();
+  const referralCode = searchParams.get('ref');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -54,7 +56,7 @@ const Signup = () => {
     setSubmitting(true);
 
     try {
-      const result = await signup(formData.email, formData.password, formData.name);
+      const result = await signup(formData.email, formData.password, formData.name, referralCode);
       if (result.success) {
         navigate('/'); // Redirect to home page after signup
       }

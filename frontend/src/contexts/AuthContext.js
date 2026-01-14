@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     const userData = localStorage.getItem('user_data');
-    
+
     if (token && userData) {
       setUser(JSON.parse(userData));
     }
@@ -34,17 +34,17 @@ export const AuthProvider = ({ children }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.detail || 'Login failed');
       }
-      
+
       localStorage.setItem('auth_token', data.token);
       localStorage.setItem('user_data', JSON.stringify(data.user));
       setUser(data.user);
-      
+
       return { success: true, user: data.user };
     } catch (error) {
       console.error('Login error:', error);
@@ -53,24 +53,24 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Signup function - calls backend API and sends welcome email
-  const signup = async (email, password, name) => {
+  const signup = async (email, password, name, referralCode) => {
     try {
       const response = await fetch(`${API_URL}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name })
+        body: JSON.stringify({ email, password, name, referral_code: referralCode })
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.detail || 'Signup failed');
       }
-      
+
       localStorage.setItem('auth_token', data.token);
       localStorage.setItem('user_data', JSON.stringify(data.user));
       setUser(data.user);
-      
+
       return { success: true, user: data.user };
     } catch (error) {
       console.error('Signup error:', error);

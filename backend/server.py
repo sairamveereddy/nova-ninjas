@@ -142,12 +142,16 @@ class User(BaseModel):
     plan: Optional[str] = None
     is_verified: bool = False
     verification_token: Optional[str] = None
+    referral_code: str = Field(default_factory=lambda: f"INV-{uuid.uuid4().hex[:6].upper()}")
+    referred_by: Optional[str] = None
+    ai_applications_bonus: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class UserSignup(BaseModel):
     email: str
     password: str
     name: str
+    referral_code: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: str
@@ -158,6 +162,8 @@ class UserResponse(BaseModel):
     email: str
     name: str
     role: str
+    referral_code: str
+    is_verified: bool
     plan: Optional[str] = None
     created_at: datetime
 
@@ -408,62 +414,122 @@ async def send_booking_email(name: str, email: str):
     return await send_email_resend(email, "Your Call with jobNinjas.org is Booked! 📞", html_content)
 
 
-async def send_welcome_email(name: str, email: str, token: str = None):
+async def send_welcome_email(name: str, email: str, token: str = None, referral_code: str = None):
     """
-    Send a welcome email to new users who sign up.
+    Send a refined welcome email to new users who sign up.
     """
     frontend_url = os.environ.get('FRONTEND_URL', 'https://jobninjas.org')
     verify_link = f"{frontend_url}/verify-email?token={token}" if token else f"{frontend_url}/dashboard"
+    login_link = f"{frontend_url}/login"
+    invite_link = f"{frontend_url}/signup?ref={referral_code}" if referral_code else f"{frontend_url}/signup"
+    
+    blue_primary = "#2563eb"
     
     html_content = f"""
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-        .content {{ background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; }}
-        .feature {{ background: #f8faf9; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #2d5a3d; }}
-        .cta-button {{ display: inline-block; background: #2d5a3d; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }}
-        .footer {{ background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 10px 10px; }}
+        body {{ font-family: 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif; line-height: 1.6; color: #374151; background-color: #f9fafb; margin: 0; padding: 0; }}
+        .wrapper {{ width: 100%; table-layout: fixed; background-color: #f9fafb; padding-bottom: 40px; }}
+        .container {{ max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; margin-top: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }}
+        .header {{ padding: 25px 40px; border-bottom: 1px solid #f3f4f6; }}
+        .header-content {{ display: flex; align-items: center; justify-content: space-between; }}
+        .logo {{ font-size: 24px; font-weight: 800; color: {blue_primary}; text-decoration: none; }}
+        .login-btn {{ border: 1px solid #d1d5db; padding: 8px 16px; border-radius: 6px; color: #374151; text-decoration: none; font-size: 14px; font-weight: 500; }}
+        
+        .hero {{ background-color: #f8fafc; padding: 40px; text-align: center; }}
+        .hero-img {{ width: 120px; height: auto; margin-bottom: 20px; }}
+        
+        .content {{ padding: 40px; }}
+        .title {{ font-size: 28px; font-weight: 700; color: #111827; margin-bottom: 16px; margin-top: 0; text-align: center; }}
+        .message {{ font-size: 16px; color: #4b5563; margin-bottom: 30px; text-align: center; }}
+        
+        .cta-container {{ text-align: center; margin-bottom: 40px; }}
+        .cta-button {{ display: inline-block; background-color: {blue_primary}; color: #ffffff !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }}
+        
+        .secondary-content {{ background-color: #f8fafc; padding: 40px; border-top: 1px solid #f3f4f6; }}
+        .section-title {{ font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 24px; text-align: center; }}
+        
+        .referral-box {{ background-color: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-radius: 12px; text-align: center; }}
+        .referral-icon {{ font-size: 32px; margin-bottom: 16px; display: block; }}
+        .referral-text {{ font-size: 14px; color: #6b7280; margin-bottom: 20px; }}
+        .referral-bonus {{ font-size: 18px; font-weight: 600; color: {blue_primary}; margin-bottom: 8px; display: block; }}
+        .invite-btn {{ display: inline-block; background-color: #f3f4f6; color: #1f2937; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; }}
+        
+        .footer {{ padding: 40px; text-align: center; font-size: 13px; color: #9ca3af; }}
+        .social-links {{ margin-bottom: 20px; }}
+        .social-links a {{ margin: 0 10px; color: #9ca3af; text-decoration: none; font-size: 20px; }}
+        .footer-links {{ margin-bottom: 15px; }}
+        .footer-links a {{ color: #9ca3af; text-decoration: underline; margin: 0 5px; }}
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Welcome to jobNinjas! 🥷</h1>
-            <p>Your Job Search Just Got a Ninja</p>
-        </div>
-        <div class="content">
-            <h2>Hi {name},</h2>
-            <p>Thank you for signing up! We're thrilled to have you join our community of job seekers who are taking their career to the next level.</p>
-            
-            <center>
-                <a href="{verify_link}" class="cta-button">Confirm Your Account →</a>
-            </center>
+    <div class="wrapper">
+        <div class="container">
+            <div class="header">
+                <table width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td align="left">
+                            <a href="{frontend_url}" class="logo">jobNinjas</a>
+                        </td>
+                        <td align="right">
+                            <a href="{login_link}" class="login-btn">Log In</a>
+                        </td>
+                    </tr>
+                </table>
+            </div>
 
-            <h3>What jobNinjas Does For You:</h3>
-            <div class="feature">✅ Your dedicated Job Ninja applies to jobs on your behalf</div>
-            <div class="feature">✅ AI-powered application tailoring for maximum impact</div>
-            <div class="feature">✅ Real-time tracking dashboard to monitor progress</div>
-            <div class="feature">✅ Human specialists, not bots - every application is reviewed personally</div>
-            
-            <h3>Ready to Get Started?</h3>
-            <ol>
-                <li>Confirm your account using the button above</li>
-                <li>Complete your profile</li>
-                <li>Choose a plan that fits your needs</li>
-                <li>Let your Ninja handle the job application grind!</li>
-            </ol>
-            
-            <p>If you have any questions, just reply to this email - we're here to help.</p>
-            
-            <p>Best regards,<br><strong>The jobNinjas Team</strong></p>
-        </div>
-        <div class="footer">
-            <p>Your Personal Job Ninja - Fast, Accurate, Human.</p>
-            <p>© 2025 jobNinjas.org. All rights reserved.</p>
+            <div class="hero">
+                <center>
+                    <!-- Custom envelope icon approximation -->
+                    <div style="font-size: 80px; line-height: 1;">✉️</div>
+                </center>
+            </div>
+
+            <div class="content">
+                <h1 class="title">Thanks for joining us</h1>
+                <p class="message">
+                    To complete your profile we need you to confirm your email address so we know that you're reachable at this address.
+                </p>
+                
+                <div class="cta-container">
+                    <a href="{verify_link}" class="cta-button">Confirm my email address</a>
+                </div>
+
+                <p style="font-size: 14px; text-align: center; color: #9ca3af;">
+                    While we've got your attention, why not explore our job board?<br>
+                    Our AI Ninjas are ready to start tailoring your applications. 🥷✨
+                </p>
+            </div>
+
+            <div class="secondary-content">
+                <h2 class="section-title">Invite and earn</h2>
+                <div class="referral-box">
+                    <span class="referral-icon">🤝</span>
+                    <span class="referral-bonus">Get 5 Free AI Applications</span>
+                    <p class="referral-text">
+                        Invite your friends to jobNinjas! When they sign up and activate their subscription, we'll add 5 extra AI tailored applications to your account.
+                    </p>
+                    <a href="{invite_link}" class="invite-btn">Invite Friends</a>
+                </div>
+            </div>
+
+            <div class="footer">
+                <div class="social-links">
+                    <a href="#">𝕏</a>
+                    <a href="#">💼</a>
+                    <a href="#">📸</a>
+                    <a href="#">📺</a>
+                </div>
+                <div class="footer-links">
+                    If you prefer not to receive these emails, you can <a href="#">unsubscribe</a>.
+                </div>
+                <p>Copyright © 2025 jobNinjas.org. All rights reserved.</p>
+                <p>Fast. Accurate. Human-Powered & AI-Driven.</p>
+            </div>
         </div>
     </div>
 </body>
@@ -549,6 +615,7 @@ async def signup(user_data: UserSignup):
             name=user_data.name,
             password_hash=password_hash,
             verification_token=verification_token,
+            referred_by=user_data.referral_code,
             is_verified=False
         )
         
@@ -560,7 +627,7 @@ async def signup(user_data: UserSignup):
         
         # Send welcome email in background (don't wait)
         try:
-            asyncio.create_task(send_welcome_email(user.name, user.email, verification_token))
+            asyncio.create_task(send_welcome_email(user.name, user.email, verification_token, user.referral_code))
         except Exception as email_error:
             logger.error(f"Error sending welcome email: {email_error}")
         
@@ -606,7 +673,8 @@ async def login(credentials: UserLogin):
             "name": user['name'],
             "role": user['role'],
             "plan": user.get('plan'),
-            "is_verified": user.get('is_verified', False)
+            "is_verified": user.get('is_verified', False),
+            "referral_code": user.get('referral_code')
         },
         "token": f"token_{user['id']}"  # In production, use JWT
     }
@@ -960,6 +1028,25 @@ async def create_checkout(request: CheckoutRequest):
         logger.error(f"Error creating checkout session: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
+async def grant_referral_bonus(user_id: str):
+    """
+    Find the user who referred this user and grant them a bonus.
+    """
+    user = await db.users.find_one({"id": user_id})
+    if not user or not user.get('referred_by'):
+        return
+    
+    referrer_code = user['referred_by']
+    referrer = await db.users.find_one({"referral_code": referrer_code})
+    
+    if referrer:
+        # User gets 5 extra AI tailored applications for referral
+        await db.users.update_one(
+            {"id": referrer['id']},
+            {"$inc": {"ai_applications_bonus": 5}}
+        )
+        logger.info(f"Granted 5 bonus apps to referrer {referrer['email']} for user {user['email']}")
+
 @api_router.post("/webhooks/stripe")
 async def stripe_webhook(request: Request, stripe_signature: Optional[str] = Header(None)):
     """
@@ -1002,6 +1089,9 @@ async def stripe_webhook(request: Request, stripe_signature: Optional[str] = Hea
             # Save to database
             await db.subscriptions.insert_one(subscription_data.model_dump())
             logger.info(f"Subscription created for user {subscription_data.user_id}")
+            
+            # Grant referral bonus if applicable
+            await grant_referral_bonus(subscription_data.user_id)
         
         elif event['type'] == 'customer.subscription.updated':
             subscription = event['data']['object']
