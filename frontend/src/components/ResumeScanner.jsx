@@ -472,17 +472,14 @@ const ResumeScanner = () => {
         {/* Progress Steps */}
         <div className="scanner-steps">
           <div className={`step ${currentStep >= 1 ? 'active' : ''} ${currentStep > 1 ? 'completed' : ''}`}>
-            <div className="step-number">{currentStep > 1 ? <CheckCircle className="w-5 h-5" /> : '1'}</div>
             <span>Upload Resume</span>
           </div>
           <div className="step-line" />
           <div className={`step ${currentStep >= 2 ? 'active' : ''} ${currentStep > 2 ? 'completed' : ''}`}>
-            <div className="step-number">{currentStep > 2 ? <CheckCircle className="w-5 h-5" /> : '2'}</div>
             <span>Add Job</span>
           </div>
           <div className="step-line" />
           <div className={`step ${currentStep >= 3 ? 'active' : ''}`}>
-            <div className="step-number">3</div>
             <span>View Results</span>
           </div>
         </div>
