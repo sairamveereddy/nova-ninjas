@@ -27,7 +27,8 @@ import {
   Send,
   CheckCircle,
   Mic,
-  Play
+  Play,
+  RefreshCw
 } from 'lucide-react';
 import BookCallModal from './BookCallModal';
 import SideMenu from './SideMenu';
