@@ -1,7 +1,5 @@
 from fastapi import FastAPI, APIRouter, Request, Header, HTTPException, Query, File, Form, UploadFile
 from fastapi.responses import JSONResponse
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -159,9 +157,6 @@ class UserLogin(BaseModel):
     email: str
     password: str
 
-class GoogleLoginRequest(BaseModel):
-    token: str
-    referral_code: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: str
@@ -684,95 +679,6 @@ async def login(credentials: UserLogin):
         },
         "token": f"token_{user['id']}"  # In production, use JWT
     }
-
-@api_router.post("/auth/google-login")
-async def google_login(data: GoogleLoginRequest):
-    """
-    Login or Signup user using Google OAuth ID Token.
-    """
-    try:
-        # 1. Verify Google ID Token
-        # Get Client ID from environment
-        GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
-        if not GOOGLE_CLIENT_ID:
-            # Fallback for development if not set, but Log alert
-            logger.warning("GOOGLE_CLIENT_ID not set in environment!")
-            # In a real app, you MUST have this.
-        
-        try:
-            # First try as ID Token
-            idinfo = id_token.verify_oauth2_token(data.token, google_requests.Request(), GOOGLE_CLIENT_ID)
-            google_email = idinfo['email']
-            google_name = idinfo.get('name', google_email.split('@')[0])
-            google_picture = idinfo.get('picture')
-        except ValueError:
-            # If ID token verification fails, try as Access Token by fetching userinfo
-            logger.info("ID Token verification failed, trying as Access Token...")
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    "https://www.googleapis.com/oauth2/v3/userinfo",
-                    headers={"Authorization": f"Bearer {data.token}"}
-                ) as resp:
-                    if resp.status == 200:
-                        userinfo = await resp.json()
-                        google_email = userinfo['email']
-                        google_name = userinfo.get('name', google_email.split('@')[0])
-                        google_picture = userinfo.get('picture')
-                    else:
-                        logger.error(f"Failed to fetch userinfo from Google: {resp.status}")
-                        raise HTTPException(status_code=401, detail="Invalid Google token")
-
-        # 2. Check if user exists
-        user = await db.users.find_one({"email": google_email})
-        
-        if not user:
-            # 3. Create new user (Signup)
-            new_user = User(
-                email=google_email,
-                name=google_name,
-                password_hash="google_oauth", # Placeholder
-                is_verified=True, # Google emails are already verified
-                referred_by=data.referral_code
-            )
-            
-            user_dict = new_user.model_dump()
-            user_dict['created_at'] = user_dict['created_at'].isoformat()
-            user_dict['google_picture'] = google_picture
-            await db.users.insert_one(user_dict)
-            logger.info(f"New user signed up via Google: {google_email}")
-            
-            # Send welcome email
-            try:
-                asyncio.create_task(send_welcome_email(new_user.name, new_user.email, None, new_user.referral_code))
-            except Exception as email_error:
-                logger.error(f"Error sending welcome email for Google user: {email_error}")
-            
-            user = user_dict
-        else:
-            # Update Google info if needed
-            if google_picture and user.get('google_picture') != google_picture:
-                await db.users.update_one({"email": google_email}, {"$set": {"google_picture": google_picture}})
-            logger.info(f"User logged in via Google: {google_email}")
-
-        return {
-            "success": True,
-            "user": {
-                "id": user['id'],
-                "email": user['email'],
-                "name": user['name'],
-                "role": user.get('role', 'customer'),
-                "plan": user.get('plan'),
-                "is_verified": True,
-                "referral_code": user.get('referral_code'),
-                "google_picture": google_picture
-            },
-            "token": f"token_{user['id']}"
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in google_login: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Google login failed: {str(e)}")
 
 @api_router.get("/auth/verify-email")
 async def verify_email(token: str):

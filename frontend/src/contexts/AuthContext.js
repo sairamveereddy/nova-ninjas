@@ -78,31 +78,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Google Login function
-  const googleLogin = async (credential, referralCode) => {
-    try {
-      const response = await fetch(`${API_URL}/api/auth/google-login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: credential, referral_code: referralCode })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || 'Google login failed');
-      }
-
-      localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('user_data', JSON.stringify(data.user));
-      setUser(data.user);
-
-      return { success: true, user: data.user };
-    } catch (error) {
-      console.error('Google login error:', error);
-      throw error;
-    }
-  };
 
   // Logout function
   const logout = () => {
@@ -116,7 +91,6 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAuthenticated: !!user,
     login,
-    googleLogin,
     signup,
     logout
   };

@@ -10,30 +10,12 @@ import SideMenu from './SideMenu';
 import './SideMenu.css';
 import { BRAND } from '../config/branding';
 
-import { useGoogleLogin } from '@react-oauth/google';
-
 const Signup = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { signup, googleLogin, isAuthenticated, loading: authLoading } = useAuth();
+  const { signup, isAuthenticated, loading: authLoading } = useAuth();
   const referralCode = searchParams.get('ref');
 
-  const handleGoogleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      try {
-        setSubmitting(true);
-        const result = await googleLogin(tokenResponse.access_token, referralCode);
-        if (result.success) {
-          navigate('/');
-        }
-      } catch (err) {
-        setError('Google signup failed. Please try again.');
-      } finally {
-        setSubmitting(false);
-      }
-    },
-    onError: () => setError('Google signup failed. Please try again.')
-  });
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -104,30 +86,6 @@ const Signup = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Social Login */}
-          <Button
-            variant="outline"
-            className="w-full py-6 border-[#e5e7eb] text-[#1a1a1a] font-semibold text-base rounded-full hover:bg-gray-50 flex items-center justify-center gap-3"
-            onClick={() => handleGoogleLogin()}
-            disabled={submitting}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M23.5 12.2c0-.8-.1-1.6-.2-2.3H12v4.4h6.5c-.3 1.5-1.1 2.7-2.3 3.5v2.9h3.7c2.2-2 3.4-5 3.4-8.5z" fill="#4285F4" />
-              <path d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.7-2.9c-1.1.7-2.5 1.1-4.2 1.1-3.2 0-5.9-2.2-6.9-5.1H1.4v2.6C3.4 20.8 7.4 24 12 24z" fill="#34A853" />
-              <path d="M5.1 14.1c-.2-.7-.4-1.4-.4-2.1s.1-1.5.4-2.1V7.3H1.4C.5 8.9 0 10.4 0 12s.5 3.1 1.4 4.7l3.7-2.6z" fill="#FBBC05" />
-              <path d="M12 4.8c1.8 0 3.3.6 4.6 1.8L20 3.2C17.9 1.2 15.1 0 12 0 7.4 0 3.4 3.2 1.4 7.3l3.7 2.6c1-2.9 3.7-5.1 6.9-5.1z" fill="#EA4335" />
-            </svg>
-            Continue with Google
-          </Button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-[#f0f0f0]" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-4 text-[#999999] font-medium tracking-wider">OR</span>
-            </div>
-          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
