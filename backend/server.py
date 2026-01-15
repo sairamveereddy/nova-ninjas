@@ -1,5 +1,11 @@
-from fastapi import FastAPI, APIRouter, Request, Header, HTTPException, Query, File, Form, UploadFile
+from fastapi import FastAPI, APIRouter, Request, Header, HTTPException, Query, File, Form, UploadFile, Depends
 from fastapi.responses import JSONResponse
+import jwt
+import bcrypt
+from datetime import datetime, timedelta, timezone
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -15,7 +21,6 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Union
 import uuid
 import traceback
-from datetime import datetime, timezone
 from dateutil.relativedelta import relativedelta
 import aiohttp
 from models import CheckoutRequest, SubscriptionData, WebhookEvent
@@ -72,8 +77,60 @@ except Exception as e:
         logger.error(f"Fallback connection also failed: {e2}")
         raise e
 
-# Create the main app without a prefix
+# Initialize Rate Limiter
+limiter = Limiter(key_func=get_remote_address)
+
+# Create the main app
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Security Configuration
+JWT_SECRET = os.environ.get('JWT_SECRET', 'your-secret-key-change-in-production')
+JWT_ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
+
+# Security Helper Functions
+def hash_password(password: str) -> str:
+    """Hash a password using bcrypt."""
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plain password against a bcrypt hash, with SHA256 fallback."""
+    try:
+        # Try bcrypt first
+        if bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8')):
+            return True
+    except Exception:
+        pass
+        
+    # Fallback to legacy SHA256
+    import hashlib
+    legacy_hash = hashlib.sha256(plain_password.encode()).hexdigest()
+    return legacy_hash == hashed_password
+
+def create_access_token(data: dict):
+    """Create a signed JWT access token."""
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def get_current_user_email(token: str = Header(...)):
+    """Dependency to get current user email from JWT token."""
+    try:
+        # In transition, support old token_ format for now but log it
+        if token.startswith("token_"):
+            return None # Force re-login or handle separately
+            
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return email
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -595,7 +652,8 @@ async def send_admin_booking_notification(booking):
 # ============ AUTH ENDPOINTS ============
 
 @api_router.post("/auth/signup")
-async def signup(user_data: UserSignup):
+@limiter.limit("5/minute")
+async def signup(user_data: UserSignup, request: Request):
     """
     Register a new user and send welcome email.
     """
@@ -605,9 +663,8 @@ async def signup(user_data: UserSignup):
         if existing_user:
             raise HTTPException(status_code=400, detail="Email already registered")
         
-        # Create user (in production, hash the password with bcrypt)
-        import hashlib
-        password_hash = hashlib.sha256(user_data.password.encode()).hexdigest()
+        # Create user with secure bcrypt hashing
+        password_hash = hash_password(user_data.password)
         
         verification_token = str(uuid.uuid4())
         
@@ -632,6 +689,9 @@ async def signup(user_data: UserSignup):
         except Exception as email_error:
             logger.error(f"Error sending welcome email: {email_error}")
         
+        # Generate secure JWT access token
+        access_token = create_access_token(data={"sub": user.email, "id": user.id})
+        
         # Return user data (without password)
         return {
             "success": True,
@@ -642,7 +702,7 @@ async def signup(user_data: UserSignup):
                 "role": user.role,
                 "plan": user.plan
             },
-            "token": f"token_{user.id}"  # In production, use JWT
+            "token": access_token
         }
     except HTTPException:
         raise
@@ -651,20 +711,26 @@ async def signup(user_data: UserSignup):
         raise HTTPException(status_code=500, detail=f"Signup failed: {str(e)}")
 
 @api_router.post("/auth/login")
-async def login(credentials: UserLogin):
+@limiter.limit("5/minute")
+async def login(credentials: UserLogin, request: Request):
     """
     Login user with email and password.
     """
-    import hashlib
-    password_hash = hashlib.sha256(credentials.password.encode()).hexdigest()
-    
     user = await db.users.find_one({
-        "email": credentials.email,
-        "password_hash": password_hash
+        "email": credentials.email
     })
     
-    if not user:
+    if not user or not verify_password(credentials.password, user.get('password_hash', '')):
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    # Auto-upgrade legacy hashes to bcrypt
+    if not user.get('password_hash', '').startswith('$2b$'):
+        new_hash = hash_password(credentials.password)
+        await db.users.update_one({"id": user['id']}, {"$set": {"password_hash": new_hash}})
+        logger.info(f"Upgraded password hash for user: {credentials.email}")
+    
+    # Generate secure JWT access token
+    access_token = create_access_token(data={"sub": user['email'], "id": user['id']})
     
     return {
         "success": True,
@@ -677,7 +743,7 @@ async def login(credentials: UserLogin):
             "is_verified": user.get('is_verified', False),
             "referral_code": user.get('referral_code')
         },
-        "token": f"token_{user['id']}"  # In production, use JWT
+        "token": access_token
     }
 
 @api_router.get("/auth/verify-email")
@@ -1989,7 +2055,12 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=["*"],  # Allow all origins
+    allow_origins=[
+        "http://localhost:3000",
+        "https://jobninjas.org",
+        "https://www.jobninjas.org",
+        "https://novaninjas.vercel.app" # Backup for Vercel
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )

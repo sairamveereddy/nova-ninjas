@@ -18,9 +18,12 @@ export const API_URL = isProduction ? PRODUCTION_API_URL : DEVELOPMENT_API_URL;
 export const apiCall = async (endpoint, options = {}) => {
   const url = `${API_URL}${endpoint}`;
 
+  const token = localStorage.getItem('auth_token');
+
   const defaultOptions = {
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { 'token': token } : {}),
     },
   };
 
