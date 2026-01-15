@@ -24,7 +24,9 @@ import {
   Target,
   TrendingUp,
   Lightbulb,
-  Link
+  Link,
+  Copy,
+  Clock
 } from 'lucide-react';
 import { BRAND } from '../config/branding';
 import { API_URL } from '../config/api';
@@ -533,6 +535,17 @@ const AIApplyFlow = () => {
     }
   };
 
+  // Copy to clipboard function
+  const copyToClipboard = (text, type) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      // Create a temporary toast or alert
+      alert(`${type} copied to clipboard!`);
+    }).catch(err => {
+      console.error('Failed to copy!', err);
+    });
+  };
+
   const handleGoToJobPage = () => {
     if (jobData.sourceUrl) {
       window.open(jobData.sourceUrl, '_blank');
@@ -574,12 +587,12 @@ const AIApplyFlow = () => {
         {/* Progress Steps */}
         <div className="progress-steps">
           <div className={`step ${currentStep >= 1 ? 'active' : ''} ${currentStep > 1 ? 'completed' : ''}`}>
-            <div className="step-number">1</div>
+            <div className="step-number">{currentStep > 1 ? <CheckCircle className="w-5 h-5" /> : '1'}</div>
             <span>Select Resume</span>
           </div>
           <div className="step-line"></div>
           <div className={`step ${currentStep >= 2 ? 'active' : ''} ${currentStep > 2 ? 'completed' : ''}`}>
-            <div className="step-number">2</div>
+            <div className="step-number">{currentStep > 2 ? <CheckCircle className="w-5 h-5" /> : '2'}</div>
             <span>Generating</span>
           </div>
           <div className="step-line"></div>
@@ -591,97 +604,17 @@ const AIApplyFlow = () => {
 
         {/* Step 1: Resume Selection & Job Details */}
         {currentStep === 1 && (
-          <Card className="ai-apply-card">
-            {/* Job Details Section at the TOP */}
-            <div className="job-description-section mb-8 p-6 bg-slate-50 rounded-xl border border-slate-200">
-              <h3 className="flex items-center gap-2 mb-4 text-lg font-bold text-slate-900">
-                <Link className="w-5 h-5 text-green-600" />
-                Paste the job link to continue
-              </h3>
+          <div className="ai-apply-card-wrapper">
+            <Card className="ai-apply-card">
+              <h2>Upload Your Resume</h2>
+              <p className="card-description">
+                We'll analyze your resume against the job description to find the best match.
+              </p>
 
-              <div className="url-fetch-box mb-6">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="https://www.linkedin.com/jobs/view/..."
-                    value={jobUrl}
-                    onChange={(e) => setJobUrl(e.target.value)}
-                    className="flex-grow h-12 text-base shadow-sm border-slate-300 focus:border-green-500 focus:ring-green-500"
-                  />
-                  <Button
-                    onClick={handleFetchJobDescription}
-                    disabled={isFetchingUrl || !jobUrl.trim()}
-                    className="h-12 px-6 bg-green-600 hover:bg-green-700 text-white font-semibold transition-all shadow-md"
-                  >
-                    {isFetchingUrl ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Fetch Details'}
-                  </Button>
-                </div>
-                <p className="mt-2 text-sm text-slate-500 italic">
-                  Supported: LinkedIn, Indeed, Glassdoor, and more.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Applying to Company*</Label>
-                    <Input
-                      placeholder="e.g. Google"
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      className="mt-1 bg-white"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Title*</Label>
-                    <Input
-                      placeholder="e.g. Senior Product Designer"
-                      value={customJobTitle}
-                      onChange={(e) => setCustomJobTitle(e.target.value)}
-                      className="mt-1 bg-white"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Description*</Label>
-                    {!customJobDescription && (
-                      <button
-                        type="button"
-                        onClick={() => setCustomJobDescription(' ')}
-                        className="text-xs text-green-600 hover:underline font-medium"
-                      >
-                        Enter Manually
-                      </button>
-                    )}
-                  </div>
-                  {(customJobDescription || jobUrl) && (
-                    <Textarea
-                      value={customJobDescription}
-                      onChange={(e) => setCustomJobDescription(e.target.value)}
-                      className="mt-1 min-h-[180px] bg-white text-slate-700 leading-relaxed"
-                      placeholder="Paste the full job description text here..."
-                      required
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <h2><FileText className="w-5 h-5" /> Select Your Resume</h2>
-            <p className="card-description">
-              Choose a saved resume or upload a new one. We'll tailor it for this job.
-            </p>
-
-            {/* Saved Resumes */}
-            {isAuthenticated && (
-              <div className="saved-resumes-section">
-                <h3>Your Saved Resumes</h3>
-                {isLoadingResumes ? (
-                  <p className="loading-text"><Loader2 className="w-4 h-4 animate-spin" /> Loading your resumes...</p>
-                ) : savedResumes.length > 0 ? (
+              {/* Saved Resumes Section - ResumeScanner Style */}
+              {isAuthenticated && savedResumes.length > 0 && (
+                <div className="saved-resumes-section">
+                  <h3><FileText className="w-5 h-5" /> Your Saved Resumes</h3>
                   <div className="saved-resumes-grid">
                     {savedResumes.map(resume => (
                       <div
@@ -689,81 +622,171 @@ const AIApplyFlow = () => {
                         className={`saved-resume-item ${selectedResume?.id === resume.id ? 'selected' : ''}`}
                         onClick={() => handleSelectSavedResume(resume)}
                       >
-                        <FileText className="w-5 h-5 text-indigo-500" />
-                        <span>{resume.resumeName || resume.fileName || 'Resume'}</span>
-                        {selectedResume?.id === resume.id && <CheckCircle className="w-4 h-4 text-green-500" />}
+                        <div className="resume-icon-wrapper">
+                          <FileText className="w-8 h-8 text-indigo-500" />
+                        </div>
+                        <div className="resume-info">
+                          <span className="resume-name">{resume.resumeName || resume.fileName || 'Resume'}</span>
+                          <span className="resume-date">
+                            <Clock className="w-3 h-3" />
+                            {resume.updatedAt ? new Date(resume.updatedAt).toLocaleDateString() : 'Recent'}
+                          </span>
+                        </div>
+                        {selectedResume?.id === resume.id && <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />}
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <p className="no-resumes-text">No saved resumes yet.</p>
-                )}
-              </div>
-            )}
+                  <div className="divider-or">
+                    <span>or upload a new resume</span>
+                  </div>
+                </div>
+              )}
 
-            {/* Upload New */}
-            <div className="upload-section">
-              <h3>Or Upload New Resume</h3>
-              <label className="upload-zone">
+              {/* Upload New - ResumeScanner Style */}
+              <div
+                className={`upload-zone ${resumeFile ? 'has-file' : ''}`}
+                onClick={() => document.getElementById('resume-upload-input').click()}
+              >
                 <input
+                  id="resume-upload-input"
                   type="file"
                   accept=".pdf,.docx,.doc,.txt"
                   onChange={handleFileUpload}
                   style={{ display: 'none' }}
                 />
-                <Upload className="w-8 h-8 text-gray-400" />
-                <p>Click to upload or drag & drop</p>
-                <span>PDF, DOCX, or TXT</span>
-              </label>
-              {resumeFile && (
-                <div className="selected-file">
-                  {isParsingResume ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <FileText className="w-4 h-4" />
-                  )}
-                  <span>{resumeFile.name}</span>
-                  {isParsingResume && <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Parsing...</span>}
-                  {!isParsingResume && resumeText && <CheckCircle className="w-4 h-4 text-green-500" />}
-                  <button onClick={() => { setResumeFile(null); setResumeText(''); }}>
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-            </div>
 
-            <div className="card-actions">
-              <Button
-                className="btn-primary btn-large"
-                onClick={handleStartGeneration}
-                disabled={isParsingResume || (!resumeText && !resumeFile && !selectedResume)}
-              >
-                {isParsingResume ? (
-                  <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Parsing Resume...</>
+                {resumeFile ? (
+                  <div className="uploaded-file">
+                    <FileText className="w-12 h-12 text-indigo-500" />
+                    <span className="file-name">{resumeFile.name}</span>
+                    <span className="file-size">{(resumeFile.size / 1024).toFixed(1)} KB</span>
+                    <button className="remove-file" onClick={(e) => { e.stopPropagation(); setResumeFile(null); setResumeText(''); }}>
+                      <X className="w-4 h-4" /> Change
+                    </button>
+                  </div>
                 ) : (
-                  <><Bot className="w-5 h-5 mr-2" /> Generate Tailored Application <ArrowRight className="w-4 h-4 ml-2" /></>
+                  <>
+                    <Upload className="w-12 h-12 text-slate-300" />
+                    <p>Drag & Drop or <span className="choose-file">Choose file</span> to upload</p>
+                    <span className="file-types">as .pdf or .docx file</span>
+                  </>
                 )}
-              </Button>
-            </div>
-          </Card>
+
+                {isParsingResume && (
+                  <div className="parsing-overlay">
+                    <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+                    <span>Parsing Resume...</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Job Details Section - Simplified & Conditional */}
+              <div className="job-details-review mt-12 pt-8 border-t border-slate-100">
+                <h3 className="flex items-center gap-2 mb-6 text-lg font-bold text-slate-900">
+                  <Briefcase className="w-5 h-5 text-indigo-600" />
+                  Review Job Details
+                </h3>
+
+                {/* Only show URL fetcher if we don't have job description */}
+                {!jobData.description && (
+                  <div className="url-fetch-box mb-8 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <Label className="text-sm font-bold text-slate-600 mb-2 block">Paste the job link to auto-fill</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="https://www.linkedin.com/jobs/view/..."
+                        value={jobUrl}
+                        onChange={(e) => setJobUrl(e.target.value)}
+                        className="flex-grow h-11"
+                      />
+                      <Button
+                        onClick={handleFetchJobDescription}
+                        disabled={isFetchingUrl || !jobUrl.trim()}
+                        className="h-11 px-6 bg-green-600 hover:bg-green-700"
+                      >
+                        {isFetchingUrl ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Fetch'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div className="form-group text-left">
+                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Company Name</Label>
+                    <Input
+                      placeholder="e.g. Amazon"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      className="bg-slate-50/50"
+                    />
+                  </div>
+                  <div className="form-group text-left">
+                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Job Title</Label>
+                    <Input
+                      placeholder="e.g. Senior Software Engineer"
+                      value={customJobTitle}
+                      onChange={(e) => setCustomJobTitle(e.target.value)}
+                      className="bg-slate-50/50"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group text-left">
+                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Job Description</Label>
+                  <Textarea
+                    placeholder="Paste the full job description here..."
+                    value={customJobDescription}
+                    onChange={(e) => setCustomJobDescription(e.target.value)}
+                    className="min-h-[200px] bg-slate-50/50 leading-relaxed text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="card-actions mt-10">
+                <Button
+                  className="btn-primary btn-large w-full h-14 text-lg font-bold rounded-2xl shadow-lg shadow-green-100"
+                  onClick={handleStartGeneration}
+                  disabled={isParsingResume || (!resumeText && !resumeFile && !selectedResume) || !customJobDescription}
+                >
+                  {isParsingResume ? (
+                    <><Loader2 className="w-5 h-5 mr-3 animate-spin" /> Parsing Resume...</>
+                  ) : (
+                    <><Bot className="w-5 h-5 mr-3" /> Generate Tailored Application <ArrowRight className="w-5 h-5 ml-2" /></>
+                  )}
+                </Button>
+              </div>
+            </Card>
+          </div>
         )}
 
         {/* Step 2: Generating */}
         {currentStep === 2 && (
           <Card className="ai-apply-card generating-card">
-            <div className="generating-content">
-              <Loader2 className="w-16 h-16 animate-spin text-primary" />
-              <h2>AI Ninja is Working...</h2>
-              <p className="generation-status">{generationProgress}</p>
-              <div className="generation-steps">
-                <div className="gen-step completed">
-                  <CheckCircle className="w-4 h-4" /> Reading your resume
+            <div className="generating-content py-12">
+              <div className="relative mb-8">
+                <div className="absolute inset-0 bg-indigo-100 rounded-full animate-ping opacity-25"></div>
+                <div className="relative bg-white p-6 rounded-full shadow-xl">
+                  <Bot className="w-16 h-16 text-indigo-600" />
                 </div>
-                <div className={`gen-step ${generationProgress.includes('resume') ? 'active' : ''}`}>
-                  <FileText className="w-4 h-4" /> Creating tailored resume
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">AI Ninja is Working...</h2>
+              <p className="generation-status text-slate-500 font-medium h-6">{generationProgress}</p>
+
+              <div className="generation-progress-bar w-full max-w-md bg-slate-100 h-2 rounded-full mt-8 overflow-hidden">
+                <div className="bg-indigo-600 h-full animate-shimmer" style={{ width: '100%' }}></div>
+              </div>
+
+              <div className="generation-steps mt-12 grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl px-4">
+                <div className="gen-step-item completed">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <span>Resume Parsed</span>
                 </div>
-                <div className={`gen-step ${generationProgress.includes('cover') ? 'active' : ''}`}>
-                  <FileText className="w-4 h-4" /> Writing cover letter
+                <div className={`gen-step-item ${generationProgress.includes('resume') ? 'active' : generationProgress.includes('Done') || generationProgress.includes('cover') ? 'completed' : ''}`}>
+                  {generationProgress.includes('resume') ? <Loader2 className="w-5 h-5 animate-spin text-indigo-600" /> : <CheckCircle className="w-5 h-5" />}
+                  <span>Tailoring Resume</span>
+                </div>
+                <div className={`gen-step-item ${generationProgress.includes('cover') ? 'active' : generationProgress.includes('Done') ? 'completed' : ''}`}>
+                  {generationProgress.includes('cover') ? <Loader2 className="w-5 h-5 animate-spin text-indigo-600" /> : <CheckCircle className="w-5 h-5" />}
+                  <span>Writing Cover Letter</span>
                 </div>
               </div>
             </div>
@@ -773,269 +796,202 @@ const AIApplyFlow = () => {
         {/* Step 3: Results */}
         {currentStep === 3 && (
           <Card className="ai-apply-card results-card">
-            <div className="results-header">
-              <CheckCircle className="w-12 h-12 text-green-500" />
-              <h2>Your Application Materials Are Ready!</h2>
-              <p>Download your tailored resume and cover letter, then apply to the job.</p>
+            <div className="results-header-new flex flex-col items-center text-center p-8 bg-slate-50 rounded-2xl mb-8">
+              <div className="bg-green-100 p-4 rounded-full mb-4">
+                <CheckCircle className="w-10 h-10 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-extrabold text-slate-900">Your Application Materials Are Ready!</h2>
+              <p className="text-slate-500 mt-2 max-w-lg">We've generated high-impact materials tailored specifically for this {customJobTitle} role.</p>
             </div>
 
-            {/* Download Buttons - Restored & Fixed */}
-            <div className="download-section bg-indigo-50 p-6 rounded-2xl border border-indigo-100 mb-8">
-              <div className="flex flex-col md:flex-row gap-4">
-                <Button
-                  className="flex-1 h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-3"
-                  onClick={() => handleDownload('resume')}
-                  disabled={!tailoredResume || isDownloading === 'resume'}
-                >
-                  {isDownloading === 'resume' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                  Download ATS Resume
-                </Button>
+            {/* Main Action Buttons */}
+            <div className="results-main-actions grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+              <Button
+                className="h-16 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 group"
+                onClick={() => handleDownload('resume')}
+                disabled={!tailoredResume || isDownloading === 'resume'}
+              >
+                <Download className="w-5 h-5 group-hover:translate-y-0.5 transition-transform" />
+                <div className="text-left">
+                  <div className="text-xs opacity-75 font-medium uppercase tracking-wider">Download</div>
+                  <div>ATS Resume</div>
+                </div>
+              </Button>
 
-                <Button
-                  className="flex-1 h-14 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-3"
-                  onClick={() => handleDownload('cv')}
-                  disabled={!detailedCv || isDownloading === 'cv'}
-                >
-                  {isDownloading === 'cv' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                  Download Detailed CV
-                </Button>
+              <Button
+                className="h-16 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 group"
+                onClick={() => handleDownload('cv')}
+                disabled={!detailedCv || isDownloading === 'cv'}
+              >
+                <Download className="w-5 h-5 group-hover:translate-y-0.5 transition-transform" />
+                <div className="text-left">
+                  <div className="text-xs opacity-75 font-medium uppercase tracking-wider">Download</div>
+                  <div>Detailed CV</div>
+                </div>
+              </Button>
 
-                <Button
-                  className="flex-1 h-14 bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-200 font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-3"
-                  onClick={() => handleDownload('cover')}
-                  disabled={!tailoredCoverLetter || isDownloading === 'cover'}
-                >
-                  {isDownloading === 'cover' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                  Download Cover Letter
-                </Button>
-              </div>
-              <p className="text-center mt-4 text-xs font-semibold text-indigo-400 uppercase tracking-widest">
-                DOCX FORMAT • ATS FRIENDLY • ZERO HALLUCINATIONS
-              </p>
+              <Button
+                className="h-16 bg-white hover:bg-slate-50 text-indigo-600 border-2 border-indigo-100 font-bold rounded-2xl shadow-sm transition-all flex items-center justify-center gap-3 group"
+                onClick={() => handleDownload('cover')}
+                disabled={!tailoredCoverLetter || isDownloading === 'cover'}
+              >
+                <Download className="w-5 h-5 group-hover:translate-y-0.5 transition-transform text-indigo-400" />
+                <div className="text-left">
+                  <div className="text-xs opacity-75 font-medium uppercase tracking-wider">Download</div>
+                  <div>Cover Letter</div>
+                </div>
+              </Button>
             </div>
 
             {/* AI Generated Content Tabs */}
-            <div className="generated-content-tabs mt-8">
-              <div className="flex border-b border-slate-200 mb-6 gap-2">
+            <div className="generated-content-tabs">
+              <div className="flex bg-slate-100/50 p-1.5 rounded-2xl mb-6 gap-1 max-w-min">
                 <button
-                  className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${!activeTab || activeTab === 'resume' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-                  style={{ marginBottom: '-2px' }}
+                  className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${!activeTab || activeTab === 'resume' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
                   onClick={() => setActiveTab('resume')}
                 >
-                  <FileText className="w-4 h-4 inline mr-2" /> ATS Resume
+                  <FileText className="w-4 h-4" /> Resume
                 </button>
                 <button
-                  className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${activeTab === 'cv' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-                  style={{ marginBottom: '-2px' }}
+                  className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'cv' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
                   onClick={() => setActiveTab('cv')}
                 >
-                  <Briefcase className="w-4 h-4 inline mr-2" /> Detailed CV
+                  <Briefcase className="w-4 h-4" /> Detailed CV
                 </button>
                 <button
-                  className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${activeTab === 'cover' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-                  style={{ marginBottom: '-2px' }}
+                  className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'cover' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
                   onClick={() => setActiveTab('cover')}
                 >
-                  <FileText className="w-4 h-4 inline mr-2" /> Cover Letter
+                  <FileText className="w-4 h-4" /> Cover Letter
                 </button>
               </div>
 
-              <div className="content-display bg-white rounded-xl p-8 border border-slate-200 shadow-sm min-h-[400px]">
-                {(!activeTab || activeTab === 'resume') && tailoredResume && (
-                  <div className="resume-preview whitespace-pre-wrap font-serif text-slate-800 leading-relaxed max-h-[600px] overflow-y-auto pr-2">
-                    {tailoredResume}
+              <div className="content-display-wrapper relative group/content">
+                <div className="content-display bg-white rounded-2xl p-8 border border-slate-200 shadow-inner min-h-[500px] overflow-hidden">
+                  {/* Floating Copy Button */}
+                  <div className="absolute top-4 right-4 z-10 opacity-0 group-hover/content:opacity-100 transition-opacity">
+                    <Button
+                      onClick={() => copyToClipboard(
+                        activeTab === 'cv' ? detailedCv : activeTab === 'cover' ? tailoredCoverLetter : tailoredResume,
+                        activeTab === 'cv' ? 'CV' : activeTab === 'cover' ? 'Cover Letter' : 'Resume'
+                      )}
+                      className="bg-slate-900/90 text-white h-10 px-4 rounded-xl backdrop-blur-sm"
+                    >
+                      <Copy className="w-4 h-4 mr-2" /> Copy Text
+                    </Button>
                   </div>
-                )}
-                {activeTab === 'cv' && detailedCv && (
-                  <div className="cv-preview whitespace-pre-wrap font-serif text-slate-800 leading-relaxed max-h-[600px] overflow-y-auto pr-2">
-                    {detailedCv}
+
+                  <div className="scroll-container max-h-[600px] overflow-y-auto pr-4 custom-scrollbar">
+                    {(!activeTab || activeTab === 'resume') && tailoredResume && (
+                      <div className="resume-preview whitespace-pre-wrap font-serif text-slate-800 leading-relaxed">
+                        {tailoredResume}
+                      </div>
+                    )}
+                    {activeTab === 'cv' && detailedCv && (
+                      <div className="cv-preview whitespace-pre-wrap font-serif text-slate-800 leading-relaxed">
+                        {detailedCv}
+                      </div>
+                    )}
+                    {activeTab === 'cover' && tailoredCoverLetter && (
+                      <div className="cover-letter-preview whitespace-pre-wrap font-serif text-slate-800 leading-relaxed">
+                        {tailoredCoverLetter}
+                      </div>
+                    )}
                   </div>
-                )}
-                {activeTab === 'cover' && tailoredCoverLetter && (
-                  <div className="cover-letter-preview whitespace-pre-wrap font-serif text-slate-800 leading-relaxed max-h-[600px] overflow-y-auto pr-2">
-                    {tailoredCoverLetter}
-                  </div>
-                )}
-                {((activeTab === 'resume' && !tailoredResume) || (activeTab === 'cv' && !detailedCv) || (activeTab === 'cover' && !tailoredCoverLetter)) && (
-                  <div className="flex flex-col items-center justify-center h-full text-slate-400 py-12">
-                    <Loader2 className="w-8 h-8 animate-spin mb-4" />
-                    <p>Document content is loading or not available...</p>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
 
-            {/* Resume Analysis Section - Full Details */}
+            {/* Resume Analysis Section - Condensed */}
             {analysisResult && (
-              <div className="full-analysis-section">
-                <h3 className="analysis-title">Resume Analysis</h3>
+              <div className="analysis-summary-new mt-12 bg-slate-900 text-white rounded-3xl p-8 overflow-hidden relative">
+                {/* Decorative blob */}
+                <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-indigo-500 rounded-full blur-[80px] opacity-20"></div>
 
-                {/* Match Score Circle with Summary */}
-                <div className="match-summary-card">
-                  <div className="score-circle-large" style={{
-                    background: `conic-gradient(${getScoreColor(analysisResult.matchScore || 0)} ${(analysisResult.matchScore || 0) * 3.6}deg, #e5e7eb ${(analysisResult.matchScore || 0) * 3.6}deg)`
-                  }}>
-                    <div className="score-inner">
-                      <span className="score-number">{analysisResult.matchScore || 0}%</span>
+                <div className="relative z-10">
+                  <div className="flex flex-col md:flex-row items-center gap-8">
+                    <div className="score-viz relative">
+                      <svg className="w-32 h-32 transform -rotate-90">
+                        <circle cx="64" cy="64" r="58" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="none" />
+                        <circle
+                          cx="64" cy="64" r="58"
+                          stroke={getScoreColor(analysisResult.matchScore || 0)}
+                          strokeWidth="8"
+                          fill="none"
+                          strokeDasharray={364.4}
+                          strokeDashoffset={364.4 - (364.4 * (analysisResult.matchScore || 0) / 100)}
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-3xl font-extrabold">{analysisResult.matchScore || 0}%</span>
+                        <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Match</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="match-summary-text">
-                    <h4 className={`match-level ${(analysisResult.matchScore || 0) >= 70 ? 'strong' : (analysisResult.matchScore || 0) >= 50 ? 'moderate' : 'needs-work'}`}>
-                      {(analysisResult.matchScore || 0) >= 70 ? 'Strong Match' : (analysisResult.matchScore || 0) >= 50 ? 'Moderate Match' : 'Needs Improvement'}
-                    </h4>
-                    <p>{analysisResult.summary || 'Your resume has been analyzed against this job description.'}</p>
-                  </div>
-                </div>
 
-                {/* Quick Stats Grid */}
-                <div className="quick-stats-grid">
-                  <div className="stat-item">
-                    <Target className="w-5 h-5" />
-                    <span className="stat-label">HARD SKILLS</span>
-                    <span className="stat-value" style={{ color: getScoreColor(analysisResult.hardSkills?.score || 0) }}>
-                      {analysisResult.hardSkills?.score || 0}%
-                    </span>
-                  </div>
-                  <div className="stat-item">
-                    <TrendingUp className="w-5 h-5" />
-                    <span className="stat-label">SOFT SKILLS</span>
-                    <span className="stat-value" style={{ color: getScoreColor(analysisResult.softSkills?.score || 0) }}>
-                      {analysisResult.softSkills?.score || 0}%
-                    </span>
-                  </div>
-                  <div className="stat-item">
-                    <Briefcase className="w-5 h-5" />
-                    <span className="stat-label">EXPERIENCE</span>
-                    <span className="stat-value" style={{ color: getScoreColor(analysisResult.experience?.score || 0) }}>
-                      {analysisResult.experience?.score || 0}%
-                    </span>
-                  </div>
-                  <div className="stat-item">
-                    <FileText className="w-5 h-5" />
-                    <span className="stat-label">SEARCHABILITY</span>
-                    <span className="stat-value" style={{ color: getScoreColor(analysisResult.searchability?.score || 0) }}>
-                      {analysisResult.searchability?.score || 0}%
-                    </span>
-                  </div>
-                </div>
-
-                {/* Hard Skills Section */}
-                <div className="skills-section">
-                  <div className="section-header">
-                    <h4>Hard Skills</h4>
-                    <span className="skills-badge">
-                      {analysisResult.hardSkills?.matched?.length || 0} MATCHED, {analysisResult.hardSkills?.missing?.length || 0} MISSING
-                    </span>
-                  </div>
-                  <div className="skills-columns">
-                    <div className="skills-column matched-column">
-                      <h5>✅ Matched Skills</h5>
-                      {analysisResult.hardSkills?.matched?.slice(0, 8).map((skill, i) => (
-                        <div key={i} className="skill-chip matched">
-                          {typeof skill === 'string' ? skill : skill.skill}
-                        </div>
-                      ))}
-                      {(!analysisResult.hardSkills?.matched || analysisResult.hardSkills.matched.length === 0) && (
-                        <p className="no-skills">No matched skills found</p>
-                      )}
+                    <div className="flex-grow text-center md:text-left">
+                      <h3 className="text-xl font-bold mb-2">Resume Scan Results</h3>
+                      <p className="text-slate-400 text-sm leading-relaxed max-w-xl">
+                        {analysisResult.summary || 'Analysis complete. We have optimized your resume based on these results.'}
+                      </p>
                     </div>
-                    <div className="skills-column missing-column">
-                      <h5>❌ Missing Skills</h5>
-                      {analysisResult.hardSkills?.missing?.slice(0, 8).map((skill, i) => (
-                        <div key={i} className="skill-chip missing">
-                          {typeof skill === 'string' ? skill : skill.skill}
-                        </div>
-                      ))}
-                      {(!analysisResult.hardSkills?.missing || analysisResult.hardSkills.missing.length === 0) && (
-                        <p className="no-skills">No missing skills</p>
-                      )}
+
+                    <div className="flex gap-3 flex-wrap justify-center">
+                      <div className="px-4 py-2 bg-white/5 rounded-xl border border-white/10 text-center min-w-[100px]">
+                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Hard Skills</div>
+                        <div className="font-bold text-indigo-400">{analysisResult.hardSkills?.score || 0}%</div>
+                      </div>
+                      <div className="px-4 py-2 bg-white/5 rounded-xl border border-white/10 text-center min-w-[100px]">
+                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Soft Skills</div>
+                        <div className="font-bold text-green-400">{analysisResult.softSkills?.score || 0}%</div>
+                      </div>
                     </div>
                   </div>
                 </div>
-
-                {/* Soft Skills Section */}
-                <div className="skills-section">
-                  <div className="section-header">
-                    <h4>Soft Skills</h4>
-                    <span className="skills-badge">
-                      {analysisResult.softSkills?.matched?.length || 0} MATCHED, {analysisResult.softSkills?.missing?.length || 0} MISSING
-                    </span>
-                  </div>
-                  <div className="skills-columns">
-                    <div className="skills-column matched-column">
-                      <h5>✅ Found</h5>
-                      {analysisResult.softSkills?.matched?.slice(0, 6).map((skill, i) => (
-                        <div key={i} className="skill-chip matched">
-                          {typeof skill === 'string' ? skill : skill.skill}
-                        </div>
-                      ))}
-                      {(!analysisResult.softSkills?.matched || analysisResult.softSkills.matched.length === 0) && (
-                        <p className="no-skills">No soft skills found</p>
-                      )}
-                    </div>
-                    <div className="skills-column missing-column">
-                      <h5>❌ Missing</h5>
-                      {analysisResult.softSkills?.missing?.slice(0, 6).map((skill, i) => (
-                        <div key={i} className="skill-chip missing">
-                          {typeof skill === 'string' ? skill : skill.skill}
-                        </div>
-                      ))}
-                      {(!analysisResult.softSkills?.missing || analysisResult.softSkills.missing.length === 0) && (
-                        <p className="no-skills">No missing skills</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Recruiter Tips */}
-                {analysisResult.tips && analysisResult.tips.length > 0 && (
-                  <div className="tips-section">
-                    <h4><Lightbulb className="w-5 h-5" /> Recruiter Tips</h4>
-                    <ul className="tips-list">
-                      {analysisResult.tips.slice(0, 5).map((tip, i) => (
-                        <li key={i}>{tip}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
             )}
 
             {/* Action Buttons */}
-            <div className="results-actions">
+            <div className="results-final-actions mt-12 pt-8 border-t border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-center">
               {jobData.sourceUrl && (
-                <Button className="btn-primary btn-large" onClick={handleGoToJobPage}>
-                  <ExternalLink className="w-5 h-5 mr-2" /> Go to Job Page & Apply
+                <Button className="btn-primary w-full md:w-auto h-14 px-10 text-lg font-bold rounded-2xl shadow-xl shadow-green-100" onClick={handleGoToJobPage}>
+                  <ExternalLink className="w-5 h-5 mr-3" /> Go to Job Page & Apply
                 </Button>
               )}
 
-              {!applicationSaved ? (
-                <Button
-                  variant="outline"
-                  onClick={handleSaveApplication}
-                  disabled={isSavingApplication}
-                >
-                  {isSavingApplication ? (
-                    <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving...</>
-                  ) : (
-                    <><Save className="w-4 h-4 mr-2" /> Save to Application Tracker</>
-                  )}
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={() => navigate('/dashboard')}>
-                  <CheckCircle className="w-4 h-4 mr-2" /> View in Tracker
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                className="w-full md:w-auto h-14 px-8 rounded-2xl font-bold text-slate-600"
+                onClick={handleSaveApplication}
+                disabled={applicationSaved || isSavingApplication}
+              >
+                {isSavingApplication ? (
+                  <><Loader2 className="w-4 h-4 animate-spin mr-3" /> Saving...</>
+                ) : applicationSaved ? (
+                  <><CheckCircle className="w-4 h-4 mr-3 text-green-500" /> Saved to Dashboard</>
+                ) : (
+                  <><Save className="w-4 h-4 mr-3" /> Save to tracker</>
+                )}
+              </Button>
             </div>
 
-            {/* Tips */}
-            <div className="application-tips">
-              <h4>Next Steps:</h4>
-              <ul>
-                <li>Download both documents</li>
-                <li>Click "Go to Job Page" to open the application</li>
-                <li>Upload your tailored resume and cover letter</li>
-                <li>Track your application status in your dashboard</li>
+            <div className="how-to-use mt-10 p-6 bg-indigo-50 rounded-2xl border border-indigo-100/50">
+              <h4 className="font-bold text-indigo-900 mb-3 flex items-center gap-2">
+                <Lightbulb className="w-5 h-5" /> How to apply like a Ninja:
+              </h4>
+              <ul className="space-y-2 text-sm text-indigo-800/80 font-medium">
+                <li className="flex items-start gap-2">
+                  <span className="bg-indigo-200 text-indigo-700 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] mt-0.5">1</span>
+                  Download the tailored resume and cover letter.
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-indigo-200 text-indigo-700 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] mt-0.5">2</span>
+                  Click "Go to Job Page" to open the application site.
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-indigo-200 text-indigo-700 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] mt-0.5">3</span>
+                  Upload the downloaded files and submit your application!
+                </li>
               </ul>
             </div>
           </Card>
