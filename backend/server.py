@@ -2063,6 +2063,7 @@ app.add_middleware(
     ],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"]
 )
 
 # ============================================

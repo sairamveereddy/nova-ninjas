@@ -546,12 +546,17 @@ const AIApplyFlow = () => {
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = url;
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+
+      // Cleanup with delay to ensure download starts
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
     } catch (error) {
       console.error(`Download failed:`, error);
       alert(`Failed to download ${type}. Please try again.`);

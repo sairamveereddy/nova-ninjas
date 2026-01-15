@@ -397,12 +397,21 @@ const ResumeScanner = () => {
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = url;
-      a.download = `Optimized_Resume_${company || 'Job'}.docx`;
+
+      // Sanitized filename
+      const safeCompany = (company || 'Job').trim().replace(/[^a-z0-9]/gi, '_');
+      a.download = `Optimized_Resume_${safeCompany}.docx`;
+
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
+
+      // Cleanup with delay to ensure download starts
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
 
     } catch (err) {
       setError(err.message);
@@ -437,12 +446,21 @@ const ResumeScanner = () => {
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = url;
-      a.download = `Cover_Letter_${company || 'Job'}.docx`;
+
+      // Sanitized filename
+      const safeCompany = (company || 'Job').trim().replace(/[^a-z0-9]/gi, '_');
+      a.download = `Cover_Letter_${safeCompany}.docx`;
+
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
+
+      // Cleanup with delay
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
 
     } catch (err) {
       setError(err.message);
