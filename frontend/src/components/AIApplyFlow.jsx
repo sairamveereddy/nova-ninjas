@@ -513,7 +513,8 @@ const AIApplyFlow = () => {
           resume_text: tailoredResume,
           company: companyName,
           job_description: customJobDescription,
-          analysis: {}
+          analysis: {},
+          is_already_tailored: true
         };
         fileName = sanitizeFileName('Optimized_Resume', companyName, 'docx');
       } else if (type === 'cv') {
@@ -523,7 +524,8 @@ const AIApplyFlow = () => {
           resume_text: detailedCv,
           company: companyName,
           job_description: customJobDescription,
-          analysis: {}
+          analysis: {},
+          is_already_tailored: true
         };
         fileName = sanitizeFileName('Detailed_CV', companyName, 'docx');
       } else if (type === 'cover') {

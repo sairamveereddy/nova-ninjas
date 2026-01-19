@@ -2578,6 +2578,7 @@ class GenerateResumeRequest(BaseModel):
     job_title: str = "Position"
     company: str = "Company"
     analysis: dict
+    is_already_tailored: bool = False
 
 
 @app.post("/api/generate/resume")
@@ -2592,9 +2593,26 @@ async def generate_resume_docx(request: GenerateResumeRequest):
             ensure_verified(user)
         
         # Check if we should use raw text or structured data
-        if hasattr(request, 'resume_text') and not request.resume_text.startswith('{'):
-            # It's raw text from Expert AI
+        if hasattr(request, 'resume_text') and not request.resume_text.startswith('{') and request.is_already_tailored:
+            # It's raw text from Expert AI that is already tailored
             docx_file = create_text_docx(request.resume_text, "ATS_Resume")
+        elif not request.resume_text.startswith('{'):
+            # It's raw text that NEEDS tailoring - use the high-quality expert pipeline
+            # This is the flow for Resume Scanner and One-Click Optimize
+            expert_docs = await generate_expert_documents(request.resume_text, request.job_description)
+            
+            if expert_docs and expert_docs.get('ats_resume'):
+                docx_file = create_text_docx(expert_docs['ats_resume'], "Optimized_Resume")
+            else:
+                # Fallback to standard optimization if expert fails
+                resume_data = await generate_optimized_resume_content(
+                    request.resume_text,
+                    request.job_description,
+                    request.analysis
+                )
+                if not resume_data:
+                    raise HTTPException(status_code=500, detail="Failed to generate resume content")
+                docx_file = create_resume_docx(resume_data)
         else:
             # Generate optimized content from structured data (original flow)
             resume_data = await generate_optimized_resume_content(
