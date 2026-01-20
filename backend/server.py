@@ -144,11 +144,12 @@ def get_current_user_email(token: str = Header(...)):
 
 async def get_current_user(token: str = Header(...)):
     """Dependency to get full user object from database."""
+    # Case-insensitive and stripped search to be robust
     email = get_current_user_email(token)
     if not email:
         raise HTTPException(status_code=401, detail="Authentication required")
         
-    # Case-insensitive search to be robust
+    email = email.strip()
     user = await db.users.find_one({"email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}})
     if not user:
         raise HTTPException(status_code=404, detail=f"User {email} not found in database")
@@ -740,8 +741,9 @@ async def login(credentials: UserLogin, request: Request):
     """
     Login user with email and password.
     """
+    email_clean = credentials.email.strip()
     user = await db.users.find_one({
-        "email": {"$regex": f"^{re.escape(credentials.email)}$", "$options": "i"}
+        "email": {"$regex": f"^{re.escape(email_clean)}$", "$options": "i"}
     })
     
     if not user or not verify_password(credentials.password, user.get('password_hash', '')):
@@ -754,15 +756,16 @@ async def login(credentials: UserLogin, request: Request):
         logger.info(f"Upgraded password hash for user: {credentials.email}")
     
     # Generate secure JWT access token
-    access_token = create_access_token(data={"sub": user['email'], "id": user['id']})
+    user_id = user.get('id') or str(user.get('_id'))
+    access_token = create_access_token(data={"sub": user['email'], "id": user_id})
     
     return {
         "success": True,
         "user": {
-            "id": user['id'],
+            "id": user_id,
             "email": user['email'],
-            "name": user['name'],
-            "role": user['role'],
+            "name": user.get('name', 'User'),
+            "role": user.get('role', 'customer'),
             "plan": user.get('plan'),
             "is_verified": user.get('is_verified', False),
             "referral_code": user.get('referral_code')
@@ -819,7 +822,7 @@ async def resend_verification(request: Request):
         if not token:
             raise HTTPException(status_code=401, detail="Authentication required")
             
-        email = get_current_user_email(token)
+        email = get_current_user_email(token).strip()
         user = await db.users.find_one({"email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}})
         
         if not user:
@@ -833,7 +836,7 @@ async def resend_verification(request: Request):
         if not verification_token:
             verification_token = str(uuid.uuid4())
             await db.users.update_one(
-                {"id": user['id']},
+                {"_id": user['_id']},
                 {"$set": {"verification_token": verification_token}}
             )
             
