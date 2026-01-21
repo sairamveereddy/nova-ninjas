@@ -11,10 +11,10 @@ const VerificationBanner = () => {
     const [error, setError] = useState(null);
 
     // Check localStorage for persistent dismissal
-    const dismissalKey = user?.email ? `verification_banner_dismissed_${user.email}` : null;
     const [hidden, setHidden] = useState(() => {
-        if (dismissalKey) {
-            return localStorage.getItem(dismissalKey) === 'true';
+        if (typeof window !== 'undefined' && user?.email) {
+            const key = `verification_banner_dismissed_${user.email}`;
+            return localStorage.getItem(key) === 'true';
         }
         return false;
     });
@@ -110,8 +110,9 @@ const VerificationBanner = () => {
 
                     <button
                         onClick={() => {
-                            if (dismissalKey) {
-                                localStorage.setItem(dismissalKey, 'true');
+                            if (user?.email) {
+                                const key = `verification_banner_dismissed_${user.email}`;
+                                localStorage.setItem(key, 'true');
                             }
                             setHidden(true);
                         }}
