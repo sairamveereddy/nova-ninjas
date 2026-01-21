@@ -307,7 +307,7 @@ const FreeTools = () => {
                                     marginBottom: '1.5rem'
                                 }}>
                                     <img
-                                        src={`/tool-icons/${tool.id.replace('-', '_')}_icon.png`}
+                                        src={`/tool-icons/${iconMap[tool.id]}`}
                                         alt={tool.name}
                                         style={{
                                             width: '100%',
