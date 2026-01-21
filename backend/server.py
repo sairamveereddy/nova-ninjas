@@ -2163,6 +2163,8 @@ app.add_middleware(
         "http://localhost:3000",
         "https://jobninjas.org",
         "https://www.jobninjas.org",
+        "https://novaninjas.com",
+        "https://www.novaninjas.com",
         "https://novaninjas.vercel.app" # Backup for Vercel
     ],
     allow_methods=["*"],
