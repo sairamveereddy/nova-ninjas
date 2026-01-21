@@ -9,7 +9,15 @@ const VerificationBanner = () => {
     const [sent, setSent] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
-    const [hidden, setHidden] = useState(false);
+
+    // Check localStorage for persistent dismissal
+    const dismissalKey = user?.email ? `verification_banner_dismissed_${user.email}` : null;
+    const [hidden, setHidden] = useState(() => {
+        if (dismissalKey) {
+            return localStorage.getItem(dismissalKey) === 'true';
+        }
+        return false;
+    });
 
     // Only show if user is logged in but NOT verified
     // We check explicitly for is_verified === true to avoid showing it for non-boolean falsy values
@@ -97,7 +105,12 @@ const VerificationBanner = () => {
                     </button>
 
                     <button
-                        onClick={() => setHidden(true)}
+                        onClick={() => {
+                            if (dismissalKey) {
+                                localStorage.setItem(dismissalKey, 'true');
+                            }
+                            setHidden(true);
+                        }}
                         className="text-amber-400 hover:text-amber-600 ml-1 p-1 rounded-full hover:bg-amber-100 transition-colors"
                         title="Dismiss for now"
                     >
