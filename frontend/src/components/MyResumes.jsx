@@ -27,6 +27,7 @@ import {
 import { BRAND } from '../config/branding';
 import { API_URL } from '../config/api';
 import SideMenu from './SideMenu';
+import Header from './Header';
 import './SideMenu.css';
 
 const MyResumes = () => {
@@ -160,22 +161,7 @@ const MyResumes = () => {
       <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
 
       {/* Navigation Header */}
-      <header className="nav-header">
-        <div className="nav-left">
-          <button className="hamburger-btn" onClick={() => setSideMenuOpen(true)}>
-            <Menu className="w-5 h-5" />
-          </button>
-          <button onClick={() => navigate('/')} className="nav-logo">
-            <img src={BRAND.logoPath} alt={BRAND.logoAlt} className="logo-image" />
-            <span className="logo-text">{BRAND.name}</span>
-          </button>
-        </div>
-        <div className="nav-actions">
-          <Button variant="secondary" onClick={() => navigate('/dashboard')}>
-            Dashboard
-          </Button>
-        </div>
-      </header>
+      <Header onMenuClick={() => setSideMenuOpen(true)} />
 
       {/* Main Content */}
       <main className="resumes-content">
