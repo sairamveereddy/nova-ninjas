@@ -2,7 +2,7 @@
 // This file centralizes the API URL for the entire application
 
 // Production API URL (Railway deployed backend)
-const PRODUCTION_API_URL = 'https://nova-ninjas-production.up.railway.app';
+const PRODUCTION_API_URL = 'https://api.jobninjas.ai';
 
 // Development API URL
 const DEVELOPMENT_API_URL = 'http://localhost:8000';

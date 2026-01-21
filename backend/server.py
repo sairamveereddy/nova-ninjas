@@ -511,7 +511,7 @@ async def send_welcome_email(name: str, email: str, token: str = None, referral_
     """
     Send a refined welcome email to new users who sign up.
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://jobninjas.org')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://jobninjas.ai')
     verify_link = f"{frontend_url}/verify-email?token={token}" if token else f"{frontend_url}/dashboard"
     login_link = f"{frontend_url}/login"
     invite_link = f"{frontend_url}/signup?ref={referral_code}" if referral_code else f"{frontend_url}/signup"
@@ -620,7 +620,7 @@ async def send_welcome_email(name: str, email: str, token: str = None, referral_
                 <div class="footer-links">
                     If you prefer not to receive these emails, you can <a href="#">unsubscribe</a>.
                 </div>
-                <p>Copyright © 2025 jobNinjas.org. All rights reserved.</p>
+                <p>Copyright © 2025 jobNinjas.ai. All rights reserved.</p>
                 <p>Fast. Accurate. Human-Powered & AI-Driven.</p>
             </div>
         </div>
@@ -636,7 +636,7 @@ async def send_admin_booking_notification(booking):
     """
     Send notification to admin when someone books a call.
     """
-    admin_email = os.environ.get('ADMIN_EMAIL', 'veereddy@jobninjas.org')
+    admin_email = os.environ.get('ADMIN_EMAIL', 'veereddy@jobninjas.ai')
     
     html_content = f"""
 <!DOCTYPE html>
