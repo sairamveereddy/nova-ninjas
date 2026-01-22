@@ -6,7 +6,7 @@ import { API_URL } from '../config/api';
 
 const GoogleAuthButton = ({ mode = 'login' }) => {
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { refreshUser } = useAuth();
 
     const handleGoogleSuccess = async (credentialResponse) => {
         try {
@@ -25,9 +25,15 @@ const GoogleAuthButton = ({ mode = 'login' }) => {
             const data = await response.json();
 
             if (response.ok) {
-                // Login successful
-                login(data.token, data.user);
-                navigate('/dashboard');
+                // Set auth data directly
+                localStorage.setItem('auth_token', data.token);
+                localStorage.setItem('user_data', JSON.stringify(data.user));
+
+                // Refresh user state in AuthContext
+                await refreshUser();
+
+                // Navigate to home page
+                navigate('/');
             } else {
                 alert(data.detail || 'Google authentication failed');
             }
