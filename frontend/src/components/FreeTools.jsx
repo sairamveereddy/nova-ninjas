@@ -22,7 +22,12 @@ import {
     Globe,
     CheckCircle,
     ArrowRight,
-    Sparkles
+    Sparkles,
+    DollarSign,
+    Linkedin,
+    Clock,
+    FileSearch,
+    Scale
 } from 'lucide-react';
 import { BRAND } from '../config/branding';
 import { API_URL } from '../config/api';
@@ -54,7 +59,7 @@ const FreeTools = () => {
     const freeTools = [
         {
             id: 'networking-templates',
-            iconImage: '/tool-icons/networking_icon.png',
+            icon: <MessageSquare className="w-8 h-8" />,
             name: 'Networking Message Templates',
             description: 'Ready-to-use templates for LinkedIn, email, and networking events.',
             path: '/networking-templates',
@@ -63,7 +68,7 @@ const FreeTools = () => {
         },
         {
             id: 'interview-framework',
-            iconImage: '/tool-icons/interview_icon.png',
+            icon: <Target className="w-8 h-8" />,
             name: 'Interview Answer Framework',
             description: 'Master STAR, CAR, and SOAR methods for behavioral interviews.',
             path: '/interview-framework',
@@ -72,7 +77,7 @@ const FreeTools = () => {
         },
         {
             id: 'reference-prep',
-            iconImage: '/tool-icons/reference_icon.png',
+            icon: <Users className="w-8 h-8" />,
             name: 'Reference Check Prep',
             description: 'Prepare your references to give you the best recommendation.',
             path: '/reference-prep',
@@ -81,7 +86,7 @@ const FreeTools = () => {
         },
         {
             id: 'salary-negotiator',
-            iconImage: '/tool-icons/salary_icon.png',
+            icon: <DollarSign className="w-8 h-8" />,
             name: 'Salary Negotiation Script',
             description: 'Get a personalized script to negotiate your best offer.',
             path: '/salary-negotiator',
@@ -91,7 +96,7 @@ const FreeTools = () => {
         },
         {
             id: 'linkedin-headline',
-            iconImage: '/tool-icons/linkedin_icon.png',
+            icon: <Linkedin className="w-8 h-8" />,
             name: 'LinkedIn Headline Optimizer',
             description: 'Get 10 optimized headline options with recruiter keywords.',
             path: '/linkedin-headline',
@@ -101,7 +106,7 @@ const FreeTools = () => {
         },
         {
             id: 'career-gap',
-            iconImage: '/tool-icons/career_gap_icon.png',
+            icon: <Clock className="w-8 h-8" />,
             name: 'Career Gap Explainer',
             description: 'Turn your career gap into a professional story for resumes.',
             path: '/career-gap',
@@ -111,7 +116,7 @@ const FreeTools = () => {
         },
         {
             id: 'job-decoder',
-            iconImage: '/tool-icons/job_decoder_icon.png',
+            icon: <FileSearch className="w-8 h-8" />,
             name: 'Job Description Decoder',
             description: 'Decode what they really mean, spot red flags, find hidden requirements.',
             path: '/job-decoder',
@@ -121,7 +126,7 @@ const FreeTools = () => {
         },
         {
             id: 'offer-comparator',
-            iconImage: '/tool-icons/offer_icon.png',
+            icon: <Scale className="w-8 h-8" />,
             name: 'Offer Comparison Calculator',
             description: 'Compare multiple job offers with total compensation analysis.',
             path: '/offer-comparator',
@@ -265,18 +270,14 @@ const FreeTools = () => {
                                     width: '64px',
                                     height: '64px',
                                     borderRadius: '16px',
-                                    overflow: 'hidden',
+                                    background: `linear-gradient(135deg, ${tool.color})`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'white',
                                     marginBottom: '1.5rem'
                                 }}>
-                                    <img
-                                        src={`/tool-icons/${iconMap[tool.id]}`}
-                                        alt={tool.name}
-                                        style={{
-                                            width: '100%',
-                                            height: '100%',
-                                            objectFit: 'cover'
-                                        }}
-                                    />
+                                    {tool.icon}
                                 </div>
 
                                 <div style={{
