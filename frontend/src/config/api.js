@@ -11,8 +11,9 @@ const DEVELOPMENT_API_URL = 'http://localhost:8000';
 const isProduction = window.location.hostname !== 'localhost' &&
   window.location.hostname !== '127.0.0.1';
 
-// Use environment-based API URL
-export const API_URL = isProduction ? PRODUCTION_API_URL : DEVELOPMENT_API_URL;
+// Always use production API for now (backend is on Railway)
+// TODO: Start local backend server if you want to develop backend features
+export const API_URL = PRODUCTION_API_URL;
 
 // Helper function to make API calls with proper error handling
 export const apiCall = async (endpoint, options = {}) => {
