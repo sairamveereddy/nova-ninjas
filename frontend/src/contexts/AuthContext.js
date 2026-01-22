@@ -44,11 +44,23 @@ export const AuthProvider = ({ children }) => {
 
       if (token && userData) {
         try {
-          setUser(JSON.parse(userData));
-          // Verify with backend to ensure data like is_verified is up to date
-          await refreshUser();
+          // Verify token with backend before setting user
+          const response = await fetch(`${API_URL}/api/auth/me`, {
+            headers: { 'token': token }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('user_data', JSON.stringify(data.user));
+            setUser(data.user);
+          } else {
+            // Token is invalid, clear localStorage
+            console.log('Invalid token, clearing auth data');
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_data');
+          }
         } catch (e) {
-          console.error('Error parsing user data from localStorage:', e);
+          console.error('Error verifying auth token:', e);
           localStorage.removeItem('auth_token');
           localStorage.removeItem('user_data');
         }
