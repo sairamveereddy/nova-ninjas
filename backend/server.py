@@ -1314,6 +1314,117 @@ Be honest and insightful. Help the candidate make an informed decision."""
         logger.error(f"Error decoding job description: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ============ GOOGLE OAUTH AUTHENTICATION ============
+
+@api_router.post("/auth/google")
+async def google_auth(request: dict):
+    """Handle Google OAuth authentication"""
+    try:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as google_requests
+        
+        credential = request.get('credential')
+        mode = request.get('mode', 'login')  # 'login' or 'signup'
+        
+        if not credential:
+            raise HTTPException(status_code=400, detail="No credential provided")
+        
+        # Verify the Google token
+        try:
+            # Get Google Client ID from environment or use the one from the request
+            GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '62316419452-e4jpe6v8qh0h9q9q9q9q9q9q9q9q9q9q.apps.googleusercontent.com')
+            
+            idinfo = id_token.verify_oauth2_token(
+                credential, 
+                google_requests.Request(), 
+                GOOGLE_CLIENT_ID
+            )
+            
+            # Get user info from Google
+            email = idinfo.get('email')
+            name = idinfo.get('name')
+            google_id = idinfo.get('sub')
+            picture = idinfo.get('picture')
+            
+            if not email:
+                raise HTTPException(status_code=400, detail="Email not provided by Google")
+            
+        except ValueError as e:
+            logger.error(f"Invalid Google token: {str(e)}")
+            raise HTTPException(status_code=401, detail="Invalid Google token")
+        
+        # Check if user exists
+        existing_user = await db.users.find_one({"email": email})
+        
+        if existing_user:
+            # User exists - log them in
+            # Update Google ID if not set
+            if not existing_user.get('google_id'):
+                await db.users.update_one(
+                    {"email": email},
+                    {"$set": {"google_id": google_id, "profile_picture": picture}}
+                )
+            
+            # Generate JWT token
+            token_data = {
+                "email": email,
+                "role": existing_user.get("role", "customer"),
+                "exp": datetime.utcnow() + timedelta(days=30)
+            }
+            token = jwt.encode(token_data, JWT_SECRET, algorithm="HS256")
+            
+            return {
+                "success": True,
+                "token": token,
+                "user": {
+                    "email": email,
+                    "name": existing_user.get("name", name),
+                    "role": existing_user.get("role", "customer"),
+                    "profile_picture": picture
+                }
+            }
+        else:
+            # New user - create account
+            new_user = {
+                "email": email,
+                "name": name,
+                "google_id": google_id,
+                "profile_picture": picture,
+                "role": "customer",
+                "created_at": datetime.utcnow().isoformat(),
+                "subscription_status": "free",
+                "credits": 3,  # Give 3 free credits
+                "auth_method": "google"
+            }
+            
+            await db.users.insert_one(new_user)
+            logger.info(f"New user created via Google OAuth: {email}")
+            
+            # Generate JWT token
+            token_data = {
+                "email": email,
+                "role": "customer",
+                "exp": datetime.utcnow() + timedelta(days=30)
+            }
+            token = jwt.encode(token_data, JWT_SECRET, algorithm="HS256")
+            
+            return {
+                "success": True,
+                "token": token,
+                "user": {
+                    "email": email,
+                    "name": name,
+                    "role": "customer",
+                    "profile_picture": picture
+                }
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in Google authentication: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ============ GOOGLE SHEETS INTEGRATION ============
 
 @api_router.get("/applications/{user_email}")
