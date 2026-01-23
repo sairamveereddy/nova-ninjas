@@ -141,25 +141,34 @@ const Jobs = () => {
     if (countryFilter && countryFilter !== 'all') {
       const location = job.location?.toLowerCase() || '';
       if (countryFilter === 'usa') {
-        // Filter for USA: check for US states, USA, or United States
-        const usKeywords = ['usa', 'united states', 'u.s.', 'remote us', 'remote usa'];
-        const usStates = ['al', 'ak', 'az', 'ar', 'ca', 'co', 'ct', 'de', 'fl', 'ga', 'hi', 'id', 'il', 'in', 'ia', 'ks', 'ky', 'la', 'me', 'md', 'ma', 'mi', 'mn', 'ms', 'mo', 'mt', 'ne', 'nv', 'nh', 'nj', 'nm', 'ny', 'nc', 'nd', 'oh', 'ok', 'or', 'pa', 'ri', 'sc', 'sd', 'tn', 'tx', 'ut', 'vt', 'va', 'wa', 'wv', 'wi', 'wy'];
-        const hasUSKeyword = usKeywords.some(keyword => location.includes(keyword));
-        const hasUSState = usStates.some(state => {
-          const statePattern = new RegExp(`\\b${state}\\b`, 'i');
-          return statePattern.test(location);
-        });
-        if (!hasUSKeyword && !hasUSState) return false;
+        // Filter for USA: check for US indicators
+        const usKeywords = ['usa', 'united states', 'u.s.', 'remote', 'us', ', ca', ', ny', ', tx', ', fl', ', wa'];
+        const hasUSIndicator = usKeywords.some(keyword => location.includes(keyword));
+        // Also check if location contains any 2-letter state code pattern (e.g., "CA", "NY")
+        const statePattern = /\b[a-z]{2}\b/i;
+        const hasStateCode = statePattern.test(location);
+
+        // If it doesn't have US keywords or state codes, it's likely not USA
+        if (!hasUSIndicator && !hasStateCode) return false;
+
+        // Explicitly exclude common international indicators
+        const internationalKeywords = ['uk', 'canada', 'india', 'australia', 'europe', 'asia', 'london', 'toronto', 'berlin', 'paris'];
+        const hasInternationalIndicator = internationalKeywords.some(keyword => location.includes(keyword));
+        if (hasInternationalIndicator) return false;
       } else if (countryFilter === 'international') {
         // Filter for non-USA jobs
-        const usKeywords = ['usa', 'united states', 'u.s.', 'remote us', 'remote usa'];
-        const usStates = ['al', 'ak', 'az', 'ar', 'ca', 'co', 'ct', 'de', 'fl', 'ga', 'hi', 'id', 'il', 'in', 'ia', 'ks', 'ky', 'la', 'me', 'md', 'ma', 'mi', 'mn', 'ms', 'mo', 'mt', 'ne', 'nv', 'nh', 'nj', 'nm', 'ny', 'nc', 'nd', 'oh', 'ok', 'or', 'pa', 'ri', 'sc', 'sd', 'tn', 'tx', 'ut', 'vt', 'va', 'wa', 'wv', 'wi', 'wy'];
+        const usKeywords = ['usa', 'united states', 'u.s.', 'remote us'];
         const hasUSKeyword = usKeywords.some(keyword => location.includes(keyword));
-        const hasUSState = usStates.some(state => {
-          const statePattern = new RegExp(`\\b${state}\\b`, 'i');
-          return statePattern.test(location);
-        });
-        if (hasUSKeyword || hasUSState) return false;
+        const statePattern = /\b[a-z]{2}\b/i;
+        const hasStateCode = statePattern.test(location);
+
+        // If it has US indicators, exclude it
+        if (hasUSKeyword || hasStateCode) {
+          // But allow international if explicitly mentioned
+          const internationalKeywords = ['uk', 'canada', 'india', 'australia', 'europe', 'asia'];
+          const hasInternationalIndicator = internationalKeywords.some(keyword => location.includes(keyword));
+          if (!hasInternationalIndicator) return false;
+        }
       }
     }
 
