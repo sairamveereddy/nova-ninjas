@@ -39,45 +39,43 @@ export const AuthProvider = ({ children }) => {
   // Check for existing auth on mount
   useEffect(() => {
     const initAuth = async () => {
-      console.log('[AuthContext] Initializing auth...');
+      console.log('[AuthDebug] Initializing auth...');
       const token = localStorage.getItem('auth_token');
       const userData = localStorage.getItem('user_data');
-      console.log('[AuthContext] Token exists:', !!token, 'UserData exists:', !!userData);
+      console.log('[AuthDebug] Storage check - Token:', !!token, 'User:', !!userData);
 
       if (token && userData) {
         try {
-          // Verify token with backend before setting user
-          console.log('[AuthContext] Verifying token with backend...');
+          console.log('[AuthDebug] Verifying token with backend at:', `${API_URL}/api/auth/me`);
           const response = await fetch(`${API_URL}/api/auth/me`, {
             headers: { 'token': token }
           });
 
-          console.log('[AuthContext] Token verification response:', response.status);
+          console.log('[AuthDebug] Token verification status:', response.status);
 
           if (response.ok) {
             const data = await response.json();
-            console.log('[AuthContext] Token valid, setting user:', data.user.email);
+            console.log('[AuthDebug] Token valid for:', data.user.email);
             localStorage.setItem('user_data', JSON.stringify(data.user));
             setUser(data.user);
           } else {
-            // Token is invalid, clear localStorage
-            console.log('[AuthContext] Token invalid, clearing auth data');
+            const errData = await response.json().catch(() => ({}));
+            console.warn('[AuthDebug] Token invalid or expired:', response.status, errData);
             localStorage.removeItem('auth_token');
             localStorage.removeItem('user_data');
             setUser(null);
           }
         } catch (e) {
-          console.error('[AuthContext] Error verifying auth token:', e);
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user_data');
+          console.error('[AuthDebug] Network/System error during verification:', e);
+          // Don't clear storage immediately on network error, but set user null
           setUser(null);
         }
       } else {
-        console.log('[AuthContext] No token found, user not authenticated');
+        console.log('[AuthDebug] No session found in storage');
         setUser(null);
       }
 
-      console.log('[AuthContext] Auth initialization complete, setting loading=false');
+      console.log('[AuthDebug] Auth initialization complete, setting loading=false');
       setLoading(false);
     };
 
@@ -148,6 +146,13 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAuthenticated: !!user,
     login,
+    googleLogin: (userData, token) => {
+      console.log('[AuthDebug] googleLogin called - User:', userData.email, 'Token snippet:', token?.substring(0, 10) + '...');
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('user_data', JSON.stringify(userData));
+      setUser(userData);
+      console.log('[AuthDebug] Session data saved to storage and state updated');
+    },
     signup,
     logout,
     refreshUser

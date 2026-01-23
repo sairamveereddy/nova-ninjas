@@ -627,7 +627,7 @@ async def send_welcome_email(name: str, email: str, token: str = None, referral_
                 <div class="footer-links">
                     If you prefer not to receive these emails, you can <a href="#">unsubscribe</a>.
                 </div>
-                <p>Copyright © 2025 jobNinjas.ai. All rights reserved.</p>
+                <p>Copyright © 2025 jobNinjas.org. All rights reserved.</p>
                 <p>Fast. Accurate. Human-Powered & AI-Driven.</p>
             </div>
         </div>
@@ -643,7 +643,7 @@ async def send_admin_booking_notification(booking):
     """
     Send notification to admin when someone books a call.
     """
-    admin_email = os.environ.get('ADMIN_EMAIL', 'veereddy@jobninjas.ai')
+    admin_email = os.environ.get('ADMIN_EMAIL', 'veereddy@jobninjas.org')
     
     html_content = f"""
 <!DOCTYPE html>
@@ -1333,13 +1333,21 @@ async def google_auth(request: dict):
         credential = request.get('credential')
         mode = request.get('mode', 'login')  # 'login' or 'signup'
         
+    try:
+        credential = google_credential.credential
+        mode = google_credential.mode
+        
+        logger.info(f"[GoogleAuth] Incoming request. Mode: {mode}, Origin: {request.headers.get('origin')}")
+        
         if not credential:
+            logger.error("[GoogleAuth] No credential provided")
             raise HTTPException(status_code=400, detail="No credential provided")
         
         # Verify the Google token
         try:
             # Get Google Client ID from environment or use the one from the request
             GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '62316419452-e4gpepiaepopnfqpd96k19r1ps6e777v.apps.googleusercontent.com')
+            logger.info(f"[GoogleAuth] Verifying token with Client ID: {GOOGLE_CLIENT_ID}")
             
             idinfo = id_token.verify_oauth2_token(
                 credential, 
@@ -1353,75 +1361,80 @@ async def google_auth(request: dict):
             google_id = idinfo.get('sub')
             picture = idinfo.get('picture')
             
+            logger.info(f"[GoogleAuth] Token verified. Email: {email}, Google ID: {google_id}")
+            
             if not email:
+                logger.error("[GoogleAuth] Email not provided by Google")
                 raise HTTPException(status_code=400, detail="Email not provided by Google")
             
         except ValueError as e:
-            logger.error(f"Invalid Google token: {str(e)}")
-            raise HTTPException(status_code=401, detail="Invalid Google token")
+            logger.error(f"[GoogleAuth] Invalid Google token: {str(e)}")
+            raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
         
         # Check if user exists
         existing_user = await db.users.find_one({"email": email})
         
         if existing_user:
+            logger.info(f"[GoogleAuth] Existing user found: {email}")
             # User exists - log them in
-            # Update Google ID if not set
-            if not existing_user.get('google_id'):
-                await db.users.update_one(
-                    {"email": email},
-                    {"$set": {"google_id": google_id, "profile_picture": picture}}
-                )
+            # Update Google ID and verification if not set
+            update_data = {"google_id": google_id, "profile_picture": picture, "is_verified": True}
+            await db.users.update_one({"_id": existing_user['_id']}, {"$set": update_data})
             
-            # Generate JWT token
-            token_data = {
-                "email": email,
-                "role": existing_user.get("role", "customer"),
-                "exp": datetime.utcnow() + timedelta(days=30)
-            }
-            token = jwt.encode(token_data, JWT_SECRET, algorithm="HS256")
+            # Generate standard JWT token
+            user_id = existing_user.get('id') or str(existing_user.get('_id'))
+            token = create_access_token(data={"sub": email, "id": user_id})
             
+            logger.info(f"[GoogleAuth] Successful login for: {email}, ID: {user_id}")
             return {
                 "success": True,
                 "token": token,
                 "user": {
+                    "id": user_id,
                     "email": email,
                     "name": existing_user.get("name", name),
                     "role": existing_user.get("role", "customer"),
+                    "plan": existing_user.get("plan"),
+                    "is_verified": True,
+                    "referral_code": existing_user.get("referral_code"),
                     "profile_picture": picture
                 }
             }
         else:
-            # New user - create account
-            new_user = {
-                "email": email,
-                "name": name,
+            logger.info(f"[GoogleAuth] Creating new user: {email}")
+            # New user - create account using User model for consistency
+            new_user_obj = User(
+                email=email,
+                name=name,
+                password_hash="google-oauth",  # No password for Google users
+                is_verified=True  # Google users are verified by default
+            )
+            
+            user_dict = new_user_obj.model_dump()
+            user_dict.update({
                 "google_id": google_id,
                 "profile_picture": picture,
-                "role": "customer",
-                "created_at": datetime.utcnow().isoformat(),
-                "subscription_status": "free",
-                "credits": 3,  # Give 3 free credits
-                "auth_method": "google"
-            }
+                "auth_method": "google",
+                "created_at": user_dict['created_at'].isoformat() if isinstance(user_dict['created_at'], datetime) else user_dict['created_at']
+            })
             
-            await db.users.insert_one(new_user)
+            await db.users.insert_one(user_dict)
             logger.info(f"New user created via Google OAuth: {email}")
             
-            # Generate JWT token
-            token_data = {
-                "email": email,
-                "role": "customer",
-                "exp": datetime.utcnow() + timedelta(days=30)
-            }
-            token = jwt.encode(token_data, JWT_SECRET, algorithm="HS256")
+            # Generate standard JWT token
+            token = create_access_token(data={"sub": email, "id": new_user_obj.id})
             
             return {
                 "success": True,
                 "token": token,
                 "user": {
+                    "id": new_user_obj.id,
                     "email": email,
                     "name": name,
-                    "role": "customer",
+                    "role": new_user_obj.role,
+                    "plan": new_user_obj.plan,
+                    "is_verified": True,
+                    "referral_code": new_user_obj.referral_code,
                     "profile_picture": picture
                 }
             }
@@ -1429,8 +1442,8 @@ async def google_auth(request: dict):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in Google authentication: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"[GoogleAuth] Unexpected error: {str(e)}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="Internal server error during Google login")
 
 # ============ BYOK (Bring Your Own Key) API ============
 
@@ -2692,6 +2705,8 @@ app.add_middleware(
         "http://localhost:3000",
         "https://jobninjas.org",
         "https://www.jobninjas.org",
+        "https://jobninjas.ai",
+        "https://www.jobninjas.ai",
         "https://novaninjas.com",
         "https://www.novaninjas.com",
         "https://novaninjas.vercel.app" # Backup for Vercel
