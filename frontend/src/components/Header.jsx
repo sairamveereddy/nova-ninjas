@@ -11,6 +11,7 @@ import {
 import { BRAND } from '../config/branding';
 import MegaMenu from './MegaMenu';
 import VerificationBanner from './VerificationBanner';
+import BrandLogo from './BrandLogo';
 
 const Header = ({ onMenuClick }) => {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ const Header = ({ onMenuClick }) => {
           </button>
           <button onClick={() => navigate('/')} className="nav-logo">
             <img src={BRAND.logoPath} alt={BRAND.logoAlt} className="logo-image" />
-            <span className="logo-text">{BRAND.name}</span>
+            <BrandLogo className="logo-text" />
           </button>
         </div>
 

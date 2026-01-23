@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Bot, UserCheck, Menu } from 'lucide-react';
 import { BRAND } from '../config/branding';
 import { useAuth } from '../contexts/AuthContext';
+import BrandLogo from './BrandLogo';
 
 const Navbar = ({ onOpenSideMenu, rightContent }) => {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ const Navbar = ({ onOpenSideMenu, rightContent }) => {
         </button>
         <button onClick={() => navigate('/')} className="nav-logo">
           <img src={BRAND.logoPath} alt={BRAND.logoAlt} className="logo-image" />
-          <span className="logo-text">{BRAND.name}</span>
+          <BrandLogo className="logo-text" />
         </button>
       </div>
       <nav className="nav-links-modern">

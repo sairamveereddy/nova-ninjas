@@ -34,6 +34,7 @@ import BookCallModal from './BookCallModal';
 import SideMenu from './SideMenu';
 import Header from './Header';
 import { BRAND } from '../config/branding';
+import BrandLogo from './BrandLogo';
 import './SideMenu.css';
 import './LandingPage.css';
 
@@ -390,7 +391,7 @@ const LandingPage = () => {
         <div className="container">
           <h2 className="section-title-modern">
             You are <span className="highlight-green">80% more likely</span> to get<br />
-            hired faster if you use <span className="text-primary font-bold">{BRAND.name}</span>
+            hired faster if you use <BrandLogo className="inline-flex" />
           </h2>
         </div>
       </section>
@@ -442,7 +443,7 @@ const LandingPage = () => {
               <Badge className="pillar-badge orange">Apply</Badge>
               <h3 className="pillar-title">Auto Apply To Jobs</h3>
               <p className="pillar-description">
-                Let <span className="font-bold">{BRAND.name}</span> apply to hundreds of jobs for you automatically.
+                Let <BrandLogo className="inline-flex" /> apply to hundreds of jobs for you automatically.
                 Our Human Ninja service manually submits applications on your behalf,
                 with AI-tailored documents for each role.
               </p>
@@ -657,7 +658,7 @@ const LandingPage = () => {
       <section className="final-cta-modern">
         <div className="container">
           <h2>Ready to land your dream job?</h2>
-          <p>Join thousands of job seekers who found success with <span className="font-bold">{BRAND.name}</span></p>
+          <p>Join thousands of job seekers who found success with <BrandLogo className="inline-flex justify-center" /></p>
           <Button className="btn-cta-primary" onClick={() => navigate('/signup')}>
             Start now for free <ArrowRight className="w-5 h-5" />
           </Button>
