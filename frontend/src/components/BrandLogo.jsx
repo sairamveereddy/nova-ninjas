@@ -8,7 +8,7 @@ const BrandLogo = ({ className = "" }) => {
     useEffect(() => {
         const interval = setInterval(() => {
             setIsAi((prev) => !prev);
-        }, 3000);
+        }, 5000);
         return () => clearInterval(interval);
     }, []);
 
