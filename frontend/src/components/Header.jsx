@@ -11,11 +11,13 @@ import {
 import { BRAND } from '../config/branding';
 import MegaMenu from './MegaMenu';
 import VerificationBanner from './VerificationBanner';
+import { useBrandName } from '../hooks/useBrandName';
 
 const Header = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, loading } = useAuth();
+  const brandName = useBrandName();
 
   // Check if current path matches
   const isActive = (path) => location.pathname === path;
@@ -30,7 +32,7 @@ const Header = ({ onMenuClick }) => {
           </button>
           <button onClick={() => navigate('/')} className="nav-logo">
             <img src={BRAND.logoPath} alt={BRAND.logoAlt} className="logo-image" />
-            <span className="logo-text">{BRAND.name}</span>
+            <span className="logo-text">{brandName}</span>
           </button>
         </div>
 

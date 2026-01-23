@@ -34,12 +34,14 @@ import BookCallModal from './BookCallModal';
 import SideMenu from './SideMenu';
 import Header from './Header';
 import { BRAND } from '../config/branding';
+import { useBrandName } from '../hooks/useBrandName';
 import './SideMenu.css';
 import './LandingPage.css';
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading } = useAuth();
+  const brandName = useBrandName();
   const [isBookCallModalOpen, setIsBookCallModalOpen] = useState(false);
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const [activeWord, setActiveWord] = useState(0);
@@ -390,7 +392,7 @@ const LandingPage = () => {
         <div className="container">
           <h2 className="section-title-modern">
             You are <span className="highlight-green">80% more likely</span> to get<br />
-            hired faster if you use {BRAND.name}
+            hired faster if you use {brandName}
           </h2>
         </div>
       </section>
@@ -442,7 +444,7 @@ const LandingPage = () => {
               <Badge className="pillar-badge orange">Apply</Badge>
               <h3 className="pillar-title">Auto Apply To Jobs</h3>
               <p className="pillar-description">
-                Let {BRAND.name} apply to hundreds of jobs for you automatically.
+                Let {brandName} apply to hundreds of jobs for you automatically.
                 Our Human Ninja service manually submits applications on your behalf,
                 with AI-tailored documents for each role.
               </p>
@@ -657,7 +659,7 @@ const LandingPage = () => {
       <section className="final-cta-modern">
         <div className="container">
           <h2>Ready to land your dream job?</h2>
-          <p>Join thousands of job seekers who found success with {BRAND.name}</p>
+          <p>Join thousands of job seekers who found success with {brandName}</p>
           <Button className="btn-cta-primary" onClick={() => navigate('/signup')}>
             Start now for free <ArrowRight className="w-5 h-5" />
           </Button>
@@ -671,7 +673,7 @@ const LandingPage = () => {
             <div className="footer-brand-modern">
               <div className="footer-logo-row">
                 <img src={BRAND.logoPath} alt={BRAND.logoAlt} className="footer-logo-img" />
-                <span>{BRAND.name}</span>
+                <span>{brandName}</span>
               </div>
               <p>{BRAND.tagline}</p>
             </div>

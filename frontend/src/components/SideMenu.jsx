@@ -26,11 +26,13 @@ import {
   Sparkles
 } from 'lucide-react';
 import { BRAND } from '../config/branding';
+import { useBrandName } from '../hooks/useBrandName';
 
 const SideMenu = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, logout } = useAuth();
+  const brandName = useBrandName();
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -94,7 +96,7 @@ const SideMenu = ({ isOpen, onClose }) => {
         <div className="side-menu-header">
           <button onClick={() => handleNavigation('/')} className="side-menu-logo">
             <img src={BRAND.logoPath} alt={BRAND.logoAlt} className="side-menu-logo-img" />
-            <span className="side-menu-logo-text">{BRAND.name}</span>
+            <span className="side-menu-logo-text">{brandName}</span>
           </button>
           <button onClick={onClose} className="side-menu-close">
             <X className="w-6 h-6" />
