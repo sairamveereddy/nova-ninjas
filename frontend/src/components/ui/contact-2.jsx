@@ -70,7 +70,9 @@ export const Contact2 = ({
                             <Label htmlFor="message">Message</Label>
                             <Textarea placeholder="Type your message here." id="message" />
                         </div>
-                        <Button className="w-full">Send Message</Button>
+                        <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-lg shadow-blue-500/30">
+                            Send Message
+                        </button>
                     </div>
                 </div>
             </div>
