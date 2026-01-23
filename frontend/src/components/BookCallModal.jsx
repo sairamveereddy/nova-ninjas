@@ -31,7 +31,7 @@ const BookCallModal = ({ isOpen, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validation
     if (!formData.name || !formData.email || !formData.mobile || !formData.years_of_experience) {
       setError('Please fill in all fields');
@@ -53,7 +53,7 @@ const BookCallModal = ({ isOpen, onClose }) => {
     }
 
     setIsSubmitting(true);
-    
+
     setError('');
 
     try {
@@ -70,7 +70,7 @@ const BookCallModal = ({ isOpen, onClose }) => {
       }
 
       setIsSuccess(true);
-      
+
       // Reset form after 3 seconds and close modal
       setTimeout(() => {
         setFormData({ name: '', email: '', mobile: '', years_of_experience: '' });
@@ -91,9 +91,6 @@ const BookCallModal = ({ isOpen, onClose }) => {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-container" onClick={e => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}>
-          <X size={24} />
-        </button>
 
         {isSuccess ? (
           <div className="success-state">
@@ -106,11 +103,18 @@ const BookCallModal = ({ isOpen, onClose }) => {
         ) : (
           <>
             <div className="modal-header">
-              <div className="modal-icon">
-                <Phone size={32} />
+              <div className="modal-header-content">
+                <div className="modal-icon">
+                  <Phone size={32} />
+                </div>
+                <div className="modal-text">
+                  <h2>Book a 15-Minute Call</h2>
+                  <p>Let's discuss how we can help you land your dream job faster</p>
+                </div>
               </div>
-              <h2>Book a 15-Minute Call</h2>
-              <p>Let's discuss how we can help you land your dream job faster</p>
+              <button className="modal-close" onClick={onClose}>
+                <X size={24} />
+              </button>
             </div>
 
             <form onSubmit={handleSubmit} className="modal-form">
@@ -186,8 +190,8 @@ const BookCallModal = ({ isOpen, onClose }) => {
                 </div>
               )}
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="submit-button"
                 disabled={isSubmitting}
               >
