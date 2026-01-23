@@ -115,7 +115,7 @@ const SideMenu = ({ isOpen, onClose }) => {
                   className={`side-menu-item ${isActive ? 'active' : ''}`}
                 >
                   {typeof item.icon === 'string' ? (
-                    <img src={item.icon} alt={item.label} className="side-menu-icon object-contain" style={{ width: '20px', height: '20px' }} />
+                    <img src={item.icon} alt={item.label} className="side-menu-icon object-contain transform scale-150" style={{ width: '28px', height: '28px' }} />
                   ) : (
                     <item.icon className="side-menu-icon" />
                   )}
@@ -139,7 +139,7 @@ const SideMenu = ({ isOpen, onClose }) => {
                   className={`side-menu-item ${isActive ? 'active' : ''}`}
                 >
                   {typeof item.icon === 'string' ? (
-                    <img src={item.icon} alt={item.label} className="side-menu-icon object-contain" style={{ width: '20px', height: '20px' }} />
+                    <img src={item.icon} alt={item.label} className="side-menu-icon object-contain transform scale-150" style={{ width: '28px', height: '28px' }} />
                   ) : (
                     <item.icon className="side-menu-icon" />
                   )}
@@ -160,7 +160,7 @@ const SideMenu = ({ isOpen, onClose }) => {
                   className={`side-menu-item ${isActive ? 'active' : ''}`}
                 >
                   {typeof item.icon === 'string' ? (
-                    <img src={item.icon} alt={item.label} className="side-menu-icon object-contain" style={{ width: '20px', height: '20px' }} />
+                    <img src={item.icon} alt={item.label} className="side-menu-icon object-contain transform scale-150" style={{ width: '28px', height: '28px' }} />
                   ) : (
                     <item.icon className="side-menu-icon" />
                   )}

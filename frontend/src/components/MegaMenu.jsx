@@ -134,7 +134,11 @@ const MegaMenu = () => {
                                                 >
                                                     <div className="item-icon" style={{ backgroundColor: `${item.color}15`, color: item.color }}>
                                                         {typeof item.icon === 'string' ? (
-                                                            <img src={item.icon} alt={item.label} className="w-5 h-5 object-contain" />
+                                                            <img
+                                                                src={item.icon}
+                                                                alt={item.label}
+                                                                className="w-full h-full object-contain p-1 transform scale-125"
+                                                            />
                                                         ) : (
                                                             <item.icon className="w-5 h-5" />
                                                         )}

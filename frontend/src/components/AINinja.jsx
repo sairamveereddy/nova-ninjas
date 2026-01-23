@@ -381,7 +381,7 @@ const AINinja = () => {
                       justifyContent: 'center',
                       marginBottom: '1.25rem'
                     }}>
-                      <img src={tool.icon} alt={tool.name} style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                      <img src={tool.icon} alt={tool.name} style={{ width: '54px', height: '54px', objectFit: 'contain', transform: 'scale(1.3)' }} />
                     </div>
 
                     <h4 style={{
