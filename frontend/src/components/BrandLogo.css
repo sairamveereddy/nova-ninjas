@@ -12,15 +12,12 @@
 }
 
 .tld-roller-window {
-    height: 1.25em;
+    height: 1em;
     overflow: hidden;
     position: relative;
-    /* Adjusted width and nudge down for perfect baseline alignment */
     width: 4.5ch;
     margin-left: -0.05ch;
     display: inline-flex;
-    align-items: flex-end;
-    transform: translateY(0.1em);
 }
 
 .tld-roller-track {
@@ -33,7 +30,7 @@
 .tld-item {
     height: 100%;
     display: flex;
-    align-items: center;
+    align-items: baseline;
     color: #10b981;
     /* Brand green for the rolling part */
 }
