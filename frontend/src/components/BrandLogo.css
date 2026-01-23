@@ -16,7 +16,7 @@
     overflow: hidden;
     position: relative;
     /* Fixed width to prevent layout shifts */
-    width: 2.2ch;
+    width: 4ch;
     margin-left: -0.1ch;
     display: inline-flex;
     align-items: center;
