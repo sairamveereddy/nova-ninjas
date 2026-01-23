@@ -883,6 +883,71 @@ async def get_all_users():
 
 # ============ PROFILE ENDPOINTS ============
 
+@api_router.get("/user/profile")
+async def get_user_profile(user: dict = Depends(get_current_user)):
+    """
+    Get the profile of the current authenticated user.
+    """
+    try:
+        profile = await db.profiles.find_one({"email": user['email']}, {"_id": 0})
+        if not profile:
+            return {
+                "success": True, 
+                "profile": {
+                    "email": user['email'],
+                    "fullName": user.get('name', ''),
+                    "is_new": True
+                }
+            }
+        return {"success": True, "profile": profile}
+    except Exception as e:
+        logger.error(f"Error fetching user profile: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch profile")
+
+@api_router.post("/user/profile")
+async def save_user_profile(request: Request, user: dict = Depends(get_current_user)):
+    """
+    Save or update the profile of the current authenticated user.
+    """
+    try:
+        data = await request.json()
+        email = user['email']
+        
+        # Build profile data update
+        profile_update = {
+            "email": email,
+            "fullName": data.get('fullName', user.get('name', '')),
+            "phone": data.get('phone', ''),
+            "linkedinUrl": data.get('linkedinUrl', ''),
+            
+            # EEO Fields (Jobright Replication)
+            "gender": data.get('gender', ''),
+            "race": data.get('race', ''),
+            "disabilityStatus": data.get('disabilityStatus', ''),
+            "veteranStatus": data.get('veteranStatus', ''),
+            "lgbtqStatus": data.get('lgbtqStatus', ''),
+            "sexualOrientation": data.get('sexualOrientation', ''),
+            
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Basic fields that might be missing
+        if data.get('yearsOfExperience'): profile_update['yearsOfExperience'] = data.get('yearsOfExperience')
+        if data.get('currentRole'): profile_update['currentRole'] = data.get('currentRole')
+        
+        # Upsert profile
+        await db.profiles.update_one(
+            {"email": email},
+            {"$set": profile_update},
+            upsert=True
+        )
+        
+        logger.info(f"Profile updated via extension for {email}")
+        return {"success": True, "message": "Profile updated successfully"}
+    except Exception as e:
+        logger.error(f"Error saving user profile: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to save profile")
+
 @api_router.get("/profile/{email}")
 async def get_profile(email: str):
     """

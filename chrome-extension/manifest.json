@@ -1,0 +1,48 @@
+{
+    "manifest_version": 3,
+    "name": "Nova Ninjas: AI Job Copilot",
+    "version": "1.0.0",
+    "description": "1-Click Autofill, Match Scores, and AI Resume Tailoring for job seekers.",
+    "permissions": [
+        "sidePanel",
+        "storage",
+        "scripting",
+        "activeTab",
+        "cookies"
+    ],
+    "host_permissions": [
+        "https://jobninjas.ai/*",
+        "https://www.jobninjas.ai/*",
+        "https://jobninjas.org/*",
+        "https://www.jobninjas.org/*",
+        "https://*.greenhouse.io/*",
+        "https://*.lever.co/*",
+        "https://*.workday.com/*",
+        "https://*.linkedin.com/*"
+    ],
+    "background": {
+        "service_worker": "src/background/background.js"
+    },
+    "action": {
+        "default_title": "Open Nova Ninjas Side Panel"
+    },
+    "side_panel": {
+        "default_path": "src/sidepanel/sidepanel.html"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "src/content/content.js"
+            ],
+            "run_at": "document_end"
+        }
+    ],
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    }
+}

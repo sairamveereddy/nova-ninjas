@@ -39,39 +39,32 @@ const AINinja = () => {
       name: "Resume Tools",
       tools: [
         {
-          icon: <Sparkles className="w-6 h-6" />,
+          icon: "/tool-icons/resume-scanner.png",
           name: "Resume Scanner",
           description: "Get ATS match score & tailored resume",
           path: "/scanner",
-          color: "from-purple-500 to-pink-500"
+          color: "bg-blue-50"
         },
         {
-          icon: <Zap className="w-6 h-6" />,
+          icon: "/tool-icons/one-click-optimize.png",
           name: "One-Click Optimize",
           description: "Instantly optimize your resume for any job",
           path: "/one-click-optimize",
-          color: "from-blue-500 to-cyan-500"
+          color: "bg-purple-50"
         },
         {
-          icon: <Target className="w-6 h-6" />,
+          icon: "/tool-icons/bullet-points.png",
           name: "Bullet Points Generator",
           description: "Create powerful achievement bullets",
           path: "/bullet-points",
-          color: "from-green-500 to-emerald-500"
+          color: "bg-pink-50"
         },
         {
-          icon: <FileText className="w-6 h-6" />,
+          icon: "/tool-icons/summary-generator.png",
           name: "Summary Generator",
           description: "Craft compelling professional summaries",
           path: "/summary-generator",
-          color: "from-orange-500 to-red-500"
-        },
-        {
-          icon: <Bot className="w-6 h-6" />,
-          name: "ChatGPT Resume",
-          description: "AI-powered resume writing assistant",
-          path: "/chatgpt-resume",
-          color: "from-indigo-500 to-purple-500"
+          color: "bg-orange-50"
         }
       ]
     },
@@ -79,11 +72,11 @@ const AINinja = () => {
       name: "Cover Letter & LinkedIn",
       tools: [
         {
-          icon: <MessageSquare className="w-6 h-6" />,
+          icon: "/tool-icons/chatgpt-cover-letter.png",
           name: "ChatGPT Cover Letter",
           description: "Generate personalized cover letters",
           path: "/chatgpt-cover-letter",
-          color: "from-pink-500 to-rose-500"
+          color: "bg-emerald-50"
         },
         {
           icon: <Users className="w-6 h-6" />,
@@ -119,18 +112,18 @@ const AINinja = () => {
           color: "from-violet-500 to-purple-500"
         },
         {
-          icon: <TrendingUp className="w-6 h-6" />,
+          icon: "/tool-icons/career-change.png",
           name: "Career Change Tool",
           description: "Transition to a new career path",
           path: "/career-change",
-          color: "from-emerald-500 to-green-500"
+          color: "bg-indigo-50"
         },
         {
-          icon: <MessageSquare className="w-6 h-6" />,
+          icon: "/tool-icons/interview-prep.png",
           name: "Interview Prep",
           description: "Practice common interview questions",
           path: "/interview-prep",
-          color: "from-red-500 to-pink-500"
+          color: "bg-red-50"
         }
       ]
     },
@@ -145,11 +138,11 @@ const AINinja = () => {
           color: "from-cyan-500 to-blue-500"
         },
         {
-          icon: <Pen className="w-6 h-6" />,
+          icon: "/tool-icons/cover-letter-templates.png",
           name: "Cover Letter Templates",
           description: "Ready-to-use cover letter formats",
           path: "/cover-letter-templates",
-          color: "from-fuchsia-500 to-pink-500"
+          color: "bg-fuchsia-50"
         },
         {
           icon: <BookOpen className="w-6 h-6" />,
@@ -372,18 +365,16 @@ const AINinja = () => {
                       e.currentTarget.style.boxShadow = 'none';
                     }}
                   >
-                    <div style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '12px',
-                      background: `linear-gradient(135deg, ${tool.color})`,
+                    <div className={tool.color} style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '16px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: 'white',
-                      marginBottom: '1rem'
+                      marginBottom: '1.25rem'
                     }}>
-                      {tool.icon}
+                      <img src={tool.icon} alt={tool.name} style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
                     </div>
 
                     <h4 style={{
