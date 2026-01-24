@@ -2808,7 +2808,12 @@ async def get_jobs(
         if country:
             country_lower = country.lower()
             if country_lower == 'usa' or country_lower == 'us':
-                query["country"] = "us"
+                # Strictly USA: Must have country='us' AND not mention other countries in location
+                international_keywords = "israel|europe|india|uk|london|canada|germany|france|australia|asia|berlin|paris|toronto|sydney"
+                query["$and"] = [
+                    {"country": "us"},
+                    {"location": {"$not": {"$regex": international_keywords, "$options": "i"}}}
+                ]
             elif country_lower == 'international':
                 query["country"] = {"$ne": "us"}
             else:
