@@ -135,6 +135,96 @@ async def call_groq_api(prompt: str, max_tokens: int = 4000, model: str = None, 
     return None
 
 
+async def call_openai_api(prompt: str, api_key: str, max_tokens: int = 4000, model: str = "gpt-4o-mini") -> Optional[str]:
+    """Call OpenAI API for text generation"""
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": "You are a professional career advisor and ATS expert."},
+            {"role": "user", "content": prompt}
+        ],
+        "max_tokens": max_tokens,
+        "temperature": 0.1
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data['choices'][0]['message']['content']
+                else:
+                    logger.error(f"OpenAI API error {response.status}: {await response.text()}")
+                    return None
+    except Exception as e:
+        logger.error(f"Error calling OpenAI API: {e}")
+        return None
+
+async def call_anthropic_api(prompt: str, api_key: str, max_tokens: int = 4000, model: str = "claude-3-haiku-20240307") -> Optional[str]:
+    """Call Anthropic API for text generation"""
+    headers = {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "messages": [{"role": "user", "content": prompt}]
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post("https://api.anthropic.com/v1/messages", headers=headers, json=payload) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data['content'][0]['text']
+                else:
+                    logger.error(f"Anthropic API error {response.status}: {await response.text()}")
+                    return None
+    except Exception as e:
+        logger.error(f"Error calling Anthropic API: {e}")
+        return None
+
+async def call_google_api(prompt: str, api_key: str, max_tokens: int = 4000) -> Optional[str]:
+    """Call Google Gemini API for text generation"""
+    import google.generativeai as genai
+    try:
+        # We run this in a thread because genai is synchronous mostly or uses its own event loop
+        def sync_google_call():
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            response = model.generate_content(prompt)
+            return response.text
+        
+        return await asyncio.to_thread(sync_google_call)
+    except Exception as e:
+        logger.error(f"Error calling Google Gemini API: {e}")
+        return None
+
+async def unified_api_call(prompt: str, byok_config: Optional[Dict] = None, max_tokens: int = 4000, model: str = None) -> Optional[str]:
+    """
+    Unified AI call point. Uses BYOK if provided, otherwise falls back to internal Groq pooling.
+    """
+    if byok_config and byok_config.get('api_key'):
+        provider = byok_config.get('provider', '').lower()
+        api_key = byok_config['api_key']
+        
+        logger.info(f"Using BYOK for request (Provider: {provider})")
+        
+        if provider == 'openai':
+            return await call_openai_api(prompt, api_key, max_tokens)
+        elif provider == 'anthropic':
+            return await call_anthropic_api(prompt, api_key, max_tokens)
+        elif provider == 'google':
+            return await call_google_api(prompt, api_key, max_tokens)
+            
+    # Fallback to internal Groq key pooling
+    return await call_groq_api(prompt, max_tokens=max_tokens, model=model)
+
+
 def clean_json_response(text: str) -> str:
     """Clean up AI response to extract valid JSON and handle control characters"""
     if not text:
@@ -164,18 +254,19 @@ def clean_json_response(text: str) -> str:
     return text
 
 
-async def analyze_resume(resume_text: str, job_description: str) -> Dict[str, Any]:
+async def analyze_resume(resume_text: str, job_description: str, byok_config: Optional[Dict] = None) -> Dict[str, Any]:
     """
-    Analyze a resume against a job description using Groq AI
+    Analyze a resume against a job description using Groq AI or BYOK
     
     Args:
         resume_text: The extracted text from the resume
         job_description: The job description text
+        byok_config: Optional user API key configuration
         
     Returns:
         Analysis results including match score, skills comparison, and suggestions
     """
-    if not GROQ_API_KEYS and not os.environ.get('GROQ_API_KEY'):
+    if not GROQ_API_KEYS and not byok_config and not os.environ.get('GROQ_API_KEY'):
         return {
             "error": "GROQ_API_KEY not configured. Please add it to environment variables.",
             "matchScore": 0
@@ -276,8 +367,8 @@ Important:
 """
 
     try:
-        # Use fast model to avoid rate limits and improve speed
-        response_text = await call_groq_api(prompt, model="llama-3.1-8b-instant")
+        # Use unified call with fallback support
+        response_text = await unified_api_call(prompt, byok_config=byok_config, model="llama-3.1-8b-instant")
         
         if not response_text:
             logger.warning("Resume analysis failed (rate limit). Using basic fallback.")
@@ -309,17 +400,18 @@ Important:
         }
 
 
-async def extract_resume_data(resume_text: str) -> Dict[str, Any]:
+async def extract_resume_data(resume_text: str, byok_config: Optional[Dict] = None) -> Dict[str, Any]:
     """
-    Extract structured data from resume text using Groq AI
+    Extract structured data from resume text using Groq AI or BYOK
     
     Args:
         resume_text: The extracted text from the resume
+        byok_config: Optional user API key configuration
         
     Returns:
         Structured resume data
     """
-    if not GROQ_API_KEYS:
+    if not GROQ_API_KEYS and not byok_config:
         return {"error": "GROQ_API_KEY not configured"}
     
     prompt = f"""
@@ -367,8 +459,8 @@ Return ONLY the JSON, no other text.
 """
 
     try:
-        # Use high-speed 8B model for extraction
-        response_text = await call_groq_api(prompt, max_tokens=1000, model="llama-3.1-8b-instant")
+        # Use high-speed model / BYOK for extraction
+        response_text = await unified_api_call(prompt, byok_config=byok_config, max_tokens=1000, model="llama-3.1-8b-instant")
         if not response_text:
             return {"error": "Failed to get response from AI"}
         json_text = clean_json_response(response_text)
@@ -379,18 +471,19 @@ Return ONLY the JSON, no other text.
         return {"error": str(e)}
 
 
-async def generate_optimized_resume(resume_text: str, job_description: str) -> Dict[str, Any]:
+async def generate_optimized_resume(resume_text: str, job_description: str, byok_config: Optional[Dict] = None) -> Dict[str, Any]:
     """
     Generate suggestions for an optimized resume tailored to the job
     
     Args:
         resume_text: The original resume text
         job_description: The target job description
+        byok_config: Optional user API key configuration
         
     Returns:
         Optimized resume suggestions
     """
-    if not GROQ_API_KEYS:
+    if not GROQ_API_KEYS and not byok_config:
         return {"error": "GROQ_API_KEY not configured"}
     
     prompt = f"""
@@ -420,7 +513,7 @@ Return ONLY the JSON, no other text.
 """
 
     try:
-        response_text = await call_groq_api(prompt)
+        response_text = await unified_api_call(prompt, byok_config=byok_config)
         if not response_text:
             return {"error": "Failed to get response from AI"}
         json_text = clean_json_response(response_text)

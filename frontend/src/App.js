@@ -52,7 +52,6 @@ import LinkedInHeadlineOptimizer from "./components/LinkedInHeadlineOptimizer";
 import CareerGapExplainer from "./components/CareerGapExplainer";
 import JobDescriptionDecoder from "./components/JobDescriptionDecoder";
 import OfferComparator from "./components/OfferComparator";
-import BYOKSettings from "./components/BYOKSettings";
 import ContactPage from "./components/ContactPage";
 import "./components/Jobs.css";
 import "./components/InterviewPrep.css";
@@ -107,15 +106,6 @@ function App() {
             <Route path="/job-decoder" element={<JobDescriptionDecoder />} />
             <Route path="/offer-comparator" element={<OfferComparator />} />
 
-            {/* BYOK Settings Route */}
-            <Route
-              path="/byok-settings"
-              element={
-                <ProtectedRoute allowedRoles={['customer']} requireVerification={false}>
-                  <BYOKSettings />
-                </ProtectedRoute>
-              }
-            />
 
             {/* Interview Prep Route */}
             <Route path="/interview-prep" element={<InterviewPrep />} />

@@ -15,7 +15,7 @@ import asyncio
 import json
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
-from resume_analyzer import call_groq_api, clean_json_response
+from resume_analyzer import call_groq_api, unified_api_call, clean_json_response
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +166,7 @@ def render_ats_resume_from_json(r: ResumeDataSchema) -> str:
     return "\n".join(out).strip()
 
 
-async def generate_optimized_resume_content(resume_text: str, job_description: str, analysis: Dict) -> Optional[Dict]:
+async def generate_optimized_resume_content(resume_text: str, job_description: str, analysis: Dict, byok_config: Optional[Dict] = None) -> Optional[Dict]:
     """Generate optimized resume content using AI - preserves ALL original content"""
     
     missing_skills = []
@@ -271,8 +271,8 @@ GENERATE THE ENHANCED RESUME JSON NOW:
 """
 
     try:
-        # Use fast model for drafting
-        response = await call_groq_api(prompt, max_tokens=8000, model="llama-3.1-8b-instant")
+        # Use unified call with BYOK support
+        response = await unified_api_call(prompt, byok_config=byok_config, max_tokens=8000, model="llama-3.1-8b-instant")
         if not response:
             return None
         
@@ -291,7 +291,7 @@ GENERATE THE ENHANCED RESUME JSON NOW:
         return None
 
 
-async def generate_cover_letter_content(resume_text: str, job_description: str, job_title: str, company: str) -> Optional[str]:
+async def generate_cover_letter_content(resume_text: str, job_description: str, job_title: str, company: str, byok_config: Optional[Dict] = None) -> Optional[str]:
     """Generate a cover letter using AI"""
     
     prompt = f"""
@@ -317,14 +317,14 @@ Return ONLY the cover letter text, no JSON or markdown.
 """
 
     try:
-        response = await call_groq_api(prompt)
+        response = await unified_api_call(prompt, byok_config=byok_config)
         return response
     except Exception as e:
         logger.error(f"Failed to generate cover letter: {e}")
         return None
 
 
-async def extract_compliance_facts(resume_text: str) -> Dict[str, Any]:
+async def extract_compliance_facts(resume_text: str, byok_config: Optional[Dict] = None) -> Optional[Dict]:
     """Stage 1: Extract verbatim facts from resume into a strict JSON schema"""
     # Truncate resume text to keep it manageable and avoid TPM limits
     truncated_resume = resume_text[:10000]
@@ -364,7 +364,7 @@ Rules:
     try:
         # Stage 1: Fact extraction - Using high-speed 8B model for extraction (Step 1 Optimization)
         # 8B is perfect for extraction and significantly faster than larger models
-        response_text = await call_groq_api(prompt, max_tokens=1500, model="llama-3.1-8b-instant")
+        response_text = await unified_api_call(prompt, byok_config=byok_config, max_tokens=1500, model="llama-3.1-8b-instant")
         if not response_text:
             return {}
         
@@ -375,7 +375,7 @@ Rules:
         return {}
 
 
-async def generate_expert_documents(resume_text: str, job_description: str, user_info: Optional[Dict] = None) -> Optional[Dict[str, Any]]:
+async def generate_expert_documents(resume_text: str, job_description: str, user_info: Optional[Dict] = None, byok_config: Optional[Dict] = None) -> Optional[Dict[str, Any]]:
     """Generate ATS Resume and Detailed CV using the compliance-grade two-stage pipeline"""
     
     # Resolving model selection (Optimization)
@@ -384,7 +384,7 @@ async def generate_expert_documents(resume_text: str, job_description: str, user
     
     # Stage 1: Extract Facts
     logger.info("Stage 1: Extracting compliance-grade facts")
-    facts_json = await extract_compliance_facts(resume_text)
+    facts_json = await extract_compliance_facts(resume_text, byok_config=byok_config)
     
     if not facts_json:
         logger.error("Fact extraction returned empty results")
@@ -468,8 +468,8 @@ Rules:
     logger.info("Stage 2: Drafting documents (Parallel Execution)")
     
     # Parallelize Resume and Cover Letter generation
-    resume_task = call_groq_api(resume_prompt, max_tokens=4000, model=drafting_model)
-    cl_task = call_groq_api(cover_letter_prompt, max_tokens=1000, model=extraction_model) # CL is easier, use 8B
+    resume_task = unified_api_call(resume_prompt, byok_config=byok_config, max_tokens=4000, model=drafting_model)
+    cl_task = unified_api_call(cover_letter_prompt, byok_config=byok_config, max_tokens=1000, model=extraction_model) # CL is easier, use 8B
     
     results = await asyncio.gather(resume_task, cl_task, return_exceptions=True)
     resume_response, cl_response = results

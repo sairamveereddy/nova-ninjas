@@ -2449,18 +2449,37 @@ async def get_user_usage_limits(identifier: str) -> dict:
             current_count = total_resumes
             
         can_generate = current_count < limit
+    elif tier_lower == 'free_byok' or user.get('byok_enabled'):
+        limit = "Unlimited (BYOK)"
+        can_generate = True
     else: # free
-        limit = 5
+        limit = 100 # Increased to 100 for beta
         can_generate = total_resumes < limit
         
-    return {
-        "tier": tier,
-        "currentCount": current_count,
-        "limit": limit,
-        "canGenerate": can_generate,
         "resetDate": reset_date,
-        "totalResumes": total_resumes
+        "totalResumes": total_resumes,
+        "byokEnabled": user.get('byok_enabled', False)
     }
+
+async def get_decrypted_byok_key(user_email: str):
+    """Retrieve and decrypt a user's BYOK key if available"""
+    try:
+        byok_config = await db.byok_keys.find_one({"user_id": user_email})
+        if not byok_config or not byok_config.get('is_enabled', True):
+            return None
+            
+        decrypted_key = decrypt_api_key(
+            byok_config['api_key_encrypted'],
+            byok_config['api_key_iv'],
+            byok_config['api_key_tag']
+        )
+        return {
+            "provider": byok_config['provider'],
+            "api_key": decrypted_key
+        }
+    except Exception as e:
+        logger.error(f"Error decrypting BYOK key for {user_email}: {e}")
+        return None
 
 @api_router.get("/usage/limits")
 async def get_usage_limits(email: str = Query(...)):
@@ -3191,10 +3210,14 @@ async def generate_ai_content(request: AIGenerateRequest, user: dict = Depends(g
         # Enforce email verification
         ensure_verified(user)
         
-        from resume_analyzer import call_groq_api
+        from resume_analyzer import unified_api_call
         
-        response = await call_groq_api(
+        # Check for BYOK
+        byok_config = await get_decrypted_byok_key(user.get('email'))
+        
+        response = await unified_api_call(
             request.prompt, 
+            byok_config=byok_config,
             max_tokens=request.max_tokens,
             model="llama-3.1-8b-instant"
         )
@@ -3235,8 +3258,12 @@ async def scan_resume(
                 detail="Could not extract text from resume. Please ensure it's not an image-based PDF."
             )
         
-        # Analyze with Gemini
-        analysis = await analyze_resume(resume_text, job_description)
+        # Check for BYOK
+        byok_config = await get_decrypted_byok_key(user.get('email', ''))
+        
+        # Analyze with Gemini / BYOK
+        from resume_analyzer import analyze_resume
+        analysis = await analyze_resume(resume_text, job_description, byok_config=byok_config)
         
         if "error" in analysis:
             raise HTTPException(status_code=500, detail=analysis["error"])
@@ -3277,8 +3304,12 @@ async def parse_resume_endpoint(
                 detail="Could not extract text from resume"
             )
         
-        # Extract structured data with Gemini
-        parsed_data = await extract_resume_data(resume_text)
+        # Check for BYOK
+        byok_config = await get_decrypted_byok_key(user.get('email', ''))
+        
+        # Extract structured data with Gemini / BYOK
+        from resume_analyzer import extract_resume_data
+        parsed_data = await extract_resume_data(resume_text, byok_config=byok_config)
         
         return {
             "success": True,
@@ -3320,15 +3351,11 @@ async def generate_resume_docx(request: GenerateResumeRequest):
             # It's raw text from Expert AI that is already tailored
             docx_file = create_text_docx(request.resume_text, "ATS_Resume")
         elif not request.resume_text.startswith('{'):
-            # It's raw text that NEEDS tailoring - use the high-quality expert pipeline
-            # This is the flow for Resume Scanner and One-Click Optimize
-            user_info = {
-                "name": user.get("name"),
-                "email": user.get("email"),
-                "phone": user.get("phone"),
-                "location": user.get("location")
-            } if user else None
-            expert_docs = await generate_expert_documents(request.resume_text, request.job_description, user_info=user_info)
+            # Check for BYOK
+            byok_config = await get_decrypted_byok_key(user.get('email', ''))
+            
+            from document_generator import generate_expert_documents, generate_optimized_resume_content
+            expert_docs = await generate_expert_documents(request.resume_text, request.job_description, user_info=user_info, byok_config=byok_config)
             
             if expert_docs and expert_docs.get('ats_resume'):
                 docx_file = create_text_docx(expert_docs['ats_resume'], "Optimized_Resume")
@@ -3337,17 +3364,23 @@ async def generate_resume_docx(request: GenerateResumeRequest):
                 resume_data = await generate_optimized_resume_content(
                     request.resume_text,
                     request.job_description,
-                    request.analysis
+                    request.analysis,
+                    byok_config=byok_config
                 )
                 if not resume_data:
                     raise HTTPException(status_code=500, detail="Failed to generate resume content")
                 docx_file = create_resume_docx(resume_data)
         else:
+            # Check for BYOK
+            byok_config = await get_decrypted_byok_key(user.get('email', ''))
+            
             # Generate optimized content from structured data (original flow)
+            from document_generator import generate_optimized_resume_content
             resume_data = await generate_optimized_resume_content(
                 request.resume_text,
                 request.job_description,
-                request.analysis
+                request.analysis,
+                byok_config=byok_config
             )
             
             if not resume_data:

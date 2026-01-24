@@ -6,10 +6,13 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from './ui/card';
 import { Eye, EyeOff, Check, X, Loader2, Key, Trash2 } from 'lucide-react';
+import Header from './Header';
+import SideMenu from './SideMenu';
 import './BYOKSettings.css';
 
 const BYOKSettings = () => {
     const { user } = useAuth();
+    const [sideMenuOpen, setSideMenuOpen] = useState(false);
     const [provider, setProvider] = useState('openai');
     const [apiKey, setApiKey] = useState('');
     const [showKey, setShowKey] = useState(false);
@@ -157,165 +160,170 @@ const BYOKSettings = () => {
     }
 
     return (
-        <div className="byok-settings-container">
-            <Card className="byok-card">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Key className="w-6 h-6 text-green-600" />
-                        Bring Your Own API Key (BYOK)
-                    </CardTitle>
-                    <CardDescription>
-                        Use your own OpenAI, Google, or Anthropic API key for free unlimited access.
-                        Your keys are encrypted and never shared.
-                    </CardDescription>
-                </CardHeader>
+        <div className="min-h-screen bg-neutral-50 byok-page">
+            <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
+            <Header onMenuClick={() => setSideMenuOpen(true)} />
 
-                <CardContent className="space-y-6">
-                    {/* Current Status */}
-                    {currentConfig?.configured && (
-                        <div className="byok-status-card">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-semibold text-green-700">✓ BYOK Configured</p>
-                                    <p className="text-sm text-gray-600">
-                                        Provider: <span className="font-medium capitalize">{currentConfig.provider}</span>
-                                    </p>
+            <div className="byok-settings-container pt-24 pb-20">
+                <Card className="byok-card glass-card">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-2xl">
+                            <Key className="w-8 h-8 text-blue-600" />
+                            Bring Your Own API Key (BYOK)
+                        </CardTitle>
+                        <CardDescription className="text-gray-600 mt-2">
+                            Use your own OpenAI, Google, or Anthropic API key for free unlimited access.
+                            Your keys are encrypted with AES-256-GCM and never stored in plaintext.
+                        </CardDescription>
+                    </CardHeader>
+
+                    <CardContent className="space-y-6">
+                        {/* Current Status */}
+                        {currentConfig?.configured && (
+                            <div className="byok-status-card">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-semibold text-green-700">✓ BYOK Configured</p>
+                                        <p className="text-sm text-gray-600">
+                                            Provider: <span className="font-medium capitalize">{currentConfig.provider}</span>
+                                        </p>
+                                    </div>
+                                    <Button
+                                        onClick={handleRemoveKey}
+                                        disabled={removing}
+                                        variant="destructive"
+                                        size="sm"
+                                        className="flex items-center gap-2"
+                                    >
+                                        {removing ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <Trash2 className="w-4 h-4" />
+                                        )}
+                                        Remove Key
+                                    </Button>
                                 </div>
-                                <Button
-                                    onClick={handleRemoveKey}
-                                    disabled={removing}
-                                    variant="destructive"
-                                    size="sm"
-                                    className="flex items-center gap-2"
-                                >
-                                    {removing ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                        <Trash2 className="w-4 h-4" />
-                                    )}
-                                    Remove Key
-                                </Button>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* Provider Selection */}
-                    <div className="space-y-2">
-                        <Label htmlFor="provider">Provider</Label>
-                        <select
-                            id="provider"
-                            value={provider}
-                            onChange={(e) => setProvider(e.target.value)}
-                            className="byok-select"
-                            disabled={currentConfig?.configured}
-                        >
-                            <option value="openai">OpenAI</option>
-                            <option value="google">Google AI</option>
-                            <option value="anthropic">Anthropic</option>
-                        </select>
-                        <p className="text-xs text-gray-500">
-                            {provider === 'openai' && 'Get your API key from platform.openai.com'}
-                            {provider === 'google' && 'Get your API key from ai.google.dev'}
-                            {provider === 'anthropic' && 'Get your API key from console.anthropic.com'}
-                        </p>
-                    </div>
-
-                    {/* API Key Input */}
-                    <div className="space-y-2">
-                        <Label htmlFor="apiKey">API Key</Label>
-                        <div className="relative">
-                            <Input
-                                id="apiKey"
-                                type={showKey ? 'text' : 'password'}
-                                value={apiKey}
-                                onChange={(e) => setApiKey(e.target.value)}
-                                placeholder={`Enter your ${provider} API key`}
-                                className="pr-10"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowKey(!showKey)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        {/* Provider Selection */}
+                        <div className="space-y-2">
+                            <Label htmlFor="provider">Provider</Label>
+                            <select
+                                id="provider"
+                                value={provider}
+                                onChange={(e) => setProvider(e.target.value)}
+                                className="byok-select"
+                                disabled={currentConfig?.configured}
                             >
-                                {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
+                                <option value="openai">OpenAI</option>
+                                <option value="google">Google AI</option>
+                                <option value="anthropic">Anthropic</option>
+                            </select>
+                            <p className="text-xs text-gray-500">
+                                {provider === 'openai' && 'Get your API key from platform.openai.com'}
+                                {provider === 'google' && 'Get your API key from ai.google.dev'}
+                                {provider === 'anthropic' && 'Get your API key from console.anthropic.com'}
+                            </p>
                         </div>
-                        <p className="text-xs text-gray-500">
-                            Your API key is encrypted with AES-256-GCM before storage. We never see your plaintext key.
-                        </p>
-                    </div>
 
-                    {/* Test Result */}
-                    {testResult && (
-                        <div className={`byok-message ${testResult.success ? 'success' : 'error'}`}>
-                            {testResult.success ? (
-                                <Check className="w-5 h-5" />
-                            ) : (
-                                <X className="w-5 h-5" />
-                            )}
-                            <span>{testResult.message}</span>
+                        {/* API Key Input */}
+                        <div className="space-y-2">
+                            <Label htmlFor="apiKey">API Key</Label>
+                            <div className="relative">
+                                <Input
+                                    id="apiKey"
+                                    type={showKey ? 'text' : 'password'}
+                                    value={apiKey}
+                                    onChange={(e) => setApiKey(e.target.value)}
+                                    placeholder={`Enter your ${provider} API key`}
+                                    className="pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowKey(!showKey)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                >
+                                    {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                                Your API key is encrypted with AES-256-GCM before storage. We never see your plaintext key.
+                            </p>
                         </div>
-                    )}
 
-                    {/* Save Result */}
-                    {saveResult && (
-                        <div className={`byok-message ${saveResult.success ? 'success' : 'error'}`}>
-                            {saveResult.success ? (
-                                <Check className="w-5 h-5" />
-                            ) : (
-                                <X className="w-5 h-5" />
-                            )}
-                            <span>{saveResult.message}</span>
+                        {/* Test Result */}
+                        {testResult && (
+                            <div className={`byok-message ${testResult.success ? 'success' : 'error'}`}>
+                                {testResult.success ? (
+                                    <Check className="w-5 h-5 text-green-600" />
+                                ) : (
+                                    <X className="w-5 h-5 text-red-600" />
+                                )}
+                                <span>{testResult.message}</span>
+                            </div>
+                        )}
+
+                        {/* Save Result */}
+                        {saveResult && (
+                            <div className={`byok-message ${saveResult.success ? 'success' : 'error'}`}>
+                                {saveResult.success ? (
+                                    <Check className="w-5 h-5 text-green-600" />
+                                ) : (
+                                    <X className="w-5 h-5 text-red-600" />
+                                )}
+                                <span>{saveResult.message}</span>
+                            </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3">
+                            <Button
+                                onClick={handleTestKey}
+                                disabled={testing || !apiKey.trim()}
+                                variant="outline"
+                                className="flex-1"
+                            >
+                                {testing ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Testing...
+                                    </>
+                                ) : (
+                                    'Test Key'
+                                )}
+                            </Button>
+
+                            <Button
+                                onClick={handleSaveKey}
+                                disabled={saving || !apiKey.trim()}
+                                className="flex-1 bg-green-600 hover:bg-green-700"
+                            >
+                                {saving ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    'Save Key'
+                                )}
+                            </Button>
                         </div>
-                    )}
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-3">
-                        <Button
-                            onClick={handleTestKey}
-                            disabled={testing || !apiKey.trim()}
-                            variant="outline"
-                            className="flex-1"
-                        >
-                            {testing ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Testing...
-                                </>
-                            ) : (
-                                'Test Key'
-                            )}
-                        </Button>
-
-                        <Button
-                            onClick={handleSaveKey}
-                            disabled={saving || !apiKey.trim()}
-                            className="flex-1 bg-green-600 hover:bg-green-700"
-                        >
-                            {saving ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Saving...
-                                </>
-                            ) : (
-                                'Save Key'
-                            )}
-                        </Button>
-                    </div>
-
-                    {/* Info Box */}
-                    <div className="byok-info-box">
-                        <h4 className="font-semibold mb-2">How BYOK Works:</h4>
-                        <ul className="space-y-1 text-sm">
-                            <li>✓ Your API key is encrypted with AES-256-GCM</li>
-                            <li>✓ We test the key before saving to ensure it works</li>
-                            <li>✓ Your usage is billed directly by your provider</li>
-                            <li>✓ You can remove your key anytime</li>
-                            <li>✓ Keys are never logged or shared</li>
-                        </ul>
-                    </div>
-                </CardContent>
-            </Card>
+                        {/* Info Box */}
+                        <div className="byok-info-box">
+                            <h4 className="font-semibold mb-2">How BYOK Works:</h4>
+                            <ul className="space-y-1 text-sm">
+                                <li>✓ Your API key is encrypted with AES-256-GCM</li>
+                                <li>✓ We test the key before saving to ensure it works</li>
+                                <li>✓ Your usage is billed directly by your provider</li>
+                                <li>✓ You can remove your key anytime</li>
+                                <li>✓ Keys are never logged or shared</li>
+                            </ul>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 };

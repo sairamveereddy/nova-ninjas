@@ -52,6 +52,7 @@ const SideMenu = ({ isOpen, onClose }) => {
 
   const accountItems = [
     { icon: User, label: 'My Profile', path: '/dashboard?tab=profile', requiresAuth: true },
+    { icon: Bot, label: 'AI Settings (BYOK)', path: '/dashboard?tab=settings', requiresAuth: true },
   ];
 
   return (
