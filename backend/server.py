@@ -2843,7 +2843,16 @@ async def get_jobs(
             country_lower = country.lower()
             if country_lower == 'usa' or country_lower == 'us':
                 # Strictly USA: Must have country='us' AND not mention other countries in location
-                international_keywords = "israel|europe|india|uk|london|canada|germany|france|australia|asia|berlin|paris|toronto|sydney"
+                international_keywords = (
+                    "israel|europe|india|uk|london|canada|germany|france|australia|asia|berlin|paris|toronto|sydney|"
+                    "munich|hamburg|frankfurt|vienna|zurich|amsterdam|cairo|dubai|tokyo|singapore|beijing|shanghai|"
+                    "rio|sao paulo|mexico city|buenos aires|madrid|barcelona|rome|milan|naples|athens|istanbul|moscow|"
+                    "stockholm|oslo|helsinki|copenhagen|warsaw|prague|budapest|bucharest|sofia|dublin|belfast|edinburgh|"
+                    "glasgow|cardiff|manchester|birmingham|leeds|liverpool|bristol|newcastle|sheffield|nottingham|leicester|"
+                    "southampton|portsmouth|plymouth|brighton|cambridge|oxford|norwich|ipswich|exeter|switzerland|"
+                    "netherlands|belgium|austria|sweden|norway|denmark|finland|poland|czech|hungary|romania|bulgaria|"
+                    "greece|turkey|russia|egypt|uae|china|japan|korea|brazil|mexico|argentina|spain|italy|gmbh"
+                )
                 query["$and"] = [
                     {"country": "us"},
                     {"location": {"$not": {"$regex": international_keywords, "$options": "i"}}}
