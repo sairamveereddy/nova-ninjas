@@ -519,6 +519,8 @@ async def send_welcome_email(name: str, email: str, token: str = None, referral_
     """
     Send a refined welcome email to new users who sign up.
     """
+    logger.info(f"Attempting to send welcome email to {email} (Name: {name})")
+    try:
     frontend_url = os.environ.get('FRONTEND_URL', 'https://jobninjas.ai')
     verify_link = f"{frontend_url}/verify-email?token={token}" if token else f"{frontend_url}/dashboard"
     login_link = f"{frontend_url}/login"
@@ -637,7 +639,11 @@ async def send_welcome_email(name: str, email: str, token: str = None, referral_
 </html>
     """
     
-    return await send_email_resend(email, f"Welcome to jobNinjas, {name}! 🥷", html_content)
+    
+        return await send_email_resend(email, f"Welcome to jobNinjas, {name}! 🥷", html_content)
+    except Exception as e:
+        logger.error(f"Failed to generate/send welcome email: {e}")
+        return False
 
 
 async def send_admin_booking_notification(booking):
