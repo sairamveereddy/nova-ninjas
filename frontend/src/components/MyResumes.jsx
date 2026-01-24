@@ -48,7 +48,7 @@ const MyResumes = () => {
       const response = await fetch(`${API_URL}/api/resumes?email=${encodeURIComponent(user.email)}`);
       if (response.ok) {
         const data = await response.json();
-        setResumes(data || []);
+        setResumes(data.resumes || []);
       }
     } catch (error) {
       console.error('Error fetching resumes:', error);

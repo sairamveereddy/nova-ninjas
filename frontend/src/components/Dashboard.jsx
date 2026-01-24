@@ -282,7 +282,7 @@ const Dashboard = () => {
               >
                 <Menu className="w-5 h-5 text-gray-600" />
               </button>
-              <button onClick={() => navigate('/')} className="flex items-center gap-2">
+              <button onClick={() => { navigate('/'); window.scrollTo(0, 0); }} className="flex items-center gap-2">
                 <img src={BRAND.logoPath} alt={BRAND.logoAlt} className="h-8" />
                 <span className="text-xl font-bold text-primary">{BRAND.name}</span>
               </button>

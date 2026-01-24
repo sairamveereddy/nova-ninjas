@@ -2407,46 +2407,45 @@ async def get_user_usage_limits(identifier: str) -> dict:
         elif 'beginner' in tier_id.lower():
             tier = 'beginner'
 
-    # Hardcoded limits for now as per user instruction
+    # Updated limits as per user instruction
     # Free: 5 total
-    # Beginner: 200 per month
-    # Pro: Unlimited
+    # Beginner ($19.99): 200 per month/total depending on sub
+    # Pro ($29.99): Unlimited
     
     limit = 5
     current_count = total_resumes
     can_generate = False
     reset_date = None
     
-    if str(tier).strip().lower() == 'pro':
+    tier_lower = str(tier).strip().lower()
+    
+    if tier_lower == 'pro' or tier_lower == 'unlimited':
         limit = "Unlimited"
         can_generate = True
-        current_count = total_resumes 
-    elif tier == 'beginner':
+    elif tier_lower == 'beginner' or tier_lower == 'standard':
         limit = 200
-        # Calculate monthly count based on billing cycle
-        activated_at = sub.get('activated_at')
-        if isinstance(activated_at, str):
-            activated_at = datetime.fromisoformat(activated_at.replace('Z', '+00:00'))
-        
+        # Calculate monthly count if subscription is active
+        activated_at = sub.get('activated_at') if sub else None
         if activated_at:
+            if isinstance(activated_at, str):
+                activated_at = datetime.fromisoformat(activated_at.replace('Z', '+00:00'))
+            
             # Find the start of the current billing cycle
             now = datetime.now(timezone.utc)
             months_diff = (now.year - activated_at.year) * 12 + now.month - activated_at.month
             if now.day < activated_at.day:
                 months_diff -= 1
             
-            # Start of current cycle
             from dateutil.relativedelta import relativedelta
             cycle_start = activated_at + relativedelta(months=months_diff)
             cycle_end = cycle_start + relativedelta(months=1)
             reset_date = cycle_end
             
             current_count = await db.resumes.count_documents({
-                "userId": user['id'],
+                "$or": [{"userId": str(user_id)}, {"userEmail": user.get('email')}],
                 "createdAt": {"$gte": cycle_start}
             })
         else:
-            # Fallback to total if no activation date
             current_count = total_resumes
             
         can_generate = current_count < limit
@@ -2648,9 +2647,27 @@ Sincerely,
                 "answer": f"{company} stands out for its reputation for innovation and commitment to excellence. The company's focus on impactful work and collaborative culture makes it an ideal environment where I can contribute meaningfully."
             }
         ]
+        # Save resume to record library and for usage tracking
+        resume_id = str(uuid.uuid4())
+        resume_doc = {
+            "id": resume_id,
+            "userId": userId,
+            "userEmail": user['email'],
+            "resumeName": f"AI Tailored: {company}",
+            "jobTitle": jobTitle,
+            "companyName": company,
+            "resumeText": tailoredResume,
+            "isSystemGenerated": True,
+            "isBase": False,
+            "createdAt": datetime.now(timezone.utc).isoformat(),
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+            "origin": "ai-ninja"
+        }
         
-        # No longer auto-saving every tailored resume to db.resumes to enforce 3-resume limit
-        # await db.resumes.insert_one(resume_doc)
+        # Insert into BOTH collections: 
+        # db.resumes for tracking usage, db.saved_resumes for the "My Resumes" list
+        await db.resumes.insert_one(resume_doc)
+        await db.saved_resumes.insert_one(resume_doc)
         
         # Save application to database
         application = Application(
@@ -3323,9 +3340,39 @@ async def generate_resume_docx(request: GenerateResumeRequest):
             # Create Word document
             docx_file = create_resume_docx(resume_data)
         
-        # Sanitize company name for header
-        safe_company = request.company.replace(' ', '_').replace('"', '')
-        
+        # Track this generation for usage limits
+        if user:
+            resume_track_doc = {
+                "id": str(uuid.uuid4()),
+                "userId": request.userId,
+                "userEmail": user.get('email'),
+                "type": "generation",
+                "createdAt": datetime.now(timezone.utc)
+            }
+            await db.resumes.insert_one(resume_track_doc)
+            
+            # Also save to "My Resumes" library so user can see it
+            try:
+                # We content is tailored or expert docs, use that text
+                saved_text = ""
+                if expert_docs and expert_docs.get('ats_resume'):
+                    saved_text = expert_docs['ats_resume']
+                elif 'resume_data' in locals() and resume_data:
+                    saved_text = str(resume_data) # Simplification
+                
+                if saved_text:
+                    await db.saved_resumes.insert_one({
+                        "userEmail": user.get('email'),
+                        "resumeName": f"Generated: {request.company}",
+                        "resumeText": saved_text,
+                        "fileName": f"Optimized_Resume_{safe_company}.docx",
+                        "createdAt": datetime.now(timezone.utc).isoformat(),
+                        "updatedAt": datetime.now(timezone.utc).isoformat(),
+                        "isSystemGenerated": True
+                    })
+            except Exception as e:
+                logger.error(f"Failed to auto-save generated resume to library: {e}")
+
         # Return as downloadable file
         return StreamingResponse(
             docx_file,
