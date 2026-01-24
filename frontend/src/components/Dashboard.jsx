@@ -374,70 +374,91 @@ const Dashboard = () => {
                 <nav className="space-y-1">
                   <button
                     onClick={() => setActiveTab('tracker')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'tracker'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                    style={activeTab === 'tracker' ? {
+                      backgroundColor: '#15803d',
+                      color: '#ffffff'
+                    } : {
+                      color: '#111827'
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'tracker' ? '' : 'hover:bg-gray-100'}`}
                   >
                     <ClipboardList className="w-4 h-4" />
                     Application Tracker
                   </button>
                   <button
                     onClick={() => setActiveTab('pipeline')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'pipeline'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                    style={activeTab === 'pipeline' ? {
+                      backgroundColor: '#15803d',
+                      color: '#ffffff'
+                    } : {
+                      color: '#111827'
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'pipeline' ? '' : 'hover:bg-gray-100'}`}
                   >
                     <Target className="w-4 h-4" />
                     Human Ninja Pipeline
                   </button>
                   <button
                     onClick={() => setActiveTab('profile')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'profile'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                    style={activeTab === 'profile' ? {
+                      backgroundColor: '#15803d',
+                      color: '#ffffff'
+                    } : {
+                      color: '#111827'
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'profile' ? '' : 'hover:bg-gray-100'}`}
                   >
                     <User className="w-4 h-4" />
                     My Profile
                   </button>
                   <button
                     onClick={() => setActiveTab('queue')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'queue'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                    style={activeTab === 'queue' ? {
+                      backgroundColor: '#15803d',
+                      color: '#ffffff'
+                    } : {
+                      color: '#111827'
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'queue' ? '' : 'hover:bg-gray-100'}`}
                   >
                     <CheckCircle className="w-4 h-4" />
                     Approve Queue
                   </button>
                   <button
                     onClick={() => setActiveTab('billing')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'billing'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                    style={activeTab === 'billing' ? {
+                      backgroundColor: '#15803d',
+                      color: '#ffffff'
+                    } : {
+                      color: '#111827'
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'billing' ? '' : 'hover:bg-gray-100'}`}
                   >
                     <CreditCard className="w-4 h-4" />
                     Billing
                   </button>
                   <button
                     onClick={() => setActiveTab('referrals')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'referrals'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                    style={activeTab === 'referrals' ? {
+                      backgroundColor: '#15803d',
+                      color: '#ffffff'
+                    } : {
+                      color: '#111827'
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'referrals' ? '' : 'hover:bg-gray-100'}`}
                   >
                     <Gift className="w-4 h-4" />
                     Invite & Earn
                   </button>
                   <button
                     onClick={() => setActiveTab('settings')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'settings'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                    style={activeTab === 'settings' ? {
+                      backgroundColor: '#15803d',
+                      color: '#ffffff'
+                    } : {
+                      color: '#111827'
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${activeTab === 'settings' ? '' : 'hover:bg-gray-100'}`}
                   >
                     <Settings className="w-4 h-4" />
                     Settings
