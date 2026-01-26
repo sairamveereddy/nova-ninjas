@@ -113,18 +113,17 @@ def render_ats_resume_from_json(r: ResumeDataSchema) -> str:
     out.append(f"{r.target_title} — {r.positioning_statement}")
     out.append("")
 
-
-    out.append("CORE SKILLS")
+    out.append("SKILLS")
+    if r.core_skills:
+        if r.core_skills.languages: out.append(f"Languages: {', '.join(r.core_skills.languages)}")
+        if r.core_skills.data_etl: out.append(f"Data/ETL: {', '.join(r.core_skills.data_etl)}")
+        if r.core_skills.cloud: out.append(f"Cloud: {', '.join(r.core_skills.cloud)}")
+        if r.core_skills.databases: out.append(f"Databases: {', '.join(r.core_skills.databases)}")
+        if r.core_skills.devops_tools: out.append(f"DevOps/Tools: {', '.join(r.core_skills.devops_tools)}")
+        if r.core_skills.other: out.append(f"Other: {', '.join(r.core_skills.other)}")
     out.append("")
-    out.append(f"Languages: {', '.join(r.core_skills.languages or [])}")
-    out.append(f"Data/ETL: {', '.join(r.core_skills.data_etl or [])}")
-    out.append(f"Cloud: {', '.join(r.core_skills.cloud or [])}")
-    out.append(f"Databases: {', '.join(r.core_skills.databases or [])}")
-    out.append(f"DevOps/Tools: {', '.join(r.core_skills.devops_tools or [])}")
-    out.append(f"Other: {', '.join(r.core_skills.other or [])}")
-    out.append("")
 
-    out.append("PROFESSIONAL EXPERIENCE")
+    out.append("EXPERIENCE")
     out.append("")
     for role in r.experience:
         role_header = f"{role.company} — {role.job_title} | {role.city_state_or_remote}"
@@ -196,11 +195,11 @@ Line 3-4: EMPTY LINES
 PROFESSIONAL SUMMARY
 A few sentences highlighting JD-alignment and target title: {job_title}.
 
-CORE SKILLS
+SKILLS
 - List relevant technical and soft skills from the base resume and JD.
 - Use bullet points (-).
 
-PROFESSIONAL EXPERIENCE
+EXPERIENCE
 - For each job: 
   [Company Name] — [Job Title] | [Location]
   [Start Date] – [End Date]
@@ -499,8 +498,12 @@ async def generate_expert_documents(
     resume_prompt = f"""
 SYSTEM:
 You are an Elite Resume Architect. Create a JD-mirrored structured JSON.
-ABSOLUTE RULE: YOU MUST INCLUDE EVERY EMPLOYER, PROJECT, AND EDUCATION ITEM FROM [FACTS_JSON]. 
-DO NOT TRUNCATE. DO NOT SKIP.
+
+ABSOLUTE SCHEMA RULES:
+1. Include EVERY item from [FACTS_JSON]. Do NOT truncate bullets.
+2. Mapping: [FACTS_JSON].employers -> "experience" field.
+3. Mapping: [FACTS_JSON].projects -> "projects" field.
+4. Mapping: [FACTS_JSON].skills -> "core_skills" field.
 
 [JOB_DESCRIPTION]
 {job_description}
@@ -510,9 +513,8 @@ DO NOT TRUNCATE. DO NOT SKIP.
 
 [TAILORING_RULES]
 {selective_instructions}
-- Use professional action verbs.
-- Quantify impact.
-- Heading names must match exact JSON keys.
+- Enhance bullets with action verbs and metrics.
+- Keep output JSON valid and complete.
 
 Return JSON structure ONLY:
 {{
