@@ -29,6 +29,8 @@ const ResumePaper = ({ content, scale = 1, onContentChange }) => {
         let buffer = [];
 
         const sectionPatterns = {
+            name: /^#*\s*NAME/i,
+            contact: /^#*\s*CONTACT/i,
             summary: /^#*\s*(PROFESSIONAL SUMMARY|SUMMARY|PROFILE|OBJECTIVE)/i,
             skills: /^#*\s*(SKILLS|CORE COMPETENCIES|TECHNICAL SKILLS)/i,
             experience: /^#*\s*(EXPERIENCE|WORK EXPERIENCE|PROFESSIONAL EXPERIENCE|EMPLOYMENT HISTORY)/i,
@@ -74,12 +76,23 @@ const ResumePaper = ({ content, scale = 1, onContentChange }) => {
         });
 
         // Process Header
-        const headerLines = sections.header.split('\n').filter(l => l.trim());
-        let name = headerLines[0] || '';
-        let contact = headerLines.slice(1).join(' | ').replace(/\|+/g, ' | ');
+        let name = sections.name || '';
+        let contact = sections.contact || '';
+
+        if (!name) {
+            const headerLines = sections.header.split('\n').filter(l => l.trim());
+            name = headerLines[0] || '';
+            if (!contact) {
+                contact = headerLines.slice(1).join(' | ').replace(/\|+/g, ' | ');
+            }
+        }
+
+        // Clean up "NAME" and "CONTACT" labels if they got into the text
+        name = name.replace(/^NAME\n?/i, '').trim();
+        contact = contact.replace(/^CONTACT\n?/i, '').trim();
 
         // Detect if parsing failed (everything dumped in header)
-        const isRaw = !sections.summary && !sections.experience && !sections.education && headerLines.length > 20;
+        const isRaw = !sections.summary && !sections.experience && !sections.education && sections.header.length > 20;
 
         return { ...sections, name, contact, isRaw, rawContent: text };
     };

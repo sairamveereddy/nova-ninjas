@@ -152,77 +152,84 @@ def render_ats_resume_from_json(r: ResumeDataSchema) -> str:
         for c in r.certifications:
             out.append(f"- {c}")
 
-    return "\n".join(out).strip()
+    # Final cleanup to ensure NO extra gaps
+    return "\n".join([line for line in out if line.strip()]).strip()
 
 
 async def generate_simple_tailored_resume(resume_text: str, job_description: str, job_title: str, company: str, byok_config: Optional[Dict] = None) -> str:
-    """Rescue function that generates tailored resume text in a single robust call with strict 'old format' structure"""
+    """Integrated the user's Expert Resume Writer prompt for high-quality, compact output"""
     
     prompt = f"""
-SYSTEM:
-You are an Elite Career Architect and ATS Strategist. 
-Your task is to take a BASE RESUME and rewrite it to be perfectly OPTIMIZED for a specific JOB DESCRIPTION.
+You are an expert resume writer and ATS optimization specialist.
 
-JOB DETAILS:
+TASK:
+Convert the provided RAW_INPUT into a complete, ATS-friendly, recruiter-ready resume tailored for the JOB_DETAILS.
+You must:
+1) Extract and normalize all data (names, titles, dates, locations, bullets, skills, projects, education).
+2) Fix formatting issues, duplicate sections, missing headers, inconsistent capitalization, and spacing.
+3) Rewrite bullets to be strong, specific, and impact-focused WITHOUT inventing facts.
+4) Keep all original meaning. If a metric is unclear, keep it but don’t exaggerate.
+5) Output in the requested RESUME_STYLE: ATS_ONE_PAGE_COMPACT (Ensure it is very dense and professional).
+
+JOB_DETAILS:
 Company: {company}
 Title: {job_title}
+Job Description: {job_description}
 
-JOB DESCRIPTION:
-{job_description}
+IMPORTANT RULES (non-negotiable):
+- DO NOT add fake companies, degrees, awards, or certifications.
+- DO NOT claim tools/tech that aren’t in the RAW_INPUT.
+- DO NOT change job titles or dates unless clearly mis-ordered; if uncertain, keep as-is.
+- DO NOT include “References available upon request.”
+- Keep it ATS clean: no tables, no columns, no icons, no graphs, no fancy symbols.
+- Use simple ASCII bullets like "-" only.
+- Keep lines under ~110 characters where possible.
+- If any section is missing a detail (ex: LinkedIn URL), keep the label but omit the value.
 
-CANDIDATE BASE RESUME:
-{resume_text}
+RESUME_STYLE: ATS_ONE_PAGE_COMPACT
 
-=== ABSOLUTE FORMATTING RULES (THE 'OLD FORMAT') ===
-1. You must output the resume in the following EXACT structure. Do NOT use markdown bolding (**) or italics.
-2. Section Headings MUST be uppercase and on their own line.
-
-[STRUCTURE]
-Line 1: FULL NAME (e.g. SAIRAM KUMAR)
-Line 2: Location | Phone | Email | LinkedIn (e.g. Dallas, TX | 555-0199 | sairam@email.com | linkedin.com/in/sai)
-Line 3-4: EMPTY LINES
-
-PROFESSIONAL SUMMARY
-A few sentences highlighting JD-alignment and target title: {job_title}.
-
+OUTPUT FORMAT:
+Return ONLY the resume text, nothing else.
+Use exactly these section headers (omit any that truly have no content):
+NAME
+CONTACT
+SUMMARY
 SKILLS
-- List relevant technical and soft skills from the base resume and JD.
-- Use bullet points (-).
-
 EXPERIENCE
-- For each job: 
-  [Company Name] — [Job Title] | [Location]
-  [Start Date] – [End Date]
-  - Bullet 1 (Quantified impact and JD keywords)
-  - Bullet 2
-  - ... (Preserve all key facts, just rewrite for impact)
-
 PROJECTS
-- Include all projects from the base resume.
-- [Project Name]
-  - Detail 1
-  - Detail 2
-
 EDUCATION
-- Include all degrees from base resume.
-- [Degree] | [University] | [Graduation Year]
 
-CERTIFICATIONS (If any)
-- List certifications.
+CONTENT RULES:
+- SUMMARY: 3–4 lines max, no fluff, include your core stack + value.
+- SKILLS: Grouped categories (GenAI/LLMs, ML/DL, Cloud/DevOps, Languages/Tools, Data/DB).
+- EXPERIENCE: For each role, 4–6 bullets max. Start each bullet with a strong verb.
+  Include: scope, tech stack, measurable outcome when present.
+- PROJECTS: 3 projects max unless more are truly strong. Each: 2–4 bullets.
+  Include: architecture + tools + measurable impact + deployment details.
+- EDUCATION: Degree, school, location (if available), graduation year if present.
 
-=== CONTENT RULES ===
-1. NEVER delete content. If education/projects exist in BASE, they MUST be in OUTPUT.
-2. Rewriting bullets is REQUIRED. Use action verbs and include JD keywords.
-3. Start directly with the name. No "Here is your resume" preamble.
+QUALITY BAR:
+Your job is to make this resume look like a real senior engineer wrote it.
+Make it tight, readable, and high-signal. Remove filler.
 
-OUTPUT THE FULL RESUME IN THE OLD FORMAT NOW:
+RAW_INPUT:
+<<<
+{resume_text}
+>>>
+
+Now generate the resume from RAW_INPUT:
 """
     try:
-        logger.info(f"Running robust 'Old Format' tailoring for {company}")
+        logger.info(f"Running user-requested 'Expert' prompt tailoring for {company}")
         response = await unified_api_call(prompt, byok_config=byok_config, max_tokens=6000, model="llama-3.3-70b-versatile")
         
         if response and len(response.strip()) > 500:
-            return response.strip()
+            # Flatten to remove ALL excessive newlines
+            import re
+            content = response.strip()
+            # Replace 3 or more newlines with 2
+            content = re.sub(r'\n{3,}', '\n\n', content)
+            return content
         
         # Immediate fallback to base resume if AI returns junk or empty
         return f"TAILORED RESUME: {job_title} at {company}\n\n" + resume_text
@@ -505,7 +512,14 @@ ABSOLUTE SCHEMA RULES:
 
 [TAILORING_RULES]
 {selective_instructions}
-- Enhance bullets with action verbs and metrics.
+- You are an expert resume writer and ATS optimization specialist.
+- Rewrite bullets to be strong, specific, and impact-focused.
+- Use simple ASCII bullets like "-" only.
+- SUMMARY: 3–4 lines max, include core stack + value.
+- SKILLS: Grouped categories (GenAI/LLMs, ML/DL, Cloud/DevOps, Languages/Tools, Data/DB).
+- EXPERIENCE: For each role, 4–6 bullets max. Start each bullet with a strong verb.
+- PROJECTS: 3 projects max unless more are truly strong. Each: 2–4 bullets.
+- QUALITY BAR: Make it tight, readable, and high-signal. Remove filler.
 - Keep output JSON valid and complete.
 
 Return JSON structure ONLY:
