@@ -1,0 +1,101 @@
+.search-preview-container {
+    padding: 40px 20px;
+    background: #0f1115;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.search-preview-card {
+    max-width: 650px;
+    width: 100%;
+    text-align: left;
+    color: #d1d5db;
+}
+
+.search-preview-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.search-preview-icon {
+    width: 24px;
+    height: 24px;
+    background: #fff;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+}
+
+.search-preview-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.search-preview-meta {
+    display: flex;
+    flex-direction: column;
+}
+
+.search-preview-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #e5e7eb;
+}
+
+.search-preview-url {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.search-preview-main-link {
+    font-size: 20px;
+    color: #6366f1;
+    /* Purple/Indigo similar to the screenshot */
+    margin: 8px 0;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.search-preview-description {
+    font-size: 14px;
+    color: #9ca3af;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.search-preview-sitelinks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 16px;
+}
+
+.sitelink-item h4 {
+    font-size: 16px;
+    color: #818cf8;
+    /* Lighter purple for sitelink titles */
+    margin: 0 0 4px 0;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.sitelink-desc {
+    font-size: 13px;
+    color: #9ca3af;
+    margin: 0;
+    line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+    .search-preview-sitelinks {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+}

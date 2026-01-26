@@ -38,6 +38,53 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
   <title>jobNinjas - Apply Smarter, Land Faster | AI Resume Tools & Human Job Application Service</title>
+
+  <!-- Structured Data for Search Engine Result Branding -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "jobNinjas",
+      "url": "https://jobninjas.org",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://jobninjas.org/jobs?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+  </script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "itemListElement": [
+        {
+          "@type": "SiteNavigationElement",
+          "position": 1,
+          "name": "Login",
+          "url": "https://jobninjas.org/login"
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "position": 2,
+          "name": "Register",
+          "url": "https://jobninjas.org/signup"
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "position": 3,
+          "name": "Our Platform",
+          "url": "https://jobninjas.org/ai-ninja"
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "position": 4,
+          "name": "Services",
+          "url": "https://jobninjas.org/human-ninja"
+        }
+      ]
+    }
+  </script>
 </head>
 
 <body>

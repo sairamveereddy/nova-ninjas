@@ -46,6 +46,10 @@
     transform: translateY(-100%);
 }
 
+.tld-roller-track.show-io {
+    transform: translateY(-200%);
+}
+
 /* Side Menu / Footer adjustments if needed */
 .side-menu-logo-text .brand-logo-container,
 .footer-logo-row .brand-logo-container {
