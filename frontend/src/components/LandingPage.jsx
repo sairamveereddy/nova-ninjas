@@ -34,7 +34,6 @@ import BrandLogo from './BrandLogo';
 import './SideMenu.css';
 import '../LandingPage.css';
 import { SocialTooltip } from './ui/SocialTooltip';
-import SearchPreview from './SearchPreview';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -339,18 +338,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Search Result Branding Section */}
-      <section className="search-branding-section">
-        <div className="container">
-          <h2 className="section-title-modern">
-            Recognized as the <span className="highlight-green">#1 Job Platform</span>
-          </h2>
-          <p className="section-subtitle-modern mb-12">
-            Trusted by search engines and professionals alike. Here's how jobNinjas appears to the world.
-          </p>
-          <SearchPreview />
-        </div>
-      </section>
 
       {/* Company Logos - Scrolling Marquee */}
       <section className="companies-section">
