@@ -95,3 +95,4 @@ backend/check_user_underscore.py
 backend/dump_user.py
 backend/dump_user_clean.py
 backend/verify_db.py
+.env*.local

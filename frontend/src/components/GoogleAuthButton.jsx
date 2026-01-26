@@ -37,7 +37,8 @@ const GoogleAuthButton = ({ mode = 'login' }) => {
             }
         } catch (error) {
             console.error('Google auth error:', error);
-            alert('Failed to authenticate with Google. Please try again.');
+            const errorMsg = error.message || 'Failed to connect to authentication server.';
+            alert(`Google Auth Error: ${errorMsg}. Please ensure the backend is running.`);
         } finally {
             setIsLoading(false);
         }

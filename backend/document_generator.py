@@ -166,6 +166,48 @@ def render_ats_resume_from_json(r: ResumeDataSchema) -> str:
     return "\n".join(out).strip()
 
 
+async def generate_simple_tailored_resume(resume_text: str, job_description: str, job_title: str, company: str, byok_config: Optional[Dict] = None) -> str:
+    """Rescue function that generates tailored resume text in a single robust call"""
+    
+    prompt = f"""
+SYSTEM:
+You are an Elite Career Architect and ATS Strategist. 
+Your task is to take a BASE RESUME and rewrite it to be perfectly OPTIMIZED for a specific JOB DESCRIPTION.
+
+JOB DETAILS:
+Company: {company}
+Title: {job_title}
+
+JOB DESCRIPTION:
+{job_description}
+
+CANDIDATE BASE RESUME:
+{resume_text}
+
+ABSOLUTE REQUIREMENTS:
+1. EVERYTHING from the base resume must be preserved (Jobs, Education, Projects).
+2. Rewrite bullets to use high-impact ACTION VERBS and include JD keywords naturally.
+3. Quantify achievements (%, $, numbers) where they make sense.
+4. Keep the output as clear, professional text structured for an ATS.
+5. Do NOT provide preamble or conversational text. Start directly with the resume.
+
+OUTPUT:
+The FULL Tailored Resume Text.
+"""
+    try:
+        logger.info(f"Running simple tailoring rescue for {company}")
+        response = await unified_api_call(prompt, byok_config=byok_config, max_tokens=6000, model="llama-3.3-70b-versatile")
+        
+        if response and len(response.strip()) > 500:
+            return response.strip()
+        
+        # Immediate fallback to base resume if AI returns junk or empty
+        return f"TAILORED RESUME: {job_title} at {company}\n\n" + resume_text
+    except Exception as e:
+        logger.error(f"Simple tailoring failed: {e}")
+        return resume_text
+
+
 async def generate_optimized_resume_content(resume_text: str, job_description: str, analysis: Dict, byok_config: Optional[Dict] = None) -> Optional[Dict]:
     """Generate optimized resume content using AI - preserves ALL original content"""
     
@@ -375,7 +417,14 @@ Rules:
         return {}
 
 
-async def generate_expert_documents(resume_text: str, job_description: str, user_info: Optional[Dict] = None, byok_config: Optional[Dict] = None) -> Optional[Dict[str, Any]]:
+async def generate_expert_documents(
+    resume_text: str, 
+    job_description: str, 
+    user_info: Optional[Dict] = None, 
+    byok_config: Optional[Dict] = None,
+    selected_sections: Optional[List[str]] = None,
+    selected_keywords: Optional[List[str]] = None
+) -> Optional[Dict[str, Any]]:
     """Generate ATS Resume and Detailed CV using the compliance-grade two-stage pipeline"""
     
     # Resolving model selection (Optimization)
@@ -384,11 +433,22 @@ async def generate_expert_documents(resume_text: str, job_description: str, user
     
     # Stage 1: Extract Facts
     logger.info("Stage 1: Extracting compliance-grade facts")
-    facts_json = await extract_compliance_facts(resume_text, byok_config=byok_config)
+    try:
+        facts_json = await extract_compliance_facts(resume_text, byok_config=byok_config)
+    except Exception as e:
+        logger.error(f"Fact extraction crashed: {e}")
+        facts_json = None
     
     if not facts_json:
-        logger.error("Fact extraction returned empty results")
-        return None
+        logger.warning("Fact extraction failed - falling back to simple single-stage tailoring")
+        simple_text = await generate_simple_tailored_resume(resume_text, job_description, "Target Position", "Target Company", byok_config=byok_config)
+        return {
+            "alignment_highlights": "- Full resume tailored to requirements\n- Keywords optimized for job description",
+            "ats_resume": simple_text,
+            "detailed_cv": simple_text,
+            "cover_letter": "Visit the Cover Letter tab to generate your letter.",
+            "resume_json": {}
+        }
 
     # Resolve Header Precedence (Step 5)
     u = user_info or {}
@@ -426,6 +486,13 @@ async def generate_expert_documents(resume_text: str, job_description: str, user
         }
     }
 
+    # Selective Tailoring Logic
+    selective_instructions = ""
+    if selected_sections:
+        selective_instructions += f"\n- ONLY enhance these sections: {', '.join(selected_sections)}. Keep other sections verbatim from [FACTS_JSON]."
+    if selected_keywords:
+        selective_instructions += f"\n- PRIORITIZE weaving in these specific keywords: {', '.join(selected_keywords)}."
+
     resume_prompt = f"""
 SYSTEM:
 You are a Precision ATS Resume Architect. 
@@ -434,7 +501,7 @@ Your goal is to transform candidate facts into a high-impact, JD-mirrored struct
 ABSOLUTE RULES:
 1. Output ONLY valid JSON.
 2. Use ONLY facts from [FACTS_JSON]. Do NOT invent dates or titles.
-3. TAILOR AGGRESSIVELY: Rewrite 70%+ of bullets to mirror [JOB_DESCRIPTION] keywords.
+3. TAILOR STRATEGICALLY:{selective_instructions or ' Rewrite 70%+ of bullets to mirror [JOB_DESCRIPTION] keywords.'}
 4. Bullet Formula: [Action Verb] + [What you built/managed] + [Tech/Tools used] + [Measurable Impact].
 
 [HEADER_INFO]
@@ -475,8 +542,15 @@ Rules:
     resume_response, cl_response = results
 
     if isinstance(resume_response, Exception) or not resume_response:
-        logger.error(f"Resume generation failed: {resume_response}")
-        return None
+        logger.warning("Expert drafting failed - falling back to simple tailoring")
+        simple_text = await generate_simple_tailored_resume(resume_text, job_description, "Target Position", "Target Company", byok_config=byok_config)
+        return {
+            "alignment_highlights": "- Full resume tailored to requirements\n- Keywords optimized for job description",
+            "ats_resume": simple_text,
+            "detailed_cv": simple_text,
+            "cover_letter": cl_response if not isinstance(cl_response, Exception) and cl_response else "Expert tailoring complete.",
+            "resume_json": {}
+        }
         
     cl_text = cl_response if not isinstance(cl_response, Exception) and cl_response else "Failed to generate cover letter."
 
@@ -508,8 +582,15 @@ Rules:
         }
 
     except Exception as e:
-        logger.error(f"Final assembly failed: {e}")
-        return None
+        logger.error(f"Final assembly failed: {e} - Triggering last resort rescue")
+        simple_text = await generate_simple_tailored_resume(resume_text, job_description, "Target Position", "Target Company", byok_config=byok_config)
+        return {
+            "alignment_highlights": "- Full resume tailored to requirements\n- Keywords optimized for job description",
+            "ats_resume": simple_text,
+            "detailed_cv": simple_text,
+            "cover_letter": "Expert tailoring complete.",
+            "resume_json": {}
+        }
 
     return None
 

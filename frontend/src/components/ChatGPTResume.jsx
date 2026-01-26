@@ -17,6 +17,7 @@ import { API_URL } from '../config/api';
 import SideMenu from './SideMenu';
 import Header from './Header';
 import './ChatGPTResume.css';
+import ResumePaper from './ResumePaper';
 
 const ChatGPTResume = () => {
     const navigate = useNavigate();
@@ -192,8 +193,10 @@ Be helpful, professional, and provide specific, actionable resume content when p
                                     {copied ? 'Copied!' : 'Copy'}
                                 </Button>
                             </div>
-                            <div className="preview-content">
-                                <pre>{generatedResume}</pre>
+                            <div className="preview-content bg-gray-900 flex justify-center p-8 overflow-hidden relative border border-gray-800 rounded-lg">
+                                <div style={{ transform: 'scale(0.85)', transformOrigin: 'top center' }}>
+                                    <ResumePaper content={generatedResume} scale={1} />
+                                </div>
                             </div>
                             <Button className="download-btn" onClick={() => navigate('/scanner')}>
                                 <Download className="w-4 h-4" />

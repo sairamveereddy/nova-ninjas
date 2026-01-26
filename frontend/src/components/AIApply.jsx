@@ -38,6 +38,7 @@ import { BRAND, VISA_TYPES, WORK_TYPES } from '../config/branding';
 import { API_URL } from '../config/api';
 import SideMenu from './SideMenu';
 import './SideMenu.css';
+import ResumePaper from './ResumePaper';
 
 const AIApply = () => {
   const navigate = useNavigate();
@@ -119,6 +120,7 @@ const AIApply = () => {
     targetSalary: '',
     preferredWorkType: '',
   });
+  const [activeTab, setActiveTab] = useState('resume');
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState({});
@@ -601,86 +603,121 @@ const AIApply = () => {
                 </div>
               </Card>
 
-              {/* Tailored Resume */}
-              <Card className="result-card">
-                <div className="result-card-header">
-                  <FileText className="w-6 h-6" />
-                  <h3>Tailored Resume</h3>
-                  <div className="result-actions">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCopy(results.tailoredResume, 'resume')}
-                    >
-                      {copied.resume ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      {copied.resume ? 'Copied!' : 'Copy'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(results.tailoredResume, sanitizeFileName('Resume', job.company, 'txt'))}
-                    >
-                      <Download className="w-4 h-4" /> Download
-                    </Button>
-                  </div>
-                </div>
-                <div className="result-content">
-                  <pre>{results.tailoredResume}</pre>
-                </div>
-              </Card>
+              {/* Results Tabs */}
+              <div className="results-tabs mb-6 flex space-x-4 border-b border-gray-200">
+                <button
+                  className={`pb-2 px-4 font-medium ${activeTab === 'resume' ? 'border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setActiveTab('resume')}
+                >
+                  <FileText className="w-4 h-4 inline-block mr-2" />
+                  Tailored Resume
+                </button>
+                <button
+                  className={`pb-2 px-4 font-medium ${activeTab === 'coverLetter' ? 'border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setActiveTab('coverLetter')}
+                >
+                  <MessageSquare className="w-4 h-4 inline-block mr-2" />
+                  Cover Letter
+                </button>
+                <button
+                  className={`pb-2 px-4 font-medium ${activeTab === 'qa' ? 'border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setActiveTab('qa')}
+                >
+                  <Sparkles className="w-4 h-4 inline-block mr-2" />
+                  Interview Q&A
+                </button>
+              </div>
 
-              {/* Cover Letter */}
-              <Card className="result-card">
-                <div className="result-card-header">
-                  <MessageSquare className="w-6 h-6" />
-                  <h3>Tailored Cover Letter</h3>
-                  <div className="result-actions">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCopy(results.tailoredCoverLetter, 'coverLetter')}
-                    >
-                      {copied.coverLetter ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      {copied.coverLetter ? 'Copied!' : 'Copy'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(results.tailoredCoverLetter, sanitizeFileName('Cover_Letter', job.company, 'txt'))}
-                    >
-                      <Download className="w-4 h-4" /> Download
-                    </Button>
-                  </div>
-                </div>
-                <div className="result-content">
-                  <pre>{results.tailoredCoverLetter}</pre>
-                </div>
-              </Card>
-
-              {/* Suggested Answers */}
-              <Card className="result-card">
-                <div className="result-card-header">
-                  <Sparkles className="w-6 h-6" />
-                  <h3>Suggested Answers</h3>
-                </div>
-                <div className="suggested-answers">
-                  {results.suggestedAnswers.map((qa, index) => (
-                    <div key={index} className="qa-item">
-                      <div className="qa-question">
-                        <strong>Q: {qa.question}</strong>
+              {/* Tab Content */}
+              <div className="tab-content">
+                {activeTab === 'resume' && (
+                  <Card className="result-card">
+                    <div className="result-card-header">
+                      <FileText className="w-6 h-6" />
+                      <h3>Tailored Resume</h3>
+                      <div className="result-actions">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          onClick={() => handleCopy(qa.answer, `qa-${index}`)}
+                          onClick={() => handleCopy(results.tailoredResume, 'resume')}
                         >
-                          {copied[`qa-${index}`] ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          {copied.resume ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          {copied.resume ? 'Copied!' : 'Copy'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownload(results.tailoredResume, sanitizeFileName('Resume', job.company, 'txt'))}
+                        >
+                          <Download className="w-4 h-4" /> Download
                         </Button>
                       </div>
-                      <p className="qa-answer">{qa.answer}</p>
                     </div>
-                  ))}
-                </div>
-              </Card>
+                    <div className="result-content bg-gray-900 flex justify-center p-8 overflow-hidden relative border border-gray-800 rounded-b-lg">
+                      <div style={{ transform: 'scale(0.85)', transformOrigin: 'top center' }}>
+                        <ResumePaper content={results.tailoredResume} scale={1} />
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                {activeTab === 'coverLetter' && (
+                  <Card className="result-card">
+                    <div className="result-card-header">
+                      <MessageSquare className="w-6 h-6" />
+                      <h3>Tailored Cover Letter</h3>
+                      <div className="result-actions">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCopy(results.tailoredCoverLetter, 'coverLetter')}
+                        >
+                          {copied.coverLetter ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          {copied.coverLetter ? 'Copied!' : 'Copy'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownload(results.tailoredCoverLetter, sanitizeFileName('Cover_Letter', job.company, 'txt'))}
+                        >
+                          <Download className="w-4 h-4" /> Download
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="result-content bg-gray-900 flex justify-center p-8 overflow-hidden relative border border-gray-800 rounded-b-lg">
+                      <div style={{ transform: 'scale(0.85)', transformOrigin: 'top center' }}>
+                        <ResumePaper content={results.tailoredCoverLetter} scale={1} />
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                {activeTab === 'qa' && (
+                  <Card className="result-card">
+                    <div className="result-card-header">
+                      <Sparkles className="w-6 h-6" />
+                      <h3>Suggested Answers</h3>
+                    </div>
+                    <div className="suggested-answers">
+                      {results.suggestedAnswers.map((qa, index) => (
+                        <div key={index} className="qa-item">
+                          <div className="qa-question">
+                            <strong>Q: {qa.question}</strong>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCopy(qa.answer, `qa-${index}`)}
+                            >
+                              {copied[`qa-${index}`] ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                            </Button>
+                          </div>
+                          <p className="qa-answer">{qa.answer}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+              </div>
 
               {/* Next Steps */}
               <Card className="next-steps-card">

@@ -89,38 +89,45 @@ else:
     logger.warning("OPENAI_API_KEY not set. OpenAI features will be disabled.")
 
 if not mongo_url:
-    logger.error("MONGO_URL environment variable is not set!")
-    raise ValueError("MONGO_URL environment variable is required")
+    logger.error("MONGO_URL environment variable is not set! This will cause database errors.")
+    # We log the error but don't raise ValueError here to allow the process to start
+    # and provide health check info. Database operations will fail later if needed.
 
 logger.info(f"Connecting to MongoDB database: {db_name}")
 
 try:
     import certifi
 
-    # Add TLS/SSL configuration for MongoDB Atlas compatibility
-    # Use certifi's certificates for proper SSL verification
-    # Also try tlsAllowInvalidCertificates for Railway compatibility
-    client = AsyncIOMotorClient(
-        mongo_url,
-        serverSelectionTimeoutMS=15000,
-        tls=True,
-        tlsCAFile=certifi.where(),
-        tlsAllowInvalidCertificates=True,
-        tlsAllowInvalidHostnames=True,
-    )
-    db = client[db_name]
-    logger.info("MongoDB client initialized successfully")
-except Exception as e:
-    logger.error(f"Failed to initialize MongoDB client: {e}")
-    # Try without TLS options as fallback
+client = None
+db = None
+
+if mongo_url:
     try:
-        logger.info("Trying fallback connection without explicit TLS options...")
-        client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=15000)
+        import certifi
+        # Add TLS/SSL configuration for MongoDB Atlas compatibility
+        client = AsyncIOMotorClient(
+            mongo_url,
+            serverSelectionTimeoutMS=15000,
+            tls=True,
+            tlsCAFile=certifi.where(),
+            tlsAllowInvalidCertificates=True,
+            tlsAllowInvalidHostnames=True,
+        )
         db = client[db_name]
-        logger.info("MongoDB client initialized with fallback settings")
-    except Exception as e2:
-        logger.error(f"Fallback connection also failed: {e2}")
-        raise e
+        logger.info("MongoDB client initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize MongoDB client: {e}")
+        # Try without TLS options as fallback
+        try:
+            logger.info("Trying fallback connection without explicit TLS options...")
+            client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=15000)
+            db = client[db_name]
+            logger.info("MongoDB client initialized with fallback settings")
+        except Exception as e2:
+            logger.error(f"Fallback connection also failed: {e2}")
+            # we still don't crash the whole app here
+else:
+    logger.warning("MongoDB will be unavailable because MONGO_URL is not set.")
 
 # Initialize Rate Limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -2957,38 +2964,15 @@ async def ai_ninja_apply(request: Request):
             expert_docs = None
 
         if not expert_docs or "ats_resume" not in expert_docs:
-            logger.warning("Expert AI failed or timed out - using immediate fallback")
-            # Immediate fallback - give user SOMETHING right now
-            tailoredResume = f"""RESUME - {jobTitle}
-
-PROFESSIONAL CANDIDATE
-
-SUMMARY
-Experienced professional seeking the {jobTitle} position at {company}. 
-Background demonstrates relevant expertise and qualifications for this role.
-
-ORIGINAL RESUME TEXT:
-{resumeText[:3000]}
-
----
-(Note: AI was temporarily busy. Your original resume content is preserved above. 
-Edit as needed or try generating again later.)
-"""
+            logger.warning("Expert AI failed or timed out - using robust simple fallback")
+            from document_generator import generate_simple_tailored_resume
+            tailoredResume = await generate_simple_tailored_resume(resumeText, jobDescription, jobTitle, company, byok_config=byok_config)
             detailedCv = tailoredResume
-            tailoredCoverLetter = f"""Dear Hiring Manager,
+            from resume_analyzer import unified_api_call
+            cl_prompt = f"Write a professional 3-paragraph cover letter for {jobTitle} at {company} based on this resume: {resumeText[:2000]}"
+            cl_response = await unified_api_call(cl_prompt, byok_config=byok_config, max_tokens=1000)
+            tailoredCoverLetter = cl_response or f"Dear Hiring Manager,\n\nI am writing to express my strong interest in the {jobTitle} position at {company}.\n\nMy background and experience make me a strong candidate for this role."
 
-I am writing to express my strong interest in the {jobTitle} position at {company}.
-
-My background and experience make me a strong candidate for this role. I am confident that my skills and dedication would be a valuable addition to your team.
-
-I would welcome the opportunity to discuss how my qualifications align with your needs.
-
-Sincerely,
-[Your Name]
-
----
-(Note: AI was temporarily busy. Please personalize this letter with your specific achievements.)
-"""
         else:
             tailoredResume = expert_docs.get("ats_resume", "")
             detailedCv = expert_docs.get("detailed_cv", "")
