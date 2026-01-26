@@ -596,7 +596,7 @@ def create_resume_docx(resume_data: Dict) -> io.BytesIO:
     name_run.bold = True
     name_run.font.size = Pt(20)
     name_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    name_para.paragraph_format.space_after = Pt(2)
+    name_para.paragraph_format.space_after = Pt(0)
     
     # Contact details - First line (email, phone, location)
     contact_line1 = []
@@ -622,14 +622,14 @@ def create_resume_docx(resume_data: Dict) -> io.BytesIO:
     if contact_line2:
         contact_para2 = doc.add_paragraph(" | ".join(contact_line2))
         contact_para2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        contact_para2.paragraph_format.space_after = Pt(4)
+        contact_para2.paragraph_format.space_after = Pt(2)
     
     # Professional Summary
     if resume_data.get("summary"):
         heading = doc.add_heading("PROFESSIONAL SUMMARY", level=1)
         heading.runs[0].font.size = Pt(12)
         summary_para = doc.add_paragraph(resume_data["summary"])
-        summary_para.paragraph_format.space_after = Pt(6)
+        summary_para.paragraph_format.space_after = Pt(2)
     
     # Professional Experience
     if resume_data.get("experience"):
@@ -654,18 +654,18 @@ def create_resume_docx(resume_data: Dict) -> io.BytesIO:
                 dates_para = doc.add_paragraph()
                 dates_run = dates_para.add_run(exp["dates"])
                 dates_run.italic = True
-                dates_para.paragraph_format.space_after = Pt(2)
+                dates_para.paragraph_format.space_after = Pt(0)
             
             # Bullets - all of them
             bullets = exp.get("bullets", [])
             for bullet in bullets:
                 if bullet and bullet.strip():
                     bullet_para = doc.add_paragraph(bullet, style='List Bullet')
-                    bullet_para.paragraph_format.space_after = Pt(1)
+                    bullet_para.paragraph_format.space_after = Pt(0)
             
             # Add space between experiences
             if i < len(resume_data["experience"]) - 1:
-                doc.add_paragraph().paragraph_format.space_after = Pt(2)
+                pass # Removed extra spacer between roles
     
     # Projects Section
     if resume_data.get("projects"):
@@ -681,11 +681,11 @@ def create_resume_docx(resume_data: Dict) -> io.BytesIO:
             subtitle = project.get("subtitle") or project.get("technologies")
             if subtitle:
                 proj_header.add_run(f" — {subtitle}")
-            proj_header.paragraph_format.space_after = Pt(2)
+            proj_header.paragraph_format.space_after = Pt(0)
             
             if project.get("description"):
                 desc_para = doc.add_paragraph(project["description"])
-                desc_para.paragraph_format.space_after = Pt(4)
+                desc_para.paragraph_format.space_after = Pt(2)
             
             # Handle bullets - could be list or single string
             bullets = project.get("bullets", [])
@@ -714,7 +714,7 @@ def create_resume_docx(resume_data: Dict) -> io.BytesIO:
             edu_para.add_run(f" | {edu.get('school', 'School')}")
             if edu.get("location"):
                 edu_para.add_run(f", {edu['location']}")
-            edu_para.paragraph_format.space_after = Pt(2)
+            edu_para.paragraph_format.space_after = Pt(0)
             
             # Date and GPA
             details_parts = []

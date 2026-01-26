@@ -126,7 +126,7 @@ const ResumePaper = ({ content, scale = 1, onContentChange }) => {
             </div>
 
             {/* Render Document */}
-            <div className="space-y-3" contentEditable suppressContentEditableWarning>
+            <div className="space-y-1" contentEditable suppressContentEditableWarning>
 
                 {parsed.isRaw ? (
                     /* Raw Fallback View */
@@ -136,49 +136,49 @@ const ResumePaper = ({ content, scale = 1, onContentChange }) => {
                 ) : (
                     /* Structured View */
                     <>
-                        <div className="text-center mb-4">
-                            <h1 className="text-3xl font-bold uppercase tracking-wide mb-1 text-slate-900 border-none outline-none">{parsed.name}</h1>
-                            <p className="text-xs text-slate-700">{parsed.contact}</p>
+                        <div className="text-center mb-1">
+                            <h1 className="text-3xl font-bold uppercase tracking-wide m-0 p-0 text-slate-900 border-none outline-none">{parsed.name}</h1>
+                            <p className="text-[10px] text-slate-700 m-0 p-0">{parsed.contact}</p>
                         </div>
 
                         {parsed.summary && (
-                            <div className="section">
-                                <h2 className="text-xs font-bold uppercase border-b border-black mb-1 tracking-wider">Professional Summary</h2>
-                                <p className="text-sm leading-relaxed text-justify">{parsed.summary.trim()}</p>
+                            <div className="section m-0 p-0">
+                                <h2 className="text-[10px] font-bold uppercase border-b border-black m-0 p-0 tracking-wider">Professional Summary</h2>
+                                <p className="text-xs leading-tight text-justify m-0 p-0">{parsed.summary.trim()}</p>
                             </div>
                         )}
 
                         {parsed.skills && (
-                            <div className="section">
-                                <h2 className="text-xs font-bold uppercase border-b border-black mb-1 tracking-wider">Skills</h2>
-                                <div className="text-sm leading-relaxed">
+                            <div className="section m-0 p-0">
+                                <h2 className="text-[10px] font-bold uppercase border-b border-black m-0 p-0 tracking-wider">Skills</h2>
+                                <div className="text-xs leading-tight m-0 p-0">
                                     {parsed.skills.split('\n').filter(l => l.trim()).map((skillLine, i) => (
-                                        <div key={i} className="mb-0.5">• {skillLine.replace(/^([•\-\*]|#+)\s*/, '')}</div>
+                                        <div key={i} className="m-0 p-0">• {skillLine.replace(/^([•\-\*]|#+)\s*/, '')}</div>
                                     ))}
                                 </div>
                             </div>
                         )}
 
                         {parsed.experience && (
-                            <div className="section">
-                                <h2 className="text-xs font-bold uppercase border-b border-black mb-1 tracking-wider">Experience</h2>
-                                <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                            <div className="section m-0 p-0">
+                                <h2 className="text-[10px] font-bold uppercase border-b border-black m-0 p-0 tracking-wider">Experience</h2>
+                                <div className="text-xs leading-tight whitespace-pre-wrap m-0 p-0">
                                     {parsed.experience.trim()}
                                 </div>
                             </div>
                         )}
 
                         {parsed.projects && (
-                            <div className="section">
-                                <h2 className="text-xs font-bold uppercase border-b border-black mb-1 tracking-wider">Projects</h2>
-                                <div className="text-sm leading-relaxed whitespace-pre-wrap">{parsed.projects.trim()}</div>
+                            <div className="section m-0 p-0">
+                                <h2 className="text-[10px] font-bold uppercase border-b border-black m-0 p-0 tracking-wider">Projects</h2>
+                                <div className="text-xs leading-tight whitespace-pre-wrap m-0 p-0">{parsed.projects.trim()}</div>
                             </div>
                         )}
 
                         {parsed.education && (
-                            <div className="section">
-                                <h2 className="text-xs font-bold uppercase border-b border-black mb-1 tracking-wider">Education</h2>
-                                <div className="text-sm leading-relaxed whitespace-pre-wrap">{parsed.education.trim()}</div>
+                            <div className="section m-0 p-0">
+                                <h2 className="text-[10px] font-bold uppercase border-b border-black m-0 p-0 tracking-wider">Education</h2>
+                                <div className="text-xs leading-tight whitespace-pre-wrap m-0 p-0">{parsed.education.trim()}</div>
                             </div>
                         )}
                     </>
@@ -189,7 +189,7 @@ const ResumePaper = ({ content, scale = 1, onContentChange }) => {
             <div className="absolute bottom-4 left-0 right-0 text-center no-print">
                 <span className="bg-black text-white text-xs font-bold px-3 py-1 rounded-full opacity-80">1/1</span>
             </div>
-        </div>
+        </div >
     );
 };
 

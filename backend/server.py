@@ -3615,9 +3615,10 @@ async def generate_ai_content(
             # If it looks like a resume, strip excessive newlines
             if any(h in response.upper() for h in ["EXPERIENCE", "SUMMARY", "SKILLS", "EDUCATION", "PROJECTS"]):
                 import re
-                response = re.sub(r'\n{3,}', '\n\n', response.strip())
+                # Strip ALL double+ newlines and replace with single
+                response = re.sub(r'\n+', '\n', response.strip())
                 # Also strip leading/trailing spaces on each line
-                response = "\n".join([line.strip() for line in response.split("\n")])
+                response = "\n".join([line.strip() for line in response.split("\n") if line.strip()])
 
         return {"success": True, "response": response}
     except Exception as e:
