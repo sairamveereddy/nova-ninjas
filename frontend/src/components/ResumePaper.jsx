@@ -136,21 +136,21 @@ const ResumePaper = ({ content, scale = 1, onContentChange }) => {
                 ) : (
                     /* Structured View */
                     <>
-                        <div className="text-center mb-6">
-                            <h1 className="text-4xl font-bold uppercase tracking-wide mb-2 text-slate-900 border-none outline-none">{parsed.name}</h1>
-                            <p className="text-sm text-slate-700">{parsed.contact}</p>
+                        <div className="text-center mb-4">
+                            <h1 className="text-3xl font-bold uppercase tracking-wide mb-1 text-slate-900 border-none outline-none">{parsed.name}</h1>
+                            <p className="text-xs text-slate-700">{parsed.contact}</p>
                         </div>
 
                         {parsed.summary && (
                             <div className="section">
-                                <h2 className="text-sm font-bold uppercase border-b border-black mb-2 tracking-wider">Professional Summary</h2>
+                                <h2 className="text-xs font-bold uppercase border-b border-black mb-1 tracking-wider">Professional Summary</h2>
                                 <p className="text-sm leading-relaxed text-justify">{parsed.summary.trim()}</p>
                             </div>
                         )}
 
                         {parsed.skills && (
                             <div className="section">
-                                <h2 className="text-sm font-bold uppercase border-b border-black mb-2 tracking-wider">Skills</h2>
+                                <h2 className="text-xs font-bold uppercase border-b border-black mb-1 tracking-wider">Skills</h2>
                                 <div className="text-sm leading-relaxed">
                                     {parsed.skills.split('\n').filter(l => l.trim()).map((skillLine, i) => (
                                         <div key={i} className="mb-0.5">• {skillLine.replace(/^([•\-\*]|#+)\s*/, '')}</div>
@@ -161,7 +161,7 @@ const ResumePaper = ({ content, scale = 1, onContentChange }) => {
 
                         {parsed.experience && (
                             <div className="section">
-                                <h2 className="text-sm font-bold uppercase border-b border-black mb-2 tracking-wider">Experience</h2>
+                                <h2 className="text-xs font-bold uppercase border-b border-black mb-1 tracking-wider">Experience</h2>
                                 <div className="text-sm leading-relaxed whitespace-pre-wrap">
                                     {parsed.experience.trim()}
                                 </div>
@@ -170,14 +170,14 @@ const ResumePaper = ({ content, scale = 1, onContentChange }) => {
 
                         {parsed.projects && (
                             <div className="section">
-                                <h2 className="text-sm font-bold uppercase border-b border-black mb-2 tracking-wider">Projects</h2>
+                                <h2 className="text-xs font-bold uppercase border-b border-black mb-1 tracking-wider">Projects</h2>
                                 <div className="text-sm leading-relaxed whitespace-pre-wrap">{parsed.projects.trim()}</div>
                             </div>
                         )}
 
                         {parsed.education && (
                             <div className="section">
-                                <h2 className="text-sm font-bold uppercase border-b border-black mb-2 tracking-wider">Education</h2>
+                                <h2 className="text-xs font-bold uppercase border-b border-black mb-1 tracking-wider">Education</h2>
                                 <div className="text-sm leading-relaxed whitespace-pre-wrap">{parsed.education.trim()}</div>
                             </div>
                         )}

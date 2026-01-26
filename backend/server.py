@@ -3611,8 +3611,13 @@ async def generate_ai_content(
             model="llama-3.1-8b-instant",
         )
 
-        if not response:
-            raise HTTPException(status_code=500, detail="AI generation failed")
+        if response:
+            # If it looks like a resume, strip excessive newlines
+            if any(h in response.upper() for h in ["EXPERIENCE", "SUMMARY", "SKILLS", "EDUCATION", "PROJECTS"]):
+                import re
+                response = re.sub(r'\n{3,}', '\n\n', response.strip())
+                # Also strip leading/trailing spaces on each line
+                response = "\n".join([line.strip() for line in response.split("\n")])
 
         return {"success": True, "response": response}
     except Exception as e:

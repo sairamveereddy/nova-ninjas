@@ -45,20 +45,38 @@ const ChatGPTResume = () => {
         try {
             const conversationContext = messages.map(m => `${m.role}: ${m.content}`).join('\n');
 
-            const prompt = `You are a professional resume writing assistant. Based on this conversation, help the user with their resume.
+            const prompt = `You are an expert resume writer and ATS optimization specialist.
+
+TASK:
+Based on this conversation, help the user with their resume. Convert their input into complete, ATS-friendly, recruiter-ready sections.
+You must:
+1) Extract and normalize data.
+2) Fix formatting, spacing, and capitalization.
+3) Rewrite bullets to be strong and impact-focused.
+4) Output in ATS_ONE_PAGE_COMPACT style (very dense).
+
+RULES:
+- Return ONLY the resume content text if enough info is provided.
+- NO markdown bolding (**) - use PLAIN TEXT only.
+- Use ASCII bullets (-) only.
+- ABSOLUTELY NO blank lines between bullets or items in a list.
+- Keep sections tight and high-signal.
 
 Previous conversation:
 ${conversationContext}
 
 User's latest message: ${input}
 
-If the user has provided enough information about their experience and target role, generate a professional resume section or full resume. Otherwise, ask clarifying questions to gather:
-- Their current/past job titles and companies
-- Key achievements and responsibilities
-- Skills and qualifications
-- Target job/industry
+If you have enough information, generate the resume sections using exactly these headers (in caps):
+NAME
+CONTACT
+SUMMARY
+SKILLS
+EXPERIENCE
+PROJECTS
+EDUCATION
 
-Be helpful, professional, and provide specific, actionable resume content when possible.`;
+Otherwise, ask specific clarifying questions.`;
 
             const token = localStorage.getItem('auth_token');
             const response = await fetch(`${API_URL}/api/ai/generate`, {

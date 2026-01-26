@@ -107,7 +107,6 @@ def render_ats_resume_from_json(r: ResumeDataSchema) -> str:
     out = []
     out.append(r.header.full_name)
     out.append(header_line)
-    out.append("")
 
     out.append("PROFESSIONAL SUMMARY")
     out.append(f"{r.target_title} — {r.positioning_statement}")
@@ -121,13 +120,14 @@ def render_ats_resume_from_json(r: ResumeDataSchema) -> str:
         if r.core_skills.devops_tools: out.append(f"DevOps/Tools: {', '.join(r.core_skills.devops_tools)}")
         if r.core_skills.other: out.append(f"Other: {', '.join(r.core_skills.other)}")
 
-    out.append("EXPERIENCE")
-    for role in r.experience:
-        role_header = f"{role.company} — {role.job_title} | {role.city_state_or_remote}"
-        out.append(role_header)
-        out.append(f"{role.start} – {role.end}")
-        for b in role.bullets:
-            out.append(f"- {cleanup_bullet(b)}")
+    if r.experience:
+        out.append("EXPERIENCE")
+        for role in r.experience:
+            role_header = f"{role.company} — {role.job_title} | {role.city_state_or_remote}"
+            out.append(role_header)
+            out.append(f"{role.start} – {role.end}")
+            for b in role.bullets:
+                out.append(f"- {cleanup_bullet(b)}")
 
     if r.projects:
         out.append("PROJECTS")
@@ -519,7 +519,7 @@ ABSOLUTE SCHEMA RULES:
 - SKILLS: Grouped categories (GenAI/LLMs, ML/DL, Cloud/DevOps, Languages/Tools, Data/DB).
 - EXPERIENCE: For each role, 4–6 bullets max. Start each bullet with a strong verb.
 - PROJECTS: 3 projects max unless more are truly strong. Each: 2–4 bullets.
-- QUALITY BAR: Make it tight, readable, and high-signal. Remove filler.
+- QUALITY BAR: Make it tight, readable, and high-signal. ABSOLUTELY NO BLANK LINES BETWEEN BULLETS OR SECTIONS.
 - Keep output JSON valid and complete.
 
 Return JSON structure ONLY:
