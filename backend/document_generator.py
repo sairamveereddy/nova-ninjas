@@ -109,8 +109,8 @@ def render_ats_resume_from_json(r: ResumeDataSchema) -> str:
     out.append(header_line)
     out.append("")
 
-    out.append(r.target_title)
-    out.append(r.positioning_statement)
+    out.append("PROFESSIONAL SUMMARY")
+    out.append(f"{r.target_title} — {r.positioning_statement}")
     out.append("")
 
 
@@ -402,15 +402,21 @@ Return ONLY the cover letter text, no JSON or markdown.
 
 async def extract_compliance_facts(resume_text: str, byok_config: Optional[Dict] = None) -> Optional[Dict]:
     """Stage 1: Extract verbatim facts from resume into a strict JSON schema"""
-    # Truncate resume text to keep it manageable and avoid TPM limits
-    truncated_resume = resume_text[:10000]
+    # Truncate resume text only if massive
+    truncated_resume = resume_text[:15000]
     
     prompt = f"""
 SYSTEM:
 You are a precision fact extractor. Output JSON ONLY. No prose.
 
 USER:
-Extract ONLY what is explicitly in the candidate resume below. Do NOT hallucinate or infer details.
+Extract EVERY detail verbatim from the candidate resume below. 
+
+ABSOLUTE RULES:
+1. DO NOT SKIP ANY JOBS. 
+2. DO NOT SKIP ANY BULLET POINTS.
+3. DO NOT SUMMARIZE. Copy text exactly as it appears.
+4. Output ONLY valid JSON.
 
 [CANDIDATE_BASE_RESUME]
 <<<
@@ -430,17 +436,10 @@ Return JSON with this exact schema:
   "skills": {{"technical":[], "soft":[], "certifications":[]}},
   "metrics_explicit": []
 }}
-
-Rules:
-- If a field is not explicitly present, use "" or [].
-- summary_original: Extract the PROFESSIONAL SUMMARY verbatim if it exists.
-- employers: List all work experience. Keep company, title, dates, and bullets exactly as written.
-- skills: Group all technical and soft skills and certifications found.
 """
     try:
-        # Stage 1: Fact extraction - Using high-speed 8B model for extraction (Step 1 Optimization)
-        # 8B is perfect for extraction and significantly faster than larger models
-        response_text = await unified_api_call(prompt, byok_config=byok_config, max_tokens=1500, model="llama-3.1-8b-instant")
+        # Use 70B for extraction to ensure NO content loss (Step 1 Optimization Reverted for Stability)
+        response_text = await unified_api_call(prompt, byok_config=byok_config, max_tokens=3500, model="llama-3.3-70b-versatile")
         if not response_text:
             return {}
         
@@ -459,135 +458,110 @@ async def generate_expert_documents(
     selected_sections: Optional[List[str]] = None,
     selected_keywords: Optional[List[str]] = None
 ) -> Optional[Dict[str, Any]]:
-    """Generate ATS Resume and Detailed CV using a consolidated, robust single-stage pipeline"""
+    """Generate ATS Resume and Detailed CV using the compliance-grade two-stage pipeline"""
     
-    # Resolving model selection (High Power for complex drafting)
+    # Resolving model selection (Optimization)
+    extraction_model = "llama-3.1-8b-instant"
     drafting_model = "llama-3.3-70b-versatile"
     
-    logger.info("Starting Consolidated Expert Document Generation")
+    # Stage 1: Verbatim Fact Extraction
+    logger.info("Stage 1: Extracting verbatim facts")
+    facts_json = await extract_compliance_facts(resume_text, byok_config=byok_config)
     
-    u = user_info or {}
-    name = u.get("name") or "Candidate Name"
-    email = u.get("email") or "Email"
-    location = u.get("location") or "Location"
-    phone = u.get("phone") or "Phone"
+    if not facts_json or not facts_json.get("employers"):
+        logger.warning("Fact extraction flaked - rescuing with simple tailoring")
+        simple_text = await generate_simple_tailored_resume(resume_text, job_description, "Target Role", "Target Company", byok_config=byok_config)
+        return {
+            "alignment_highlights": "- Full resume generated via rescue mode",
+            "ats_resume": simple_text, "detailed_cv": simple_text,
+            "cover_letter": "Expert tailoring complete.", "resume_json": {}
+        }
 
-    # Selective Tailoring Logic
+    # Resolve Header
+    u = user_info or {}
+    f = facts_json
+    header_info = {
+        "full_name": u.get("name") or f.get("name") or "Your Name",
+        "city_state": u.get("location") or f.get("location") or "Location",
+        "phone": u.get("phone") or f.get("phone") or "Phone Number",
+        "email": u.get("email") or f.get("email") or "Email Address",
+        "linkedin": f.get("links", {}).get("linkedin", ""),
+        "portfolio": f.get("links", {}).get("portfolio", "")
+    }
+
+    # Stage 2: Drafting with JD-driven tailoring
     selective_instructions = ""
     if selected_sections:
-        selective_instructions += f"\n- ONLY enhance these sections: {', '.join(selected_sections)}. Keep other sections verbatim."
+        selective_instructions += f"\n- ONLY enhance these sections: {', '.join(selected_sections)}. Keep others verbatim."
     if selected_keywords:
-        selective_instructions += f"\n- PRIORITIZE weaving in these specific keywords: {', '.join(selected_keywords)}."
+        selective_instructions += f"\n- PRIORITIZE these keywords: {', '.join(selected_keywords)}."
 
-    prompt = f"""
+    resume_prompt = f"""
 SYSTEM:
-You are an Elite Resume Architect. Your goal is to transform a BASE RESUME into a high-impact, JD-tailored JSON structure.
+You are an Elite Resume Architect. Create a JD-mirrored structured JSON.
+ABSOLUTE RULE: YOU MUST INCLUDE EVERY EMPLOYER, PROJECT, AND EDUCATION ITEM FROM [FACTS_JSON]. 
+DO NOT TRUNCATE. DO NOT SKIP.
 
-ABSOLUTE RULES:
-1. Output ONLY valid JSON. No preamble.
-2. PRESERVE EVERY SECTION from the base resume (Experience, Projects, Education, etc.).
-3. Quantify achievements and mirror JD keywords naturally.
-4. If a field isn't in the original, leave it empty.
-
-[JOB DESCRIPTION]
+[JOB_DESCRIPTION]
 {job_description}
 
-[CANDIDATE BASE RESUME]
-{resume_text[:12000]}
+[FACTS_JSON]
+{json.dumps(facts_json, indent=2)}
 
-[SELECTIVE TAILORING]
+[TAILORING_RULES]
 {selective_instructions}
+- Use professional action verbs.
+- Quantify impact.
+- Heading names must match exact JSON keys.
 
-Return JSON with this EXACT structure:
+Return JSON structure ONLY:
 {{
-  "alignment_highlights": ["Bullet 1 showing JD-Candidate fit", "Bullet 2"],
-  "cover_letter": "A professional 3-paragraph tailored cover letter text.",
+  "alignment_highlights": ["Fit bullet 1", "Fit bullet 2"],
+  "cover_letter": "3-paragraph letter text",
   "resume_data": {{
-    "header": {{
-      "full_name": "{name}",
-      "city_state": "{location}",
-      "phone": "{phone}",
-      "email": "{email}",
-      "linkedin": "",
-      "portfolio": ""
-    }},
-    "target_title": "The tailored job title",
-    "positioning_statement": "A 3-4 line powerful summary",
-    "core_skills": {{
-      "languages": [], "data_etl": [], "cloud": [], "databases": [], "devops_tools": [], "other": []
-    }},
-    "experience": [
-      {{
-        "company": "Company Name",
-        "job_title": "Tailored Title",
-        "city_state_or_remote": "Location",
-        "start": "MMM YYYY",
-        "end": "Present/MMM YYYY",
-        "bullets": ["Enhanced achievement bullet 1", "Enhanced achievement bullet 2"]
-      }}
-    ],
-    "projects": [
-      {{
-        "name": "Project Name",
-        "tech_stack": [],
-        "link": "",
-        "bullets": ["Achievement bullet"]
-      }}
-    ],
-    "education": [
-      {{
-        "degree": "Degree",
-        "major": "Major",
-        "university": "Uni Name",
-        "year": "YYYY"
-      }}
-    ],
+    "header": {json.dumps(header_info)},
+    "target_title": "Optimized title",
+    "positioning_statement": "3-line summary",
+    "core_skills": {{"languages": [], "data_etl": [], "cloud": [], "databases": [], "devops_tools": [], "other": []}},
+    "experience": [{{ "company": "", "job_title": "", "city_state_or_remote": "", "start": "", "end": "", "bullets": [] }}],
+    "projects": [{{ "name": "", "tech_stack": [], "link": "", "bullets": [] }}],
+    "education": [{{ "degree": "", "major": "", "university": "", "year": "" }}],
     "certifications": []
   }}
 }}
-
-GENERATE JSON NOW:
 """
 
     try:
-        response_text = await unified_api_call(prompt, byok_config=byok_config, max_tokens=7000, model=drafting_model)
+        response_text = await unified_api_call(resume_prompt, byok_config=byok_config, max_tokens=6000, model=drafting_model)
         if not response_text:
-            raise ValueError("Empty response from AI")
-
+            raise ValueError("Drafting failed")
+            
         json_text = clean_json_response(response_text)
         raw_output = json.loads(json_text)
         
         # Merge cover letter back into output for compatibility if model outputted top-level
         cl_text = raw_output.get('cover_letter', "Expert tailoring complete.")
         
-        # Validate with Pydantic
+        # Validate and Render
         class ResumeOnlyOutput(BaseModel):
             alignment_highlights: List[str]
             resume_data: ResumeDataSchema
 
         validated = ResumeOnlyOutput(**raw_output)
-        
-        # Render the ATS text format (the 'old format')
         ats_resume_text = render_ats_resume_from_json(validated.resume_data)
         
         return {
             "alignment_highlights": "\n".join([f"- {h}" for h in validated.alignment_highlights]),
-            "ats_resume": ats_resume_text,
-            "detailed_cv": ats_resume_text,
-            "cover_letter": cl_text,
-            "resume_json": validated.resume_data.model_dump()
+            "ats_resume": ats_resume_text, "detailed_cv": ats_resume_text,
+            "cover_letter": cl_text, "resume_json": validated.resume_data.model_dump()
         }
-
     except Exception as e:
-        logger.error(f"Consolidated expert generation failed: {e}. Falling back to rescue mode.")
-        from document_generator import generate_simple_tailored_resume
+        logger.error(f"Stage 2 Expert failed: {e}")
         simple_text = await generate_simple_tailored_resume(resume_text, job_description, "Position", "Company", byok_config=byok_config)
         return {
             "alignment_highlights": "- Tailored analysis complete",
-            "ats_resume": simple_text,
-            "detailed_cv": simple_text,
-            "cover_letter": "Expert tailoring complete.",
-            "resume_json": {}
+            "ats_resume": simple_text, "detailed_cv": simple_text,
+            "cover_letter": "Expert tailoring complete.", "resume_json": {}
         }
 
     return None
