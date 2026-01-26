@@ -111,7 +111,6 @@ def render_ats_resume_from_json(r: ResumeDataSchema) -> str:
 
     out.append("PROFESSIONAL SUMMARY")
     out.append(f"{r.target_title} — {r.positioning_statement}")
-    out.append("")
 
     out.append("SKILLS")
     if r.core_skills:
@@ -121,46 +120,37 @@ def render_ats_resume_from_json(r: ResumeDataSchema) -> str:
         if r.core_skills.databases: out.append(f"Databases: {', '.join(r.core_skills.databases)}")
         if r.core_skills.devops_tools: out.append(f"DevOps/Tools: {', '.join(r.core_skills.devops_tools)}")
         if r.core_skills.other: out.append(f"Other: {', '.join(r.core_skills.other)}")
-    out.append("")
 
     out.append("EXPERIENCE")
-    out.append("")
     for role in r.experience:
         role_header = f"{role.company} — {role.job_title} | {role.city_state_or_remote}"
         out.append(role_header)
         out.append(f"{role.start} – {role.end}")
         for b in role.bullets:
             out.append(f"- {cleanup_bullet(b)}")
-        out.append("")
 
     if r.projects:
         out.append("PROJECTS")
-        out.append("")
         for p in r.projects:
             tech = ", ".join(p.tech_stack)
             link = f" ({p.link})" if p.link else ""
             out.append(f"{p.name} — {tech}{link}")
             for b in p.bullets:
                 out.append(f"- {cleanup_bullet(b)}")
-            out.append("")
 
     if r.education:
         out.append("EDUCATION")
-        out.append("")
         for e in r.education:
             left_parts = [e.degree, e.major]
             left = ", ".join([p for p in left_parts if p and p.strip()])
             right_parts = [e.university, e.year]
             right = " | ".join([p for p in right_parts if p and p.strip()])
             out.append(f"{left} — {right}")
-        out.append("")
 
     if r.certifications:
         out.append("CERTIFICATIONS")
-        out.append("")
         for c in r.certifications:
             out.append(f"- {c}")
-        out.append("")
 
     return "\n".join(out).strip()
 
@@ -432,6 +422,7 @@ Return JSON with this exact schema:
   "summary_original": "",
   "employers": [{{"company":"","title":"","location":"","start":"","end":"","bullets":[] }}],
   "projects": [{{"name":"","bullets":[],"tools":[],"metrics":[] }}],
+  "education": [{{"degree":"","major":"","university":"","year":""}}],
   "skills": {{"technical":[], "soft":[], "certifications":[]}},
   "metrics_explicit": []
 }}
@@ -501,9 +492,10 @@ You are an Elite Resume Architect. Create a JD-mirrored structured JSON.
 
 ABSOLUTE SCHEMA RULES:
 1. Include EVERY item from [FACTS_JSON]. Do NOT truncate bullets.
-2. Mapping: [FACTS_JSON].employers -> "experience" field.
-3. Mapping: [FACTS_JSON].projects -> "projects" field.
-4. Mapping: [FACTS_JSON].skills -> "core_skills" field.
+2. Mapping: [FACTS_JSON].employers -> "experience".
+3. Mapping: [FACTS_JSON].projects -> "projects".
+4. Mapping: [FACTS_JSON].education -> "education".
+5. Mapping: [FACTS_JSON].skills -> "core_skills".
 
 [JOB_DESCRIPTION]
 {job_description}
