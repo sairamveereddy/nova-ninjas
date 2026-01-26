@@ -97,6 +97,8 @@ logger.info(f"Connecting to MongoDB database: {db_name}")
 
 try:
     import certifi
+except ImportError:
+    pass
 
 client = None
 db = None
