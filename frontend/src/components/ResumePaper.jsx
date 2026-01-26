@@ -136,49 +136,49 @@ const ResumePaper = ({ content, scale = 1, onContentChange }) => {
                 ) : (
                     /* Structured View */
                     <>
-                        <div className="text-center mb-1">
-                            <h1 className="text-3xl font-bold uppercase tracking-wide m-0 p-0 text-slate-900 border-none outline-none">{parsed.name}</h1>
-                            <p className="text-[10px] text-slate-700 m-0 p-0">{parsed.contact}</p>
+                        <div style={{ textAlign: 'center', marginBottom: '4px' }}>
+                            <h1 style={{ fontSize: '24pt', fontWeight: 'bold', textTransform: 'uppercase', margin: 0, padding: 0 }}>{parsed.name}</h1>
+                            <p style={{ fontSize: '9pt', margin: 0, padding: 0 }}>{parsed.contact}</p>
                         </div>
 
                         {parsed.summary && (
-                            <div className="section m-0 p-0">
-                                <h2 className="text-[10px] font-bold uppercase border-b border-black m-0 p-0 tracking-wider">Professional Summary</h2>
-                                <p className="text-xs leading-tight text-justify m-0 p-0">{parsed.summary.trim()}</p>
+                            <div style={{ margin: 0, padding: 0 }}>
+                                <h2 style={{ fontSize: '10pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '1px solid black', margin: 0, padding: 0 }}>Professional Summary</h2>
+                                <p style={{ fontSize: '10pt', lineHeight: '1.1', textAlign: 'justify', margin: 0, padding: 0 }}>{parsed.summary.trim()}</p>
                             </div>
                         )}
 
                         {parsed.skills && (
-                            <div className="section m-0 p-0">
-                                <h2 className="text-[10px] font-bold uppercase border-b border-black m-0 p-0 tracking-wider">Skills</h2>
-                                <div className="text-xs leading-tight m-0 p-0">
+                            <div style={{ margin: 0, padding: 0 }}>
+                                <h2 style={{ fontSize: '10pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '1px solid black', margin: 0, padding: 0 }}>Skills</h2>
+                                <div style={{ fontSize: '10pt', lineHeight: '1.1', margin: 0, padding: 0 }}>
                                     {parsed.skills.split('\n').filter(l => l.trim()).map((skillLine, i) => (
-                                        <div key={i} className="m-0 p-0">• {skillLine.replace(/^([•\-\*]|#+)\s*/, '')}</div>
+                                        <div key={i} style={{ margin: 0, padding: 0 }}>• {skillLine.replace(/^([•\-\*]|#+)\s*/, '')}</div>
                                     ))}
                                 </div>
                             </div>
                         )}
 
                         {parsed.experience && (
-                            <div className="section m-0 p-0">
-                                <h2 className="text-[10px] font-bold uppercase border-b border-black m-0 p-0 tracking-wider">Experience</h2>
-                                <div className="text-xs leading-tight whitespace-pre-wrap m-0 p-0">
+                            <div style={{ margin: 0, padding: 0 }}>
+                                <h2 style={{ fontSize: '10pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '1px solid black', margin: 0, padding: 0 }}>Experience</h2>
+                                <div style={{ fontSize: '10pt', lineHeight: '1.1', whiteSpace: 'pre-wrap', margin: 0, padding: 0 }}>
                                     {parsed.experience.trim()}
                                 </div>
                             </div>
                         )}
 
                         {parsed.projects && (
-                            <div className="section m-0 p-0">
-                                <h2 className="text-[10px] font-bold uppercase border-b border-black m-0 p-0 tracking-wider">Projects</h2>
-                                <div className="text-xs leading-tight whitespace-pre-wrap m-0 p-0">{parsed.projects.trim()}</div>
+                            <div style={{ margin: 0, padding: 0 }}>
+                                <h2 style={{ fontSize: '10pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '1px solid black', margin: 0, padding: 0 }}>Projects</h2>
+                                <div style={{ fontSize: '10pt', lineHeight: '1.1', whiteSpace: 'pre-wrap', margin: 0, padding: 0 }}>{parsed.projects.trim()}</div>
                             </div>
                         )}
 
                         {parsed.education && (
-                            <div className="section m-0 p-0">
-                                <h2 className="text-[10px] font-bold uppercase border-b border-black m-0 p-0 tracking-wider">Education</h2>
-                                <div className="text-xs leading-tight whitespace-pre-wrap m-0 p-0">{parsed.education.trim()}</div>
+                            <div style={{ margin: 0, padding: 0 }}>
+                                <h2 style={{ fontSize: '10pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '1px solid black', margin: 0, padding: 0 }}>Education</h2>
+                                <div style={{ fontSize: '10pt', lineHeight: '1.1', whiteSpace: 'pre-wrap', margin: 0, padding: 0 }}>{parsed.education.trim()}</div>
                             </div>
                         )}
                     </>

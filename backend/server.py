@@ -2979,6 +2979,16 @@ async def ai_ninja_apply(request: Request):
             tailoredResume = expert_docs.get("ats_resume", "")
             detailedCv = expert_docs.get("detailed_cv", "")
             tailoredCoverLetter = expert_docs.get("cover_letter", "")
+
+            # AGGRESSIVE NEWLINE STRIPPING for extreme gap fix
+            import re
+            if tailoredResume:
+                tailoredResume = re.sub(r'\n+', '\n', tailoredResume.strip())
+                tailoredResume = "\n".join([line.strip() for line in tailoredResume.split("\n") if line.strip()])
+            if detailedCv:
+                detailedCv = re.sub(r'\n+', '\n', detailedCv.strip())
+                detailedCv = "\n".join([line.strip() for line in detailedCv.split("\n") if line.strip()])
+
             # If cover letter is missing from expert_docs, try to generate it
             if not tailoredCoverLetter:
                 try:
