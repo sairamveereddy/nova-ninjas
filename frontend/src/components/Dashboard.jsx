@@ -99,6 +99,7 @@ const Dashboard = () => {
     employment_history: [],
     education: [],
     certifications: [],
+    certifications_text: '',
     projects: [],
     references: [],
 
@@ -191,7 +192,7 @@ const Dashboard = () => {
     // Refresh data every 2 minutes
     const interval = setInterval(fetchApplications, 120000);
     return () => clearInterval(interval);
-  }, [user?.email]);
+  }, [user?.email, location.search]);
 
   // Fetch user profile
   useEffect(() => {
