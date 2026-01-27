@@ -149,6 +149,13 @@ const AIApplyFlow = () => {
     }
   }, [isAuthenticated, navigate, location.pathname]);
 
+  // Auto-save application when results are ready
+  useEffect(() => {
+    if (currentStep === 5 && !applicationSaved && (tailoredResume || detailedCv) && isAuthenticated) {
+      handleSaveApplication();
+    }
+  }, [currentStep, applicationSaved, tailoredResume, detailedCv, isAuthenticated]);
+
   // Fetch usage and resumes on mount
   useEffect(() => {
     if (isAuthenticated && user?.email) {
@@ -435,24 +442,29 @@ const AIApplyFlow = () => {
 
   const handleSaveApplication = async () => {
     if (!isAuthenticated || !user?.email) {
-      navigate('/login');
       return;
     }
 
     setIsSavingApplication(true);
 
     try {
+      // Calculate final score: original + improvement (clamped at 99)
+      const baseScore = analysisResult?.matchScore || 75;
+      const finalScore = Math.min(99, baseScore + matchImprovement);
+
       const applicationData = {
         userEmail: user.email,
         jobId: jobData.jobId || null,
-        jobTitle: jobData.jobTitle,
-        company: jobData.company,
+        jobTitle: customJobTitle || jobData.jobTitle,
+        company: companyName || jobData.company,
         location: jobData.location || '',
-        jobDescription: jobData.description,
-        sourceUrl: jobData.sourceUrl || '',
+        jobDescription: customJobDescription || jobData.description,
+        sourceUrl: jobUrl || jobData.sourceUrl || '',
         salaryRange: jobData.salaryRange || '',
-        matchScore: analysisResult?.matchScore || 0,
+        matchScore: finalScore,
         status: 'materials_ready',
+        resumeText: tailoredResume || '',
+        coverLetterText: tailoredCoverLetter || '',
         createdAt: new Date().toISOString()
       };
 

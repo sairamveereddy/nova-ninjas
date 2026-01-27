@@ -134,7 +134,9 @@ const Dashboard = () => {
             location: app.location || '',
             matchScore: app.matchScore || 0,
             notes: app.notes || '',
-            resumeId: app.resumeId || null
+            resumeId: app.resumeId || null,
+            resumeText: app.resumeText || '',
+            coverLetterText: app.coverLetterText || ''
           }));
 
           setApplications(formattedApps);
@@ -365,6 +367,50 @@ const Dashboard = () => {
           alert('Failed to delete account. Please contact support.');
         }
       }
+    }
+  };
+
+  const handleDownloadResume = async (app) => {
+    if (!app.resumeText) return;
+
+    try {
+      const endpoint = `${API_URL}/api/generate/resume`;
+      const payload = {
+        userId: user.id,
+        resume_text: app.resumeText,
+        company: app.company,
+        job_description: app.jobDescription || '',
+        analysis: {},
+        is_already_tailored: true
+      };
+
+      const safeCompany = (app.company || 'Company').trim().replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_');
+      const fileName = `Tailored_Resume_${safeCompany}.docx`;
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error(`Failed to generate resume`);
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+    } catch (error) {
+      console.error(`Download failed:`, error);
+      alert('Failed to download resume. Please try again.');
     }
   };
 
@@ -656,12 +702,19 @@ const Dashboard = () => {
                                   ) : '-'}
                                 </td>
                                 <td className="py-3 px-4">
-                                  {app.resumeId ? (
+                                  {app.resumeText ? (
+                                    <button
+                                      onClick={() => handleDownloadResume(app)}
+                                      className="text-primary hover:underline flex items-center gap-1"
+                                    >
+                                      <Download className="w-4 h-4" /> Download
+                                    </button>
+                                  ) : app.resumeId ? (
                                     <button
                                       onClick={() => navigate('/resumes')}
                                       className="text-primary hover:underline flex items-center gap-1"
                                     >
-                                      <FileText className="w-4 h-4" /> Resume
+                                      <FileText className="w-4 h-4" /> View
                                     </button>
                                   ) : (
                                     <span className="text-gray-400 text-xs italic">No resume</span>

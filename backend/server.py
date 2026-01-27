@@ -4214,6 +4214,8 @@ class ApplicationData(BaseModel):
     createdAt: Optional[str] = None
     appliedAt: Optional[str] = None
     notes: Optional[str] = ""
+    resumeText: Optional[str] = ""
+    coverLetterText: Optional[str] = ""
 
 
 @app.post("/api/applications")
@@ -4239,6 +4241,8 @@ async def save_application(application: ApplicationData):
             or datetime.now(timezone.utc).isoformat(),
             "appliedAt": application.appliedAt,
             "notes": application.notes,
+            "resumeText": application.resumeText,
+            "coverLetterText": application.coverLetterText,
             "updatedAt": datetime.now(timezone.utc).isoformat(),
         }
 
