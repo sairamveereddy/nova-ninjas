@@ -12,12 +12,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.type === 'GET_AUTH_TOKEN') {
-        if (window.location.hostname.includes('jobninjas.ai')) {
+        if (window.location.hostname.includes('jobninjas.ai') || window.location.hostname.includes('jobninjas.org')) {
             const token = localStorage.getItem('auth_token');
             const userData = localStorage.getItem('user_data');
             sendResponse({ token, userData: userData ? JSON.parse(userData) : null });
         } else {
-            sendResponse({ error: 'Not on jobninjas.ai' });
+            sendResponse({ error: 'Not on jobninjas.org' });
         }
     }
     return true; // Keep channel open for async response

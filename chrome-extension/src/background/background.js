@@ -5,8 +5,8 @@ chrome.sidePanel
 // Listen for messages from content scripts or the side panel
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'GET_AUTH_TOKEN') {
-        // Find a tab that is on jobninjas.ai to extract the token from localStorage
-        chrome.tabs.query({ url: "*://*.jobninjas.ai/*" }, (tabs) => {
+        // Find a tab that is on jobninjas.ai or .org to extract the token from localStorage
+        chrome.tabs.query({ url: ["*://*.jobninjas.ai/*", "*://*.jobninjas.org/*"] }, (tabs) => {
             if (tabs && tabs.length > 0) {
                 chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_AUTH_TOKEN' }, (response) => {
                     if (chrome.runtime.lastError) {
@@ -16,7 +16,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     }
                 });
             } else {
-                sendResponse({ error: 'No JobNinjas tab found. Please open jobninjas.ai and login.' });
+                sendResponse({ error: 'No JobNinjas tab found. Please open jobninjas.org and login.' });
             }
         });
         return true; // Keep channel open for async response

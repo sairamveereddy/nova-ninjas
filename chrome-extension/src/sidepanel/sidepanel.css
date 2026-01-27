@@ -37,6 +37,21 @@ header {
     border-bottom: 1px solid rgba(0, 255, 140, 0.1);
 }
 
+.logo-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-icon {
+    width: 32px;
+    height: 32px;
+    background-image: url('../../icons/icon48.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    border-radius: 8px;
+}
+
 .logo-section h1 {
     font-size: 1.2rem;
     color: var(--primary-green);
