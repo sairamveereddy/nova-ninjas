@@ -601,9 +601,6 @@ const LandingPage = () => {
                   className={`feature-card-modern ${feature.comingSoon ? 'coming-soon' : ''}`}
                   onClick={() => !feature.comingSoon && navigate(feature.path)}
                 >
-                  <div className="feature-icon-modern">
-                    <Icon className="w-6 h-6" />
-                  </div>
                   <h3>{feature.title}</h3>
                   <p>{feature.description}</p>
                   <button className="feature-cta">

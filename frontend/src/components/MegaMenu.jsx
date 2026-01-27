@@ -132,17 +132,6 @@ const MegaMenu = () => {
                                                     className="dropdown-item"
                                                     onClick={() => handleItemClick(item.path)}
                                                 >
-                                                    <div className="item-icon" style={{ backgroundColor: `${item.color}15`, color: item.color }}>
-                                                        {typeof item.icon === 'string' ? (
-                                                            <img
-                                                                src={item.icon}
-                                                                alt={item.label}
-                                                                className="w-full h-full object-contain p-1 transform scale-125"
-                                                            />
-                                                        ) : (
-                                                            <item.icon className="w-5 h-5" />
-                                                        )}
-                                                    </div>
                                                     <div className="item-content">
                                                         <span className="item-label">{item.label}</span>
                                                         <span className="item-desc">{item.desc}</span>
