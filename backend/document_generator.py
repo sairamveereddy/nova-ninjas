@@ -471,7 +471,7 @@ async def generate_expert_documents(
         return {
             "alignment_highlights": "- Full resume generated via rescue mode",
             "ats_resume": simple_text, "detailed_cv": simple_text,
-            "cover_letter": "Expert tailoring complete.", "resume_json": {}
+            "cover_letter": None, "resume_json": {}
         }
 
     # Resolve Header
@@ -548,7 +548,7 @@ Return JSON structure ONLY:
         raw_output = json.loads(json_text)
         
         # Merge cover letter back into output for compatibility if model outputted top-level
-        cl_text = raw_output.get('cover_letter', "Expert tailoring complete.")
+        cl_text = raw_output.get('cover_letter', "")
         
         # Validate and Render
         class ResumeOnlyOutput(BaseModel):
@@ -569,7 +569,7 @@ Return JSON structure ONLY:
         return {
             "alignment_highlights": "- Tailored analysis complete",
             "ats_resume": simple_text, "detailed_cv": simple_text,
-            "cover_letter": "Expert tailoring complete.", "resume_json": {}
+            "cover_letter": None, "resume_json": {}
         }
 
     return None

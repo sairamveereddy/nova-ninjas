@@ -2989,8 +2989,8 @@ async def ai_ninja_apply(request: Request):
                 detailedCv = re.sub(r'\n+', '\n', detailedCv.strip())
                 detailedCv = "\n".join([line.strip() for line in detailedCv.split("\n") if line.strip()])
 
-            # If cover letter is missing from expert_docs, try to generate it
-            if not tailoredCoverLetter:
+            # If cover letter is missing or looks like a placeholder, try to generate it
+            if not tailoredCoverLetter or len(tailoredCoverLetter) < 100 or "Expert tailoring complete" in tailoredCoverLetter:
                 try:
                     async with asyncio.timeout(15):
                         tailoredCoverLetter = await generate_cover_letter_content(
