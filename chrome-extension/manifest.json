@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "Nova Ninjas: AI Job Copilot",
+    "name": "jobNinjas: AI Job Copilot",
     "version": "1.0.0",
-    "description": "1-Click Autofill, Match Scores, and AI Resume Tailoring for job seekers.",
+    "description": "1-Click Autofill, Match Scores, and AI Resume Tailoring for job seekers by jobNinjas.ai.",
     "permissions": [
         "sidePanel",
         "storage",

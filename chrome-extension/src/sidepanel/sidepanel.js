@@ -1,4 +1,4 @@
-// Side Panel Logic for Nova Ninjas
+// Side Panel Logic for jobNinjas
 
 const API_BASE_URL = 'https://nova-ninjas-production.up.railway.app';
 

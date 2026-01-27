@@ -1,7 +1,7 @@
 // 1. Listen for messages from the side panel or background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'START_AUTOFILL') {
-        console.log('[Nova Ninjas] Starting autofill with data:', message.data);
+        console.log('[jobNinjas] Starting autofill with data:', message.data);
         // Report started
         chrome.runtime.sendMessage({ type: 'AUTOFILL_STARTED', total: 0 });
 
@@ -152,10 +152,10 @@ function selectOption(select, text, label) {
 // 3. Inject "Floating Button" (Similar to Jobright reference)
 function injectNinjaButton() {
     const btn = document.createElement('div');
-    btn.id = 'nova-ninja-floating-btn';
+    btn.id = 'job-ninja-floating-btn';
     btn.innerHTML = `
     <div class="ninja-icon">🥷</div>
-    <div class="ninja-text">Autofill with Ninja</div>
+    <div class="ninja-text">Autofill with jobNinjas</div>
   `;
 
     // Applying styles via JS for simplicity in this artifact, but sidepanel.css is usually separate
@@ -207,4 +207,4 @@ function isJobSite() {
 }
 
 // Initialize
-// injectNinjaButton(); // Disabled for now to avoid cluttering every page until logic is ready
+injectNinjaButton();

@@ -1,10 +1,10 @@
 :root {
-    --primary-green: #00ff8c;
+    --primary-green: #8FEC78;
     --bg-dark: #0f1715;
     --card-bg: rgba(255, 255, 255, 0.05);
     --text-white: #ffffff;
     --text-dim: #a0a0a0;
-    --accent-green: #00d278;
+    --accent-green: #81DD67;
     --danger: #ff4d4d;
     --progress-bg: rgba(255, 255, 255, 0.05);
 }
