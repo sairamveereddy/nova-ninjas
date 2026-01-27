@@ -1098,6 +1098,10 @@ async def save_user_profile(request: Request, user: dict = Depends(get_current_u
             "email": email,
             "fullName": data.get("fullName", user.get("name", "")),
             "phone": data.get("phone", ""),
+            "address": data.get("address", ""),
+            "city": data.get("city", ""),
+            "state": data.get("state", ""),
+            "zip": data.get("zip", ""),
             "linkedinUrl": data.get("linkedinUrl", ""),
             # EEO Fields (Jobright Replication)
             "gender": data.get("gender", ""),
@@ -1157,6 +1161,10 @@ async def save_profile(request: Request):
         "email": email,
         "fullName": form_data.get("fullName", ""),
         "phone": form_data.get("phone", ""),
+        "address": form_data.get("address", ""),
+        "city": form_data.get("city", ""),
+        "state": form_data.get("state", ""),
+        "zip": form_data.get("zip", ""),
         # Professional Info
         "yearsOfExperience": form_data.get("yearsOfExperience", ""),
         "currentRole": form_data.get("currentRole", ""),
@@ -3742,6 +3750,8 @@ class GenerateResumeRequest(BaseModel):
     company: str = "Company"
     analysis: dict
     is_already_tailored: bool = False
+    fontFamily: Optional[str] = "Times New Roman"
+    template: Optional[str] = "standard"
 
 
 @app.post("/api/generate/resume")
@@ -3757,13 +3767,17 @@ async def generate_resume_docx(request: GenerateResumeRequest):
             ensure_verified(user)
 
         # Check if we should use raw text or structured data
-        if (
-            hasattr(request, "resume_text")
-            and not request.resume_text.startswith("{")
-            and request.is_already_tailored
-        ):
-            # It's raw text from Expert AI that is already tailored
-            docx_file = create_text_docx(request.resume_text, "ATS_Resume")
+        if request.is_already_tailored and request.resume_text:
+            # It's already tailored content (possibly edited by user)
+            # Use the provided text directly and respect local fonts/templates
+            docx_file = create_text_docx(
+                request.resume_text, 
+                "ATS_Resume", 
+                font_family=request.fontFamily,
+                template=request.template
+            )
+            # Skip redundant Expert AI calls!
+        else:
             # Check for BYOK
             user_email = user.get("email", "") if user else ""
             byok_config = await get_decrypted_byok_key(user_email)
@@ -3782,7 +3796,10 @@ async def generate_resume_docx(request: GenerateResumeRequest):
 
             if expert_docs and expert_docs.get("ats_resume"):
                 docx_file = create_text_docx(
-                    expert_docs["ats_resume"], "Optimized_Resume"
+                    expert_docs["ats_resume"], 
+                    "Optimized_Resume",
+                    font_family=request.fontFamily,
+                    template=request.template
                 )
             else:
                 # Fallback to standard optimization if expert fails
@@ -3796,7 +3813,7 @@ async def generate_resume_docx(request: GenerateResumeRequest):
                     raise HTTPException(
                         status_code=500, detail="Failed to generate resume content"
                     )
-                docx_file = create_resume_docx(resume_data)
+                docx_file = create_resume_docx(resume_data, font_family=request.fontFamily)
         else:
             # Check for BYOK
             byok_config = await get_decrypted_byok_key(
@@ -3887,7 +3904,12 @@ async def generate_cv_docx(request: GenerateResumeRequest):
             raise HTTPException(status_code=400, detail="CV text is missing")
 
         # Create Word document from the detailed CV text
-        docx_file = create_text_docx(request.resume_text, "Detailed_CV")
+        docx_file = create_text_docx(
+            request.resume_text, 
+            "Detailed_CV",
+            font_family=request.fontFamily,
+            template=request.template
+        )
 
         # Sanitize company name for header
         safe_company = request.company.replace(" ", "_").replace('"', "")
@@ -3916,6 +3938,8 @@ class GenerateCoverLetterRequest(BaseModel):
     company: str = "Company"
     cover_letter_text: Optional[str] = None
     is_already_tailored: bool = False
+    fontFamily: Optional[str] = "Times New Roman"
+    template: Optional[str] = "standard"
 
 
 @app.post("/api/generate/cover-letter")
@@ -3955,7 +3979,10 @@ async def generate_cover_letter_docx(request: GenerateCoverLetterRequest):
 
         # Create Word document
         docx_file = create_cover_letter_docx(
-            cover_letter_text, request.job_title, request.company
+            cover_letter_text, 
+            request.job_title, 
+            request.company,
+            font_family=request.fontFamily
         )
 
         # Sanitize company name for header

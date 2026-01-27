@@ -56,10 +56,26 @@ function setupEventListeners() {
 
 // 2. Auth Logic
 async function checkAuth() {
-    chrome.runtime.sendMessage({ type: 'GET_AUTH_TOKEN' }, (response) => {
+    chrome.runtime.sendMessage({ type: 'GET_AUTH_TOKEN' }, async (response) => {
         if (response && response.token) {
             currentToken = response.token;
             currentUser = response.userData;
+
+            // Fetch full profile for better autofill
+            try {
+                const profileRes = await fetch(`${API_BASE_URL}/api/user/profile`, {
+                    headers: { 'token': currentToken }
+                });
+                if (profileRes.ok) {
+                    const profileData = await profileRes.json();
+                    if (profileData.success && profileData.profile) {
+                        currentUser = { ...currentUser, ...profileData.profile };
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch profile:', err);
+            }
+
             showScreen('dashboard');
             updateProfileUI();
         } else {
@@ -70,7 +86,7 @@ async function checkAuth() {
 
 function updateProfileUI() {
     if (currentUser) {
-        elements.resumeName.innerText = currentUser.fullName || 'Sai_Ram_Resume.docx';
+        elements.resumeName.innerText = currentUser.name || currentUser.fullName || 'Sai_Ram_Resume.docx';
         elements.creditsCount.innerText = '4'; // Mock credits
     }
 }
@@ -130,10 +146,14 @@ function startAutofill() {
         chrome.tabs.sendMessage(tabs[0].id, {
             type: 'START_AUTOFILL',
             data: {
-                name: currentUser.fullName || 'User Name',
+                name: currentUser.name || currentUser.fullName || 'User Name',
                 email: currentUser.email || 'user@example.com',
                 phone: currentUser.phone || '',
                 linkedin: currentUser.linkedinUrl || '',
+                address: currentUser.address || currentUser.street || '',
+                city: currentUser.city || '',
+                state: currentUser.state || '',
+                zip: currentUser.zip || currentUser.postalCode || '',
                 gender: currentUser.gender,
                 race: currentUser.race,
                 disabilityStatus: currentUser.disabilityStatus,

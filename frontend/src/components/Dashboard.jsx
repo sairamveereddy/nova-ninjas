@@ -57,6 +57,10 @@ const Dashboard = () => {
     fullName: user?.name || '',
     email: user?.email || '',
     phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zip: '',
 
     // Professional Info
     yearsOfExperience: '',
@@ -873,6 +877,38 @@ const Dashboard = () => {
                         value={profile.phone}
                         onChange={(e) => handleProfileChange('phone', e.target.value)}
                         placeholder="+1 (555) 123-4567"
+                      />
+                    </div>
+                    <div>
+                      <Label>Street Address</Label>
+                      <Input
+                        value={profile.address}
+                        onChange={(e) => handleProfileChange('address', e.target.value)}
+                        placeholder="123 Main St"
+                      />
+                    </div>
+                    <div>
+                      <Label>City</Label>
+                      <Input
+                        value={profile.city}
+                        onChange={(e) => handleProfileChange('city', e.target.value)}
+                        placeholder="New York"
+                      />
+                    </div>
+                    <div>
+                      <Label>State / Province</Label>
+                      <Input
+                        value={profile.state}
+                        onChange={(e) => handleProfileChange('state', e.target.value)}
+                        placeholder="NY"
+                      />
+                    </div>
+                    <div>
+                      <Label>Zip / Postal Code</Label>
+                      <Input
+                        value={profile.zip}
+                        onChange={(e) => handleProfileChange('zip', e.target.value)}
+                        placeholder="10001"
                       />
                     </div>
                   </CardContent>

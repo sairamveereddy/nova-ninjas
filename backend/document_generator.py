@@ -574,9 +574,15 @@ Return JSON structure ONLY:
 
     return None
 
-def create_resume_docx(resume_data: Dict) -> io.BytesIO:
+def create_resume_docx(resume_data: Dict, font_family: str = "Times New Roman") -> io.BytesIO:
     """Create a comprehensive Word document from resume data"""
     doc = Document()
+    
+    # Set default font
+    style = doc.styles['Normal']
+    font = style.font
+    font.name = font_family
+    font.size = Pt(10)
     
     # Set margins
     sections = doc.sections
@@ -792,9 +798,15 @@ def create_resume_docx(resume_data: Dict) -> io.BytesIO:
     return file_stream
 
 
-def create_cover_letter_docx(cover_letter_text: str, job_title: str, company: str) -> io.BytesIO:
+def create_cover_letter_docx(cover_letter_text: str, job_title: str, company: str, font_family: str = "Times New Roman") -> io.BytesIO:
     """Create a Word document for the cover letter"""
     doc = Document()
+    
+    # Set default font
+    style = doc.styles['Normal']
+    font = style.font
+    font.name = font_family
+    font.size = Pt(11)
     
     # Set margins
     sections = doc.sections
@@ -835,24 +847,44 @@ def create_cover_letter_docx(cover_letter_text: str, job_title: str, company: st
     return file_stream
 
 
-def create_text_docx(text: str, title: str = "Document") -> io.BytesIO:
-    """Create a Word document from raw text, preserving basic formatting"""
+def create_text_docx(text: str, title: str = "Document", font_family: str = "Times New Roman", template: str = "standard") -> io.BytesIO:
+    """Create a Word document from raw text, preserving basic formatting and styling"""
     doc = Document()
+    
+    # Set default font
+    style = doc.styles['Normal']
+    font = style.font
+    font.name = font_family
+    font.size = Pt(10)
+
+    is_modern = template == 'modern'
     
     # Set margins
     sections = doc.sections
     for section in sections:
-        section.top_margin = Inches(0.75)
-        section.bottom_margin = Inches(0.75)
-        section.left_margin = Inches(0.75)
-        section.right_margin = Inches(0.75)
+        section.top_margin = Inches(0.5)
+        section.bottom_margin = Inches(0.5)
+        section.left_margin = Inches(0.5)
+        section.right_margin = Inches(0.5)
     
     # Split text into lines and add to document
     lines = text.strip().split('\n')
+    
+    # First line is usually the name
+    if lines:
+        name_para = doc.add_paragraph()
+        name_run = name_para.add_run(lines[0].strip())
+        name_run.bold = True
+        name_run.font.size = Pt(20)
+        if not is_modern:
+            name_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        name_para.paragraph_format.space_after = Pt(2)
+        lines = lines[1:]
+
     for line in lines:
         line_stripped = line.strip()
         if not line_stripped:
-            doc.add_paragraph()
+            doc.add_paragraph().paragraph_format.space_after = Pt(0)
             continue
             
         if line_stripped.startswith('===') and line_stripped.endswith('==='):
@@ -860,16 +892,29 @@ def create_text_docx(text: str, title: str = "Document") -> io.BytesIO:
             p = doc.add_paragraph()
             run = p.add_run(line_stripped.replace('=', '').strip())
             run.bold = True
-            run.font.size = Pt(16)
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        elif line_stripped.isupper() and len(line_stripped) < 50:
+            run.font.size = Pt(14)
+            if not is_modern:
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p.paragraph_format.space_after = Pt(4)
+        elif (line_stripped.isupper() and len(line_stripped) < 50) or (line_stripped.startswith('#') and len(line_stripped) < 60):
             # Main sections like PROFESSIONAL EXPERIENCE
+            clean_title = line_stripped.replace('#', '').strip()
             p = doc.add_paragraph()
-            run = p.add_run(line_stripped)
+            run = p.add_run(clean_title)
             run.bold = True
-            run.font.size = Pt(12)
+            run.font.size = Pt(11)
+            if not is_modern:
+                # Add a border bottom for standard
+                # docx doesn't easily support bottom borders on paragraphs without more XML manipulation, 
+                # but we can simulate or just bold + align
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p.paragraph_format.space_after = Pt(2)
         else:
-            doc.add_paragraph(line)
+            p = doc.add_paragraph(line)
+            p.paragraph_format.space_after = Pt(0)
+            if not is_modern and (line_stripped.count('|') > 1 or '@' in line_stripped):
+                # Probably contact info line
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             
     # Save to BytesIO
     file_stream = io.BytesIO()

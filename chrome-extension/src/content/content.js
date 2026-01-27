@@ -110,25 +110,27 @@ function findLabelText(input) {
     const parentLabel = input.closest('label');
     if (parentLabel) return parentLabel.innerText;
 
-    // 3. Check preceding elements (Workday style)
-    let prev = input.previousElementSibling;
-    while (prev) {
-        if (prev.tagName === 'LABEL' || prev.classList.contains('label')) return prev.innerText;
-        prev = prev.previousElementSibling;
+    // 3. Check for specific Workday pattern: label is a sibling of the container
+    const container = input.closest('[data-automation-id]') || input.parentElement;
+    if (container) {
+        // Look for siblings that might be labels before the container
+        let sib = container.previousElementSibling;
+        if (sib && (sib.tagName === 'LABEL' || sib.classList.contains('label') || sib.innerText.length < 50)) return sib.innerText;
+
+        // Look for labels inside the parent
+        const innerLabel = container.querySelector('label, [class*="label"], [data-automation-id*="label"]');
+        if (innerLabel) return innerLabel.innerText;
     }
 
-    // 4. Check parent's siblings (Common in complex grids)
-    const parent = input.parentElement;
-    if (parent && parent.previousElementSibling) {
-        return parent.previousElementSibling.innerText.slice(0, 50);
-    }
-
-    // 5. Check aria-labelledby
+    // 4. Check aria-labelledby
     const labelledBy = input.getAttribute('aria-labelledby');
     if (labelledBy) {
         const el = document.getElementById(labelledBy);
         if (el) return el.innerText;
     }
+
+    // 5. Check placeholder as a last resort for label context
+    if (input.placeholder) return input.placeholder;
 
     return '';
 }

@@ -137,7 +137,16 @@ const ResumePaper = ({ content, scale = 1, onContentChange, fontFamily = '"Times
             </div>
 
             {/* Render Document */}
-            <div className="space-y-1" contentEditable suppressContentEditableWarning>
+            <div
+                className="space-y-1 outline-none"
+                contentEditable
+                suppressContentEditableWarning
+                onBlur={(e) => {
+                    if (onContentChange) {
+                        onContentChange(e.currentTarget.innerText);
+                    }
+                }}
+            >
 
                 {parsed.isRaw ? (
                     /* Raw Fallback View */

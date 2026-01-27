@@ -558,7 +558,9 @@ const AIApplyFlow = () => {
           company: companyName,
           job_description: customJobDescription,
           analysis: {},
-          is_already_tailored: true
+          is_already_tailored: true,
+          fontFamily: selectedFont,
+          template: selectedTemplate
         };
         fileName = sanitizeFileName('Optimized_Resume', companyName, 'docx');
       } else if (type === 'cv') {
@@ -569,7 +571,9 @@ const AIApplyFlow = () => {
           company: companyName,
           job_description: customJobDescription,
           analysis: {},
-          is_already_tailored: true
+          is_already_tailored: true,
+          fontFamily: selectedFont,
+          template: selectedTemplate
         };
         fileName = sanitizeFileName('Detailed_CV', companyName, 'docx');
       } else if (type === 'cover') {
@@ -581,7 +585,9 @@ const AIApplyFlow = () => {
           job_title: customJobTitle,
           company: companyName,
           cover_letter_text: tailoredCoverLetter,
-          is_already_tailored: !!tailoredCoverLetter
+          is_already_tailored: !!tailoredCoverLetter,
+          fontFamily: selectedFont,
+          template: selectedTemplate
         };
         fileName = sanitizeFileName('Cover_Letter', companyName, 'docx');
       }
@@ -1086,6 +1092,13 @@ const AIApplyFlow = () => {
                         scale={1}
                         fontFamily={selectedFont}
                         template={selectedTemplate}
+                        onContentChange={(newText) => {
+                          if (detailedCv) {
+                            setDetailedCv(newText);
+                          } else {
+                            setTailoredResume(newText);
+                          }
+                        }}
                       />
                     ) : (
                       <div className="bg-white shadow-2xl w-[816px] min-h-[1056px] flex flex-col items-center justify-center py-20 text-slate-400 rounded-lg">
