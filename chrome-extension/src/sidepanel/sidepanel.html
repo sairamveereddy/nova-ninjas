@@ -6,157 +6,135 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>jobNinjas AI Copilot</title>
     <link rel="stylesheet" href="sidepanel.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
 <body>
     <div class="container">
+        <!-- Header -->
         <header>
             <div class="logo-section">
                 <div class="logo-icon"></div>
                 <div class="logo-text">
                     <h1>jobNinjas</h1>
-                    <p>Your AI Career Copilot</p>
+                    <p>AI Career Copilot</p>
                 </div>
             </div>
-            <div class="status-badge">
-                <span class="pulse"></span> Active
+            <div style="display: flex; gap: 8px;">
+                <button class="settings-btn">💬</button>
+                <button class="settings-btn">⚙️</button>
+                <button class="settings-btn">❯</button>
             </div>
         </header>
 
-        <main id="app">
-            <!-- Login Screen -->
-            <section id="login-screen" class="screen hidden">
+        <main id="main-content">
+            <!-- Screen 0: Auth/Welcome -->
+            <div id="auth-screen" class="screen hidden">
                 <div class="hero-card">
-                    <div class="copilot-intro" style="text-align: center; padding: 20px;">
-                        <span class="icon" style="font-size: 3rem; display: block; margin-bottom: 10px;">🥷</span>
-                        <h2 style="margin-bottom: 10px;">Connect Your Account</h2>
-                        <p style="font-size: 0.9rem; color: #a0a0a0; margin-bottom: 20px;">Open
-                            <strong>jobninjas.ai</strong> to sync your AI profile and resume data.
-                        </p>
-                        <a href="https://jobninjas.ai/login" target="_blank" class="btn-primary"
-                            style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                            <span>🔑</span> Go to jobNinjas
+                    <div style="font-size: 3rem; margin-bottom: 20px;">🥷</div>
+                    <div class="copilot-intro">
+                        <h2>Connect Your Account</h2>
+                        <p style="margin-bottom: 20px;">Open <strong>jobNinjas.org</strong> to sync your AI profile and
+                            resume data.</p>
+                        <a href="https://jobninjas.org/login" target="_blank" class="btn-primary"
+                            style="text-decoration: none;">
+                            🔑 Go to jobNinjas
                         </a>
                     </div>
                 </div>
-            </section>
+            </div>
 
-            <!-- Profile Setup Screen -->
-            <section id="profile-setup-screen" class="screen hidden">
-                <div class="hero-card">
-                    <div class="copilot-intro">
-                        <span class="icon">📝</span>
-                        <h2>Complete Your Profile</h2>
-                        <p>We need a few details to enable 1-click autofill for you.</p>
-                    </div>
+            <!-- Screen 1: Dashboard (Main) -->
+            <div id="dashboard-screen" class="screen">
+                <!-- Add Job Quick Action -->
+                <div class="hero-card" id="btn-add-job-trigger" style="cursor: pointer;">
+                    <div class="add-btn">+</div>
+                    <p>Add A New Job to Get Job Match Score & Tailor Your Resume</p>
                 </div>
 
-                <form id="profile-setup-form" class="profile-form">
-                    <div class="form-group">
-                        <label for="setup-fullname">Full Name</label>
-                        <input type="text" id="setup-fullname" placeholder="John Doe" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="setup-phone">Phone Number</label>
-                        <input type="tel" id="setup-phone" placeholder="+1 (415) 555-0123" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="setup-linkedin">LinkedIn URL</label>
-                        <input type="url" id="setup-linkedin" placeholder="https://linkedin.com/in/username" required>
-                    </div>
+                <!-- Autofill Button -->
+                <div class="action-card" style="text-align: center;">
+                    <button id="btn-autofill" class="btn-primary">Autofill</button>
+                    <p
+                        style="font-size: 0.8rem; color: #666; margin-top: 8px; text-decoration: underline; cursor: pointer;">
+                        <span id="credits-count">0</span> Remaining Credits
+                    </p>
+                </div>
 
-                    <div class="eo-section" style="margin-top: 10px;">
-                        <p style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 10px;">EEO Info (Auto-Apply
-                            Boost)</p>
-                        <div class="form-group">
-                            <label for="setup-gender">Gender</label>
-                            <input type="text" id="setup-gender" placeholder="Male / Female / Decline">
+                <!-- Resume Section -->
+                <div class="section-container">
+                    <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;">Resume</h3>
+                    <div class="resume-card">
+                        <div class="resume-info">
+                            <span>📄</span>
+                            <span id="resume-name">No resume selected</span>
                         </div>
-                        <div class="form-group">
-                            <label for="setup-race">Race / Ethnicity</label>
-                            <input type="text" id="setup-race" placeholder="White / Asian / Hispanic">
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn-primary" style="margin-top: 10px;">
-                        Save & Continue ✨
-                    </button>
-                </form>
-            </section>
-
-            <!-- Welcome Screen (Reference screenshot 1 & 2) -->
-            <section id="welcome-screen" class="screen">
-                <div class="hero-card">
-                    <div class="copilot-intro">
-                        <span class="icon">🥷</span>
-                        <h2>Hi, I'm Ninja,</h2>
-                        <p>I found <strong>12 matching roles</strong> for you today.</p>
+                        <button class="btn-pill" id="btn-change-resume">Change</button>
                     </div>
                 </div>
 
-                <div class="action-card">
-                    <h3>Quick Actions</h3>
-                    <button id="start-autofill" class="btn-primary">
-                        <span>✨</span> 1-Click Autofill
-                    </button>
-                    <button id="tailor-resume" class="btn-secondary">
-                        <span>📝</span> Tailor Resume
-                    </button>
-                </div>
-
-                <div class="match-card">
-                    <div class="match-score">
-                        <svg viewBox="0 0 36 36" class="circular-chart">
-                            <path class="circle-bg"
-                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                            <path class="circle" stroke-dasharray="87, 100"
-                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                            <text x="18" y="20.35" class="percentage">87%</text>
-                        </svg>
-                        <div class="match-info">
-                            <h4>Strong Match</h4>
-                            <p>Based on your Python, React & AI skills</p>
-                        </div>
-                    </div>
-                    <div class="match-details">
-                        <div class="tag safe">H1B Sponsor Likely</div>
-                        <div class="tag highlight">Top 10% Applicant</div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Loading/Autofilling State (Reference screenshot 3) -->
-            <section id="autofill-status" class="screen hidden">
-                <div class="autofill-header">
-                    <div class="spinner"></div>
-                    <h2 id="autofill-title">Filling..</h2>
-                </div>
-
-                <div class="progress-info">
-                    <div class="progress-stats">
-                        <span id="field-count">0 out of 0</span> required fields filled
-                        <span id="percentage-text" class="percentage-pill">0%</span>
+                <!-- Completion Stats -->
+                <div class="completion-stats">
+                    <div class="stats-label">
+                        <span>Completion</span>
+                        <span id="completion-percentage">0%</span>
                     </div>
                     <div class="progress-bar">
-                        <div class="progress-fill" style="width: 0%;"></div>
+                        <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
                     </div>
                 </div>
 
+                <!-- Checklist -->
                 <div class="checklist-container">
-                    <p class="section-label">Required</p>
-                    <ul id="live-checklist" class="checklist">
-                        <!-- Dynamic items will be injected here -->
+                    <h3
+                        style="font-size: 0.85rem; font-weight: 700; color: #666; text-transform: uppercase; margin-bottom: 12px;">
+                        Required</h3>
+                    <ul id="autofill-checklist" class="checklist">
+                        <!-- Items injected by JS -->
                     </ul>
                 </div>
-            </section>
+            </div>
+
+            <!-- Screen 2: Add Job Form -->
+            <div id="add-job-screen" class="screen hidden">
+                <div class="form-header">
+                    <h2 style="font-size: 1rem; font-weight: 700;">Add a New Job for This Page</h2>
+                    <button class="close-btn" id="btn-close-form">✕</button>
+                </div>
+
+                <div class="form-group-modern">
+                    <label><span style="color: red;">*</span> Job Title</label>
+                    <input type="text" id="job-title-input" placeholder="Enter Job Title">
+                </div>
+
+                <div class="form-group-modern">
+                    <label><span style="color: red;">*</span> URL for Original Posting</label>
+                    <input type="text" id="job-url-input" placeholder="https://...">
+                </div>
+
+                <div class="form-group-modern">
+                    <label><span style="color: red;">*</span> Company Name</label>
+                    <div style="position: relative;">
+                        <input type="text" id="company-name-input" placeholder="Enter the company name">
+                    </div>
+                </div>
+
+                <div class="form-group-modern">
+                    <label><span style="color: red;">*</span> Job Description</label>
+                    <textarea id="job-description-input" rows="8"
+                        placeholder="Please paste the complete job description..."></textarea>
+                </div>
+
+                <button id="btn-save-job" class="btn-primary">Continue</button>
+            </div>
         </main>
 
-        <footer>
-            <p>Logged in as <span id="user-email">...</span></p>
-            <button class="settings-btn">⚙️</button>
-        </footer>
+        <!-- Footer Button -->
+        <div id="footer-actions" class="footer-action hidden">
+            <button id="btn-next-step" class="btn-primary">Continue To The Next Page</button>
+        </div>
     </div>
+
     <script src="sidepanel.js"></script>
 </body>
 

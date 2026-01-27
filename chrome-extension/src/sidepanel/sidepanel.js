@@ -1,175 +1,203 @@
-// Side Panel Logic for jobNinjas
+// Side Panel Logic for jobNinjas (Jobright-style Flow)
 
 const API_BASE_URL = 'https://nova-ninjas-production.up.railway.app';
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const welcomeScreen = document.getElementById('welcome-screen');
-    const loginScreen = document.getElementById('login-screen');
-    const autofillStatusScreen = document.getElementById('autofill-status');
-    const userEmailSpan = document.getElementById('user-email');
-    const startAutofillBtn = document.getElementById('start-autofill');
+// State Management
+let currentUser = null;
+let currentToken = null;
+let isAutofilling = false;
+let filledFields = new Set();
+let totalRequiredFields = 11; // Demo value, will be calculated dynamically
 
-    let currentUserData = null;
-    let currentToken = null;
+// DOM Elements
+const screens = {
+    auth: document.getElementById('auth-screen'),
+    dashboard: document.getElementById('dashboard-screen'),
+    addJob: document.getElementById('add-job-screen')
+};
 
-    // 1. Initial Auth Check
-    async function checkAuth() {
-        return new Promise((resolve) => {
-            chrome.runtime.sendMessage({ type: 'GET_AUTH_TOKEN' }, async (response) => {
-                if (response && response.token) {
-                    currentToken = response.token;
-                    try {
-                        const profileResponse = await fetch(`${API_BASE_URL}/api/user/profile`, {
-                            headers: { 'token': currentToken }
-                        });
-                        const data = await profileResponse.json();
-                        if (data.success && data.profile) {
-                            currentUserData = data.profile;
-                            userEmailSpan.textContent = currentUserData.email;
+const elements = {
+    btnAutofill: document.getElementById('btn-autofill'),
+    btnAddJobTrigger: document.getElementById('btn-add-job-trigger'),
+    btnCloseForm: document.getElementById('btn-close-form'),
+    btnSaveJob: document.getElementById('btn-save-job'),
+    btnChangeResume: document.getElementById('btn-change-resume'),
+    btnNextStep: document.getElementById('btn-next-step'),
+    footerActions: document.getElementById('footer-actions'),
+    completionPercentage: document.getElementById('completion-percentage'),
+    progressFill: document.getElementById('progress-fill'),
+    checklist: document.getElementById('autofill-checklist'),
+    resumeName: document.getElementById('resume-name'),
+    creditsCount: document.getElementById('credits-count')
+};
 
-                            // Check if profile is incomplete (is_new or missing key fields)
-                            const isIncomplete = currentUserData.is_new ||
-                                !currentUserData.phone ||
-                                !currentUserData.linkedinUrl;
+// 1. App Initialization
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+    setupEventListeners();
+});
 
-                            if (isIncomplete) {
-                                showScreen('profile-setup-screen');
-                                // Pre-fill name and available EEO if we have it
-                                if (currentUserData.fullName) document.getElementById('setup-fullname').value = currentUserData.fullName;
-                                if (currentUserData.gender) document.getElementById('setup-gender').value = currentUserData.gender;
-                                if (currentUserData.race) document.getElementById('setup-race').value = currentUserData.race;
-                            } else {
-                                showScreen('welcome-screen');
-                            }
-                            resolve(true);
-                            return;
-                        }
-                    } catch (err) {
-                        console.error('Error fetching profile:', err);
-                    }
-                }
-                showScreen('login-screen');
-                resolve(false);
-            });
-        });
-    }
+function setupEventListeners() {
+    // Navigation
+    elements.btnAddJobTrigger.addEventListener('click', () => showScreen('addJob'));
+    elements.btnCloseForm.addEventListener('click', () => showScreen('dashboard'));
 
-    function showScreen(screenId) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-        const target = document.getElementById(screenId);
-        if (target) target.classList.remove('hidden');
-    }
+    // Actions
+    elements.btnAutofill.addEventListener('click', startAutofill);
+    elements.btnSaveJob.addEventListener('click', handleSaveJob);
+    elements.btnNextStep.addEventListener('click', handleNextStep);
 
-    // Run auth check
-    await checkAuth();
+    // Settings / UI
+    document.querySelectorAll('.settings-btn')[2].addEventListener('click', () => {
+        // Toggle side panel behavior - simulate close
+        window.close();
+    });
+}
 
-    // 2. Profile Setup Logic
-    const profileForm = document.getElementById('profile-setup-form');
-    if (profileForm) {
-        profileForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const fullName = document.getElementById('setup-fullname').value;
-            const phone = document.getElementById('setup-phone').value;
-            const linkedinUrl = document.getElementById('setup-linkedin').value;
-            const gender = document.getElementById('setup-gender').value;
-            const race = document.getElementById('setup-race').value;
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/user/profile`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'token': currentToken
-                    },
-                    body: JSON.stringify({ fullName, phone, linkedinUrl, gender, race })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    currentUserData = { ...currentUserData, fullName, phone, linkedinUrl, gender, race, is_new: false };
-                    userEmailSpan.textContent = currentUserData.email;
-                    showScreen('welcome-screen');
-                } else {
-                    alert('Failed to save profile: ' + (data.detail || 'Unknown error'));
-                }
-            } catch (err) {
-                console.error('Error saving profile:', err);
-            }
-        });
-    }
-
-    // 3. Autofill Logic
-    let totalFields = 0;
-    let filledFields = 0;
-
-    startAutofillBtn.addEventListener('click', async () => {
-        if (!currentUserData) {
-            alert('Please login first');
-            return;
-        }
-
-        showScreen('autofill-status');
-        resetChecks();
-
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (tab) {
-            chrome.tabs.sendMessage(tab.id, {
-                type: 'START_AUTOFILL',
-                data: {
-                    name: currentUserData.fullName,
-                    email: currentUserData.email,
-                    phone: currentUserData.phone || '',
-                    linkedin: currentUserData.linkedinUrl || '',
-                    gender: currentUserData.gender || '',
-                    race: currentUserData.race || '',
-                    resume: currentUserData.resumeFileName || ''
-                }
-            });
+// 2. Auth Logic
+async function checkAuth() {
+    chrome.runtime.sendMessage({ type: 'GET_AUTH_TOKEN' }, (response) => {
+        if (response && response.token) {
+            currentToken = response.token;
+            currentUser = response.userData;
+            showScreen('dashboard');
+            updateProfileUI();
+        } else {
+            showScreen('auth');
         }
     });
+}
 
-    // 4. Listen for Real-time Progress (Phase 3)
-    chrome.runtime.onMessage.addListener((message) => {
-        const fieldCountSpan = document.getElementById('field-count');
-        const percentageSpan = document.getElementById('percentage-text');
-        const progressFill = document.querySelector('.progress-fill');
-        const checklist = document.getElementById('live-checklist');
+function updateProfileUI() {
+    if (currentUser) {
+        elements.resumeName.innerText = currentUser.fullName || 'Sai_Ram_Resume.docx';
+        elements.creditsCount.innerText = '4'; // Mock credits
+    }
+}
 
-        if (message.type === 'AUTOFILL_TOTAL') {
-            totalFields = message.total;
-            filledFields = 0;
-            updateUI();
-        } else if (message.type === 'FIELD_FILLED') {
-            filledFields++;
-            updateUI();
-
-            // Add to checklist
-            const li = document.createElement('li');
-            li.className = 'done';
-            li.textContent = message.label || 'Field';
-            checklist.appendChild(li);
-            checklist.scrollTop = checklist.scrollHeight;
-        }
-
-        function updateUI() {
-            const percent = totalFields > 0 ? Math.round((filledFields / totalFields) * 100) : 0;
-            fieldCountSpan.textContent = `${filledFields} out of ${totalFields}`;
-            percentageSpan.textContent = `${percent}%`;
-            progressFill.style.width = `${percent}%`;
-
-            if (percent >= 100) {
-                document.getElementById('autofill-title').textContent = 'Autofill Complete!';
-            }
+function showScreen(screenId) {
+    Object.keys(screens).forEach(id => {
+        if (id === screenId) {
+            screens[id].classList.remove('hidden');
+        } else {
+            screens[id].classList.add('hidden');
         }
     });
+}
 
-    function resetChecks() {
-        totalFields = 0;
-        filledFields = 0;
-        document.getElementById('live-checklist').innerHTML = '';
-        document.getElementById('field-count').textContent = '0 out of 0';
-        document.getElementById('percentage-text').textContent = '0%';
-        document.querySelector('.progress-fill').style.width = '0%';
-        document.getElementById('autofill-title').textContent = 'Filling..';
+// 3. Job Handling
+function handleSaveJob() {
+    const jobData = {
+        title: document.getElementById('job-title-input').value,
+        url: document.getElementById('job-url-input').value,
+        company: document.getElementById('company-name-input').value,
+        description: document.getElementById('job-description-input').value
+    };
+
+    if (!jobData.title || !jobData.company) {
+        alert('Please fill in required fields');
+        return;
+    }
+
+    // Here we would normally save to backend
+    console.log('Saving job match data...', jobData);
+
+    // Simulate matching...
+    elements.btnSaveJob.innerText = 'Matching...';
+    setTimeout(() => {
+        elements.btnSaveJob.innerText = 'Continue';
+        showScreen('dashboard');
+        // Update dashboard UI state for 'matched'
+        elements.btnAddJobTrigger.style.background = 'linear-gradient(to right, #ecfdf5, #ffffff)';
+        elements.btnAddJobTrigger.querySelector('p').innerText = `${jobData.title} at ${jobData.company}`;
+    }, 1000);
+}
+
+// 4. Autofill Logic
+function startAutofill() {
+    if (!currentUser) return;
+
+    isAutofilling = true;
+    elements.btnAutofill.innerText = 'Filling...';
+    elements.btnAutofill.classList.add('loading');
+
+    filledFields.clear();
+    elements.checklist.innerHTML = '';
+    updateProgressUI(0);
+
+    // Send command to content script
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        chrome.tabs.sendMessage(tabs[0].id, {
+            type: 'START_AUTOFILL',
+            data: {
+                name: currentUser.fullName || 'User Name',
+                email: currentUser.email || 'user@example.com',
+                phone: currentUser.phone || '',
+                linkedin: currentUser.linkedinUrl || '',
+                gender: currentUser.gender,
+                race: currentUser.race,
+                disabilityStatus: currentUser.disabilityStatus,
+                veteranStatus: currentUser.veteranStatus
+            }
+        }, (response) => {
+            isAutofilling = false;
+            elements.btnAutofill.innerText = 'Autofill';
+            elements.btnAutofill.classList.remove('loading');
+
+            if (response && response.status === 'completed') {
+                showFooterAction(true);
+            }
+        });
+    });
+}
+
+// 5. Progress Feedback (Called via messages from content.js)
+chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'AUTOFILL_TOTAL') {
+        totalRequiredFields = message.total || 11;
+        updateProgressUI(0);
+    }
+
+    if (message.type === 'FIELD_FILLED') {
+        filledFields.add(message.label);
+        addChecklistItem(message.label, true);
+
+        const percentage = Math.round((filledFields.size / totalRequiredFields) * 100);
+        updateProgressUI(percentage);
     }
 });
+
+function updateProgressUI(percentage) {
+    elements.completionPercentage.innerText = `${percentage}%`;
+    elements.progressFill.style.width = `${percentage}%`;
+}
+
+function addChecklistItem(label, isDone) {
+    // Check if item already exists
+    let li = Array.from(elements.checklist.children).find(el => el.getAttribute('data-id') === label);
+
+    if (!li) {
+        li = document.createElement('li');
+        li.setAttribute('data-id', label);
+        li.innerText = label;
+        elements.checklist.appendChild(li);
+    }
+
+    if (isDone) {
+        li.classList.add('done');
+    }
+}
+
+function showFooterAction(show) {
+    if (show) {
+        elements.footerActions.classList.remove('hidden');
+    } else {
+        elements.footerActions.classList.add('hidden');
+    }
+}
+
+function handleNextStep() {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        chrome.tabs.sendMessage(tabs[0].id, { type: 'CLICK_NEXT' });
+    });
+}
