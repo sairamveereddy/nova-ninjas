@@ -86,9 +86,9 @@ saas-app/node_modules/@next/swc-linux-arm64-gnu/next-swc.linux-arm64-gnu.node
 *.env.*
 
 # Cleanup/Temporary folders
-frontend_clean/
-frontend_final/
-frontend_temp/
+# frontend_clean/
+# frontend_final/
+# frontend_temp/
 
 # Debug scripts
 backend/check_user_underscore.py

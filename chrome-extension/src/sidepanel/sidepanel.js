@@ -1,6 +1,6 @@
 // Side Panel Logic for jobNinjas (Jobright-style Flow)
 
-const API_BASE_URL = 'https://nova-ninjas-production.up.railway.app';
+const API_BASE_URL = 'https://nova-ninjas-backend-production.up.railway.app';
 
 // State Management
 let currentUser = null;

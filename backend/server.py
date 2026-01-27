@@ -1139,46 +1139,26 @@ async def save_profile(request: Request):
     if not email:
         raise HTTPException(status_code=400, detail="Email is required")
 
-    # Build profile data
+    # Build profile data dynamically from form data
     profile_data = {
         "email": email,
-        "fullName": form_data.get("fullName", ""),
-        "phone": form_data.get("phone", ""),
-        "address": form_data.get("address", ""),
-        "city": form_data.get("city", ""),
-        "state": form_data.get("state", ""),
-        "zip": form_data.get("zip", ""),
-        "country": form_data.get("country", ""),
-        # Professional Info
-        "yearsOfExperience": form_data.get("yearsOfExperience", ""),
-        "currentRole": form_data.get("currentRole", ""),
-        "targetRole": form_data.get("targetRole", ""),
-        "expectedSalary": form_data.get("expectedSalary", ""),
-        "preferredLocations": form_data.get("preferredLocations", ""),
-        "remotePreference": form_data.get("remotePreference", ""),
-        "preferredJobTypes": form_data.get("preferredJobTypes", ""),
-        "noticePeriod": form_data.get("noticePeriod", ""),
-        # Visa & Work Authorization
-        "visaStatus": form_data.get("visaStatus", ""),
-        "requiresSponsorship": form_data.get("requiresSponsorship", ""),
-        "willingToRelocate": form_data.get("willingToRelocate", ""),
-        # Job Portal Credentials (encrypted in production)
-        "linkedinUrl": form_data.get("linkedinUrl", ""),
-        "linkedinEmail": form_data.get("linkedinEmail", ""),
-        "linkedinPassword": form_data.get("linkedinPassword", ""),
-        "indeedEmail": form_data.get("indeedEmail", ""),
-        "indeedPassword": form_data.get("indeedPassword", ""),
-        # Gmail for job applications
-        "gmailEmail": form_data.get("gmailEmail", ""),
-        "gmailPassword": form_data.get("gmailPassword", ""),
-        # Skills & Background
-        "skills": form_data.get("skills", ""),
-        "education": form_data.get("education", ""),
-        "certifications": form_data.get("certifications", ""),
-        "additionalNotes": form_data.get("additionalNotes", ""),
-        # Metadata
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
+
+    # Iterate through all fields in form_data
+    for key, value in form_data.items():
+        if key in ["email", "resume"]:
+            continue
+            
+        # Try to parse as JSON if it's a string (which it will be in FormData)
+        # But only if it looks like an object or array
+        if isinstance(value, str) and (value.startswith('{') or value.startswith('[')):
+            try:
+                profile_data[key] = json.loads(value)
+            except:
+                profile_data[key] = value
+        else:
+            profile_data[key] = value
 
     # Handle resume file upload
     resume_file = form_data.get("resume")
