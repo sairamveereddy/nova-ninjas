@@ -138,6 +138,10 @@ const AIApplyFlow = () => {
   const [selectedKeywords, setSelectedKeywords] = useState([]);
   const [matchImprovement, setMatchImprovement] = useState(0);
 
+  // Styling state
+  const [selectedFont, setSelectedFont] = useState('Times New Roman');
+  const [selectedTemplate, setSelectedTemplate] = useState('standard');
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
@@ -1063,7 +1067,12 @@ const AIApplyFlow = () => {
                 <div className="transition-all duration-300 origin-top" style={{ transform: 'scale(1)', paddingBottom: '40px' }}>
                   <div className="scale-[0.5] sm:scale-[0.6] md:scale-[0.7] lg:scale-[0.8] xl:scale-[0.9] 2xl:scale-[1.0] origin-top">
                     {detailedCv || tailoredResume ? (
-                      <ResumePaper content={detailedCv || tailoredResume} scale={1} />
+                      <ResumePaper
+                        content={detailedCv || tailoredResume}
+                        scale={1}
+                        fontFamily={selectedFont}
+                        template={selectedTemplate}
+                      />
                     ) : (
                       <div className="bg-white shadow-2xl w-[816px] min-h-[1056px] flex flex-col items-center justify-center py-20 text-slate-400 rounded-lg">
                         <FileText className="w-16 h-16 mb-4 opacity-10" />
@@ -1074,14 +1083,6 @@ const AIApplyFlow = () => {
                 </div>
               </div>
 
-              {/* Floating Action Bar */}
-              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-white/90 backdrop-blur-md p-2 rounded-full shadow-2xl border border-white/50 z-20">
-                <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100" onClick={() => handleDownload('resume')}><Download className="w-5 h-5 text-slate-600" /></Button>
-                <div className="w-px h-6 bg-slate-200 mx-1"></div>
-                <Button className="rounded-full bg-slate-900 hover:bg-black text-white px-8 font-bold shadow-lg" onClick={() => handleDownload('resume')}>
-                  <Download className="w-4 h-4 mr-2" /> Download Document
-                </Button>
-              </div>
             </div>
 
             {/* Right Pane: Sidebar Tools (The Control Center) */}
@@ -1143,19 +1144,37 @@ const AIApplyFlow = () => {
                     <div>
                       <h3 className="font-bold text-slate-900 mb-4">Template</h3>
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="border-2 border-green-500 rounded-xl p-3 text-center bg-green-50">
-                          <span className="font-bold text-xs uppercase text-green-600">Standard</span>
-                        </div>
-                        <div className="border border-slate-200 rounded-xl p-3 text-center opacity-50">
-                          <span className="font-bold text-xs uppercase">Modern</span>
-                        </div>
+                        <button
+                          onClick={() => setSelectedTemplate('standard')}
+                          className={`rounded-xl p-3 text-center transition-all ${selectedTemplate === 'standard'
+                            ? 'border-2 border-green-500 bg-green-50 text-green-600 font-bold'
+                            : 'border border-slate-200 text-slate-400'}`}
+                        >
+                          <span className="text-xs uppercase">Standard</span>
+                        </button>
+                        <button
+                          onClick={() => setSelectedTemplate('modern')}
+                          className={`rounded-xl p-3 text-center transition-all ${selectedTemplate === 'modern'
+                            ? 'border-2 border-green-500 bg-green-50 text-green-600 font-bold'
+                            : 'border border-slate-200 text-slate-400'}`}
+                        >
+                          <span className="text-xs uppercase">Modern</span>
+                        </button>
                       </div>
                     </div>
                     <div>
                       <h3 className="font-bold text-slate-900 mb-4">Font Family</h3>
                       <div className="space-y-2">
                         {['Times New Roman', 'Arial', 'Georgia'].map(f => (
-                          <div key={f} className="p-3 border border-slate-100 rounded-xl text-sm font-medium">{f}</div>
+                          <button
+                            key={f}
+                            onClick={() => setSelectedFont(f)}
+                            className={`w-full text-left p-3 border rounded-xl text-sm font-medium transition-all ${selectedFont === f
+                              ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                              : 'border-slate-100 hover:border-slate-200 text-slate-600'}`}
+                          >
+                            {f}
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -1193,40 +1212,44 @@ const AIApplyFlow = () => {
       </div>
 
       {/* Save Prompt Modal */}
-      {showSaveResumePrompt && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-md bg-white rounded-[32px] shadow-2xl overflow-hidden p-8 animate-in zoom-in-95 duration-300">
-            <div className="flex justify-center mb-6">
-              <div className="p-4 bg-indigo-50 rounded-2xl">
-                <Save className="w-10 h-10 text-indigo-600" />
+      {
+        showSaveResumePrompt && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+            <Card className="w-full max-w-md bg-white rounded-[32px] shadow-2xl overflow-hidden p-8 animate-in zoom-in-95 duration-300">
+              <div className="flex justify-center mb-6">
+                <div className="p-4 bg-indigo-50 rounded-2xl">
+                  <Save className="w-10 h-10 text-indigo-600" />
+                </div>
               </div>
-            </div>
-            <h2 className="text-2xl font-black text-slate-900 text-center mb-2">Save This Resume?</h2>
-            <p className="text-slate-500 text-center mb-8 font-medium">Add this to your library for future application ninjas.</p>
+              <h2 className="text-2xl font-black text-slate-900 text-center mb-2">Save This Resume?</h2>
+              <p className="text-slate-500 text-center mb-8 font-medium">Add this to your library for future application ninjas.</p>
 
-            <div className="space-y-4 mb-8">
-              <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Resume Name</Label>
-              <Input
-                value={resumeName}
-                onChange={(e) => setResumeName(e.target.value)}
-                className="h-12 bg-slate-50 border-slate-100 rounded-xl font-bold"
-              />
-            </div>
+              <div className="space-y-4 mb-8">
+                <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Resume Name</Label>
+                <Input
+                  value={resumeName}
+                  onChange={(e) => setResumeName(e.target.value)}
+                  className="h-12 bg-slate-50 border-slate-100 rounded-xl font-bold"
+                />
+              </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Button variant="ghost" className="h-12 rounded-xl font-bold text-slate-500" onClick={() => setShowSaveResumePrompt(false)}>Later</Button>
-              <Button className="h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg" onClick={handleSaveResume} disabled={isSavingResume}>
-                {isSavingResume ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Now'}
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+              <div className="grid grid-cols-2 gap-4">
+                <Button variant="ghost" className="h-12 rounded-xl font-bold text-slate-500" onClick={() => setShowSaveResumePrompt(false)}>Later</Button>
+                <Button className="h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg" onClick={handleSaveResume} disabled={isSavingResume}>
+                  {isSavingResume ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Now'}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )
+      }
 
-      {showUpgradeModal && usageLimits && (
-        <UpgradeModal tier={usageLimits.tier} limit={usageLimits.limit} resetDate={usageLimits.resetDate} onClose={() => setShowUpgradeModal(false)} />
-      )}
-    </div>
+      {
+        showUpgradeModal && usageLimits && (
+          <UpgradeModal tier={usageLimits.tier} limit={usageLimits.limit} resetDate={usageLimits.resetDate} onClose={() => setShowUpgradeModal(false)} />
+        )
+      }
+    </div >
   );
 };
 

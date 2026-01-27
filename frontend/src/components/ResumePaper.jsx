@@ -2,9 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Maximize2, Edit3, Loader2 } from 'lucide-react';
 
-const ResumePaper = ({ content, scale = 1, onContentChange }) => {
+const ResumePaper = ({ content, scale = 1, onContentChange, fontFamily = '"Times New Roman", Times, serif', template = 'standard' }) => {
     const [parsed, setParsed] = useState(null);
     const containerRef = useRef(null);
+
+    // Map font family names to actual CSS values
+    const fontMap = {
+        'Times New Roman': '"Times New Roman", Times, serif',
+        'Arial': 'Arial, Helvetica, sans-serif',
+        'Georgia': 'Georgia, serif'
+    };
+
+    const actualFont = fontMap[fontFamily] || fontFamily;
 
     // Simple Regex-based Resume Parser
     const parseResumeContent = (text) => {
@@ -103,6 +112,8 @@ const ResumePaper = ({ content, scale = 1, onContentChange }) => {
 
     if (!parsed) return <div className="p-10 text-center">Loading document...</div>;
 
+    const isModern = template === 'modern';
+
     return (
         <div
             className="bg-white shadow-2xl origin-top transition-transform duration-300 relative"
@@ -111,7 +122,7 @@ const ResumePaper = ({ content, scale = 1, onContentChange }) => {
                 minHeight: '1056px', // A4 height
                 transform: `scale(${scale})`,
                 padding: '48px',
-                fontFamily: '"Times New Roman", Times, serif',
+                fontFamily: actualFont,
                 color: '#000'
             }}
         >
@@ -136,22 +147,23 @@ const ResumePaper = ({ content, scale = 1, onContentChange }) => {
                 ) : (
                     /* Structured View */
                     <>
-                        <div style={{ textAlign: 'center', marginBottom: '4px' }}>
-                            <h1 style={{ fontSize: '24pt', fontWeight: 'bold', textTransform: 'uppercase', margin: 0, padding: 0 }}>{parsed.name}</h1>
-                            <p style={{ fontSize: '9pt', margin: 0, padding: 0 }}>{parsed.contact}</p>
+                        <div style={{ textAlign: isModern ? 'left' : 'center', marginBottom: '8px' }}>
+                            <h1 style={{ fontSize: '24pt', fontWeight: 'bold', textTransform: 'uppercase', margin: 0, padding: 0, color: isModern ? '#1e293b' : '#000' }}>{parsed.name}</h1>
+                            <p style={{ fontSize: '10pt', margin: '2px 0 0 0', padding: 0, color: isModern ? '#64748b' : '#000' }}>{parsed.contact}</p>
+                            {isModern && <div style={{ height: '4px', background: '#3b82f6', width: '60px', marginTop: '12px' }}></div>}
                         </div>
 
                         {parsed.summary && (
-                            <div style={{ margin: 0, padding: 0 }}>
-                                <h2 style={{ fontSize: '10pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '1px solid black', margin: 0, padding: 0 }}>Professional Summary</h2>
-                                <p style={{ fontSize: '10pt', lineHeight: '1.1', textAlign: 'justify', margin: 0, padding: 0 }}>{parsed.summary.trim()}</p>
+                            <div style={{ margin: '8px 0 0 0', padding: 0 }}>
+                                <h2 style={{ fontSize: '11pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: isModern ? 'none' : '1px solid black', margin: 0, padding: 0, color: isModern ? '#3b82f6' : '#000' }}>Professional Summary</h2>
+                                <p style={{ fontSize: '10pt', lineHeight: '1.2', textAlign: 'justify', margin: '2px 0 0 0', padding: 0 }}>{parsed.summary.trim()}</p>
                             </div>
                         )}
 
                         {parsed.skills && (
-                            <div style={{ margin: 0, padding: 0 }}>
-                                <h2 style={{ fontSize: '10pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '1px solid black', margin: 0, padding: 0 }}>Skills</h2>
-                                <div style={{ fontSize: '10pt', lineHeight: '1.1', margin: 0, padding: 0 }}>
+                            <div style={{ margin: '8px 0 0 0', padding: 0 }}>
+                                <h2 style={{ fontSize: '11pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: isModern ? 'none' : '1px solid black', margin: 0, padding: 0, color: isModern ? '#3b82f6' : '#000' }}>Skills</h2>
+                                <div style={{ fontSize: '10pt', lineHeight: '1.2', margin: '2px 0 0 0', padding: 0 }}>
                                     {parsed.skills.split('\n').filter(l => l.trim()).map((skillLine, i) => (
                                         <div key={i} style={{ margin: 0, padding: 0 }}>• {skillLine.replace(/^([•\-\*]|#+)\s*/, '')}</div>
                                     ))}
@@ -160,25 +172,25 @@ const ResumePaper = ({ content, scale = 1, onContentChange }) => {
                         )}
 
                         {parsed.experience && (
-                            <div style={{ margin: 0, padding: 0 }}>
-                                <h2 style={{ fontSize: '10pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '1px solid black', margin: 0, padding: 0 }}>Experience</h2>
-                                <div style={{ fontSize: '10pt', lineHeight: '1.1', whiteSpace: 'pre-wrap', margin: 0, padding: 0 }}>
+                            <div style={{ margin: '8px 0 0 0', padding: 0 }}>
+                                <h2 style={{ fontSize: '11pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: isModern ? 'none' : '1px solid black', margin: 0, padding: 0, color: isModern ? '#3b82f6' : '#000' }}>Experience</h2>
+                                <div style={{ fontSize: '10pt', lineHeight: '1.2', whiteSpace: 'pre-wrap', margin: '2px 0 0 0', padding: 0 }}>
                                     {parsed.experience.trim()}
                                 </div>
                             </div>
                         )}
 
                         {parsed.projects && (
-                            <div style={{ margin: 0, padding: 0 }}>
-                                <h2 style={{ fontSize: '10pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '1px solid black', margin: 0, padding: 0 }}>Projects</h2>
-                                <div style={{ fontSize: '10pt', lineHeight: '1.1', whiteSpace: 'pre-wrap', margin: 0, padding: 0 }}>{parsed.projects.trim()}</div>
+                            <div style={{ margin: '8px 0 0 0', padding: 0 }}>
+                                <h2 style={{ fontSize: '11pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: isModern ? 'none' : '1px solid black', margin: 0, padding: 0, color: isModern ? '#3b82f6' : '#000' }}>Projects</h2>
+                                <div style={{ fontSize: '10pt', lineHeight: '1.2', whiteSpace: 'pre-wrap', margin: '2px 0 0 0', padding: 0 }}>{parsed.projects.trim()}</div>
                             </div>
                         )}
 
                         {parsed.education && (
-                            <div style={{ margin: 0, padding: 0 }}>
-                                <h2 style={{ fontSize: '10pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '1px solid black', margin: 0, padding: 0 }}>Education</h2>
-                                <div style={{ fontSize: '10pt', lineHeight: '1.1', whiteSpace: 'pre-wrap', margin: 0, padding: 0 }}>{parsed.education.trim()}</div>
+                            <div style={{ margin: '8px 0 0 0', padding: 0 }}>
+                                <h2 style={{ fontSize: '11pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: isModern ? 'none' : '1px solid black', margin: 0, padding: 0, color: isModern ? '#3b82f6' : '#000' }}>Education</h2>
+                                <div style={{ fontSize: '10pt', lineHeight: '1.2', whiteSpace: 'pre-wrap', margin: '2px 0 0 0', padding: 0 }}>{parsed.education.trim()}</div>
                             </div>
                         )}
                     </>
