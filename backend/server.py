@@ -3814,29 +3814,6 @@ async def generate_resume_docx(request: GenerateResumeRequest):
                         status_code=500, detail="Failed to generate resume content"
                     )
                 docx_file = create_resume_docx(resume_data, font_family=request.fontFamily)
-        else:
-            # Check for BYOK
-            byok_config = await get_decrypted_byok_key(
-                user.get("email", "") if user else ""
-            )
-
-            # Generate optimized content from structured data (original flow)
-            from document_generator import generate_optimized_resume_content
-
-            resume_data = await generate_optimized_resume_content(
-                request.resume_text,
-                request.job_description,
-                request.analysis,
-                byok_config=byok_config,
-            )
-
-            if not resume_data:
-                raise HTTPException(
-                    status_code=500, detail="Failed to generate resume content"
-                )
-
-            # Create Word document
-            docx_file = create_resume_docx(resume_data)
 
         # Track this generation for usage limits
         if user:
