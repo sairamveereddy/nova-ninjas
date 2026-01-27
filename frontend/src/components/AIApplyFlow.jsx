@@ -579,7 +579,9 @@ const AIApplyFlow = () => {
           resume_text: tailoredResume, // Base resume for context
           job_description: customJobDescription,
           job_title: customJobTitle,
-          company: companyName
+          company: companyName,
+          cover_letter_text: tailoredCoverLetter,
+          is_already_tailored: !!tailoredCoverLetter
         };
         fileName = sanitizeFileName('Cover_Letter', companyName, 'docx');
       }
@@ -1104,7 +1106,7 @@ const AIApplyFlow = () => {
             >
               {/* Tabs */}
               <div className="flex items-center p-2 bg-slate-50 border-b border-slate-100">
-                {['Report', 'Editor', 'Style'].map(tab => (
+                {['Report', 'Editor', 'Style', 'Letter'].map(tab => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab.toLowerCase())}
@@ -1113,7 +1115,7 @@ const AIApplyFlow = () => {
                       : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100/50'
                       }`}
                   >
-                    {tab}
+                    {tab === 'Letter' ? 'Cover Letter' : tab}
                   </button>
                 ))}
               </div>
@@ -1208,11 +1210,31 @@ const AIApplyFlow = () => {
                     ))}
                   </div>
                 )}
+
+                {/* COVER LETTER TAB */}
+                {activeTab === 'letter' && (
+                  <div className="space-y-4">
+                    <div className="bg-green-50 p-4 rounded-xl border border-green-100 flex gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <p className="text-xs text-green-800 leading-snug">Your tailored cover letter is ready! You can download it as a Word document below.</p>
+                    </div>
+                    <div className="p-4 border border-slate-100 rounded-xl bg-white shadow-sm">
+                      <div className="text-[11px] text-slate-600 font-sans whitespace-pre-wrap leading-relaxed max-h-[450px] overflow-y-auto custom-scrollbar p-2">
+                        {tailoredCoverLetter || "Generating your cover letter..."}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="p-4 border-t border-slate-100 bg-white grid grid-cols-2 gap-3">
-                <Button variant="outline" className="h-12 rounded-xl font-bold" onClick={() => handleDownload('resume')}>
-                  <Download className="w-4 h-4 mr-2" /> Download
+                <Button
+                  variant="outline"
+                  className="h-12 rounded-xl font-bold"
+                  onClick={() => handleDownload(activeTab === 'letter' ? 'cover' : 'resume')}
+                  disabled={activeTab === 'letter' ? !tailoredCoverLetter : (!tailoredResume && !detailedCv)}
+                >
+                  <Download className="w-4 h-4 mr-2" /> {activeTab === 'letter' ? 'Download Letter' : 'Download Resume'}
                 </Button>
                 <Button className="h-12 rounded-xl bg-slate-900 text-white font-bold" onClick={handleSaveApplication}>
                   <Zap className="w-4 h-4 mr-2 text-yellow-500 fill-yellow-500" /> APPLY NOW

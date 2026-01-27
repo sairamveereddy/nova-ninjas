@@ -3914,6 +3914,8 @@ class GenerateCoverLetterRequest(BaseModel):
     job_description: str
     job_title: str = "Position"
     company: str = "Company"
+    cover_letter_text: Optional[str] = None
+    is_already_tailored: bool = False
 
 
 @app.post("/api/generate/cover-letter")
@@ -3935,14 +3937,16 @@ async def generate_cover_letter_docx(request: GenerateCoverLetterRequest):
         # Check for BYOK
         byok_config = await get_decrypted_byok_key(user.get("email", ""))
 
-        # Generate cover letter content
-        cover_letter_text = await generate_cover_letter_content(
-            request.resume_text,
-            request.job_description,
-            request.job_title,
-            request.company,
-            byok_config=byok_config,
-        )
+        # Generate cover letter content if not provided
+        cover_letter_text = request.cover_letter_text
+        if not cover_letter_text or not request.is_already_tailored:
+            cover_letter_text = await generate_cover_letter_content(
+                request.resume_text,
+                request.job_description,
+                request.job_title,
+                request.company,
+                byok_config=byok_config,
+            )
 
         if not cover_letter_text:
             raise HTTPException(
