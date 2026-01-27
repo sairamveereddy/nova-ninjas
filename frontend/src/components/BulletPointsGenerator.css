@@ -1,6 +1,6 @@
 .bullets-page {
     min-height: 100vh;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
     padding-top: 5rem;
 }
 
@@ -36,9 +36,9 @@
 }
 
 .bullets-hero .text-gradient {
-    background: linear-gradient(135deg, #8b5cf6, #6366f1);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .bullets-hero p {
