@@ -141,7 +141,7 @@ const ResumePaper = ({ content, scale = 1, onContentChange, fontFamily = '"Times
                 className="space-y-1 outline-none"
                 contentEditable
                 suppressContentEditableWarning
-                onBlur={(e) => {
+                onInput={(e) => {
                     if (onContentChange) {
                         onContentChange(e.currentTarget.innerText);
                     }

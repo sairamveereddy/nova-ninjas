@@ -1006,8 +1006,6 @@ async def verify_email(token: str):
         {"$set": {"is_verified": True}, "$unset": {"verification_token": ""}},
     )
 
-    logger.info(f"User email verified: {user['email']}")
-
     return {"success": True, "message": "Email verified successfully"}
 
 
@@ -1612,7 +1610,7 @@ async def google_auth(request: dict, background_tasks: BackgroundTasks):
 
             # Get user info from Google
             email = idinfo.get("email")
-            name = idinfo.get("name")
+            name = idinfo.get("name") or ""
             google_id = idinfo.get("sub")
             picture = idinfo.get("picture")
 
@@ -1651,7 +1649,7 @@ async def google_auth(request: dict, background_tasks: BackgroundTasks):
                 "user": {
                     "id": user_id,
                     "email": email,
-                    "name": existing_user.get("name", name),
+                    "name": existing_user.get("name") or name or "",
                     "role": existing_user.get("role", "customer"),
                     "plan": existing_user.get("plan"),
                     "is_verified": True,
@@ -2595,6 +2593,7 @@ class Application(BaseModel):
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     userId: str
+    userEmail: Optional[str] = None
     jobId: Optional[str] = None
     jobTitle: str
     company: str
@@ -2603,7 +2602,10 @@ class Application(BaseModel):
     tags: List[str] = []
     emailUsed: Optional[str] = None
     resumeId: Optional[str] = None
+    resumeText: Optional[str] = None
     coverLetterId: Optional[str] = None
+    coverLetterText: Optional[str] = None
+    matchScore: Optional[float] = None
     applicationLink: Optional[str] = None
     status: str = "applied"  # applied, interview, rejected, offer, on_hold
     createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -2929,7 +2931,7 @@ async def ai_ninja_apply(request: Request):
                     # Ensure name matches user account if not found in resume
                     if not extracted_data.get("person", {}).get("fullName"):
                         if "person" not in extracted_data: extracted_data["person"] = {}
-                        extracted_data["person"]["fullName"] = user.get("name", "")
+                        extracted_data["person"]["fullName"] = user.get("name") or ""
                     
                     # Remove is_new flag if it was there
                     if "is_new" in extracted_data:
@@ -3048,11 +3050,15 @@ async def ai_ninja_apply(request: Request):
         application = Application(
             id=applicationId,
             userId=userId,
+            userEmail=user.get("email"),
             jobId=jobId,
             jobTitle=jobTitle,
             company=company,
             workType=preferredWorkType,
             resumeId=resume_id,
+            resumeText=tailoredResume,
+            coverLetterText=tailoredCoverLetter,
+            matchScore=92.0,  # Optimistic match score as shown in frontend
             status="applied",
         )
 

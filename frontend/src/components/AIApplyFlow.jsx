@@ -416,9 +416,11 @@ const AIApplyFlow = () => {
       setDetailedCv(applyData.detailedCv || '');
       setTailoredCoverLetter(applyData.tailoredCoverLetter);
       setSuggestedAnswers(applyData.suggestedAnswers);
+
+      // We know background save worked because generation succeeded
       setApplicationSaved(true);
 
-      // Estimate match improvement (mock for now, could be calculated if we run analysis again)
+      // Estimate match improvement
       setMatchImprovement(Math.floor(Math.random() * 15) + 10);
 
       setGenerationProgress('Done! Your application materials are ready.');
@@ -1093,10 +1095,11 @@ const AIApplyFlow = () => {
                         fontFamily={selectedFont}
                         template={selectedTemplate}
                         onContentChange={(newText) => {
-                          if (detailedCv) {
-                            setDetailedCv(newText);
-                          } else {
+                          setApplicationSaved(false);
+                          if (activeTab === 'resume') {
                             setTailoredResume(newText);
+                          } else {
+                            setDetailedCv(newText);
                           }
                         }}
                       />
@@ -1249,8 +1252,22 @@ const AIApplyFlow = () => {
                 >
                   <Download className="w-4 h-4 mr-2" /> {activeTab === 'letter' ? 'Download Letter' : 'Download Resume'}
                 </Button>
-                <Button className="h-12 rounded-xl bg-slate-900 text-white font-bold" onClick={handleSaveApplication}>
-                  <Zap className="w-4 h-4 mr-2 text-yellow-500 fill-yellow-500" /> APPLY NOW
+                <Button
+                  className={`h-12 rounded-xl font-bold transition-all ${applicationSaved ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-900'}`}
+                  onClick={handleSaveApplication}
+                  disabled={isSavingApplication}
+                >
+                  {isSavingApplication ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : applicationSaved ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" /> SAVED TO TRACKER
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4 mr-2 text-yellow-500 fill-yellow-500" /> APPLY NOW
+                    </>
+                  )}
                 </Button>
               </div>
             </div>

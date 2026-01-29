@@ -10,6 +10,8 @@ from docx import Document
 from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.style import WD_STYLE_TYPE
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
 import aiohttp
 import asyncio
 import json
@@ -105,7 +107,11 @@ def render_ats_resume_from_json(r: ResumeDataSchema) -> str:
     header_line = " | ".join([p for p in header_parts if p and p.strip()])
 
     out = []
-    out.append(r.header.full_name)
+    # Force string and handle potential "undefined" or "None" leftovers
+    fullName = str(r.header.full_name or "").strip()
+    if not fullName or fullName.lower() in ["undefined", "none", "null"]:
+        fullName = "Your Name"
+    out.append(fullName)
     out.append(header_line)
 
     out.append("PROFESSIONAL SUMMARY")
@@ -474,14 +480,21 @@ async def generate_expert_documents(
             "cover_letter": None, "resume_json": {}
         }
 
-    # Resolve Header
+    # Resolve Header - Robust handling for "undefined" or "None" strings
     u = user_info or {}
     f = facts_json
+    
+    def get_clean_val(val, default):
+        v = str(val or "").strip()
+        if not v or v.lower() in ["undefined", "none", "null"]:
+            return default
+        return v
+
     header_info = {
-        "full_name": u.get("name") or f.get("name") or "Your Name",
-        "city_state": u.get("location") or f.get("location") or "Location",
-        "phone": u.get("phone") or f.get("phone") or "Phone Number",
-        "email": u.get("email") or f.get("email") or "Email Address",
+        "full_name": get_clean_val(u.get("name") or f.get("name"), "Your Name"),
+        "city_state": get_clean_val(u.get("location") or f.get("location"), "Location"),
+        "phone": get_clean_val(u.get("phone") or f.get("phone"), "Phone Number"),
+        "email": get_clean_val(u.get("email") or f.get("email"), "Email Address"),
         "linkedin": f.get("links", {}).get("linkedin", ""),
         "portfolio": f.get("links", {}).get("portfolio", "")
     }
@@ -847,6 +860,19 @@ def create_cover_letter_docx(cover_letter_text: str, job_title: str, company: st
     return file_stream
 
 
+def add_bottom_border(paragraph):
+    """Add a bottom border to a paragraph"""
+    p = paragraph._element
+    pPr = p.get_or_add_pPr()
+    pBdr = OxmlElement('w:pBdr')
+    bottom = OxmlElement('w:bottom')
+    bottom.set(qn('w:val'), 'single')
+    bottom.set(qn('w:sz'), '6')
+    bottom.set(qn('w:space'), '1')
+    bottom.set(qn('w:color'), 'auto')
+    pBdr.append(bottom)
+    pPr.append(pBdr)
+
 def create_text_docx(text: str, title: str = "Document", font_family: str = "Times New Roman", template: str = "standard") -> io.BytesIO:
     """Create a Word document from raw text, preserving basic formatting and styling"""
     doc = Document()
@@ -873,15 +899,16 @@ def create_text_docx(text: str, title: str = "Document", font_family: str = "Tim
     # First line is usually the name
     if lines:
         name_para = doc.add_paragraph()
-        name_run = name_para.add_run(lines[0].strip())
+        name_text = lines[0].strip().upper()
+        name_run = name_para.add_run(name_text)
         name_run.bold = True
-        name_run.font.size = Pt(20)
+        name_run.font.size = Pt(24)
         if not is_modern:
             name_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         name_para.paragraph_format.space_after = Pt(2)
         lines = lines[1:]
 
-    for line in lines:
+    for i, line in enumerate(lines):
         line_stripped = line.strip()
         if not line_stripped:
             doc.add_paragraph().paragraph_format.space_after = Pt(0)
@@ -890,35 +917,38 @@ def create_text_docx(text: str, title: str = "Document", font_family: str = "Tim
         if line_stripped.startswith('===') and line_stripped.endswith('==='):
             # Section header
             p = doc.add_paragraph()
-            run = p.add_run(line_stripped.replace('=', '').strip())
+            clean_title = line_stripped.replace('=', '').strip().upper()
+            run = p.add_run(clean_title)
             run.bold = True
-            run.font.size = Pt(14)
+            run.font.size = Pt(11)
             if not is_modern:
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                add_bottom_border(p)
             p.paragraph_format.space_after = Pt(4)
         elif (line_stripped.isupper() and len(line_stripped) < 50) or (line_stripped.startswith('#') and len(line_stripped) < 60):
             # Main sections like PROFESSIONAL EXPERIENCE
-            clean_title = line_stripped.replace('#', '').strip()
+            clean_title = line_stripped.replace('#', '').strip().upper()
             p = doc.add_paragraph()
             run = p.add_run(clean_title)
             run.bold = True
             run.font.size = Pt(11)
             if not is_modern:
-                # Add a border bottom for standard
-                # docx doesn't easily support bottom borders on paragraphs without more XML manipulation, 
-                # but we can simulate or just bold + align
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                add_bottom_border(p)
             p.paragraph_format.space_after = Pt(2)
+        elif line_stripped.startswith('- ') or line_stripped.startswith('• '):
+            # Bullet point
+            p = doc.add_paragraph(line_stripped[2:], style='List Bullet')
+            p.paragraph_format.space_after = Pt(0)
         else:
             p = doc.add_paragraph(line)
+            # Try to center contact info if it's the first non-empty line after the name
+            if i == 0 and ('@' in line or '|' in line) and not is_modern:
+                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             p.paragraph_format.space_after = Pt(0)
-            if not is_modern and (line_stripped.count('|') > 1 or '@' in line_stripped):
-                # Probably contact info line
-                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             
     # Save to BytesIO
     file_stream = io.BytesIO()
     doc.save(file_stream)
     file_stream.seek(0)
     return file_stream
-
