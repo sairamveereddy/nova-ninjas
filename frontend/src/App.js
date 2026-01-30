@@ -55,6 +55,13 @@ import CareerGapExplainer from "./components/CareerGapExplainer";
 import JobDescriptionDecoder from "./components/JobDescriptionDecoder";
 import OfferComparator from "./components/OfferComparator";
 import ContactPage from "./components/ContactPage";
+// Landing Pages
+import InterviewPrepLanding from "./pages/InterviewPrepLanding";
+import ResumeAILanding from "./pages/ResumeAILanding";
+import CoverLetterLanding from "./pages/CoverLetterLanding";
+// Dashboard Components
+import DashboardLayout from "./components/Dashboard/DashboardLayout";
+import ToolsPage from "./pages/Dashboard/ToolsPage";
 import "./components/Jobs.css";
 import "./components/InterviewPrep.css";
 import "./components/ResumeScanner.css";
@@ -108,8 +115,12 @@ function App() {
             <Route path="/job-decoder" element={<JobDescriptionDecoder />} />
             <Route path="/offer-comparator" element={<OfferComparator />} />
 
+            {/* Public Landing Pages for Tools */}
+            <Route path="/landing/interview-prep" element={<InterviewPrepLanding />} />
+            <Route path="/landing/resume-ai" element={<ResumeAILanding />} />
+            <Route path="/landing/cover-letter" element={<CoverLetterLanding />} />
 
-            {/* Interview Prep Route */}
+            {/* Interview Prep Route - Keep for backward compatibility */}
             <Route path="/interview-prep" element={<InterviewPrep />} />
             <Route path="/interview-prep/:sessionId" element={<InterviewRoom />} />
             <Route path="/interview-prep/:sessionId/report" element={<InterviewReport />} />
@@ -201,15 +212,39 @@ function App() {
               }
             />
 
-            {/* Protected Routes - Customer */}
+            {/* Protected Routes - Customer Dashboard */}
             <Route
               path="/dashboard"
               element={
                 <ProtectedRoute allowedRoles={['customer']}>
-                  <Dashboard />
+                  <DashboardLayout />
                 </ProtectedRoute>
               }
-            />
+            >
+              {/* Redirect /dashboard to /dashboard/tools */}
+              <Route index element={<Navigate to="/dashboard/tools" replace />} />
+
+              {/* Dashboard Pages */}
+              <Route path="tools" element={<ToolsPage />} />
+              <Route path="jobs" element={<Jobs />} />
+              <Route path="resumes" element={<MyResumes />} />
+              <Route path="profile" element={<Dashboard />} />
+              <Route path="settings" element={<Dashboard />} />
+
+              {/* Tool Routes within Dashboard */}
+              <Route path="tools/interview-prep" element={<InterviewPrep />} />
+              <Route path="tools/interview-prep/:sessionId" element={<InterviewRoom />} />
+              <Route path="tools/interview-prep/:sessionId/report" element={<InterviewReport />} />
+              <Route path="tools/resume-scanner" element={<ResumeScanner />} />
+              <Route path="tools/cover-letter" element={<ChatGPTCoverLetter />} />
+              <Route path="tools/linkedin" element={<LinkedInOptimizer />} />
+              <Route path="tools/one-click-optimize" element={<OneClickOptimize />} />
+              <Route path="tools/bullet-points" element={<BulletPointsGenerator />} />
+              <Route path="tools/summary-generator" element={<SummaryGenerator />} />
+              <Route path="tools/career-change" element={<CareerChangeTool />} />
+              <Route path="tools/resume-builder" element={<ChatGPTResume />} />
+              <Route path="tools/ai-apply" element={<AIApplyFlow />} />
+            </Route>
 
             {/* Protected Routes - Employee */}
             <Route
