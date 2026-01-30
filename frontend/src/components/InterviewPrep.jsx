@@ -6,19 +6,14 @@ import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import {
   Menu,
-  Mic,
-  Video,
-  MessageSquare,
   FileText,
   Target,
-  CheckCircle,
-  Mail,
-  Loader2,
-  Bell,
-  Sparkles
+  Briefcase,
+  Upload,
+  Play,
+  Loader2
 } from 'lucide-react';
 import { BRAND } from '../config/branding';
-import { API_URL } from '../config/api';
 import SideMenu from './SideMenu';
 import './SideMenu.css';
 
