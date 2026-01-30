@@ -12,7 +12,7 @@ const isProduction = window.location.hostname !== 'localhost' &&
   window.location.hostname !== '127.0.0.1';
 
 // Production API URL for Interview Service (Next.js)
-const PRODUCTION_INTERVIEW_API_URL = 'https://nova-ninjas-saas-interview.vercel.app';
+const PRODUCTION_INTERVIEW_API_URL = ''; // Will use relative paths on same domain
 
 // Use local backend for localhost, production for everything else
 export const API_URL = isProduction ? PRODUCTION_API_URL : DEVELOPMENT_API_URL;

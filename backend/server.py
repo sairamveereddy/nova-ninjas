@@ -4360,6 +4360,135 @@ async def delete_application(application_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============================================
+# INTERVIEW PREP API
+# ============================================
+
+from interview_service import InterviewOrchestrator, resumes_collection, sessions_collection
+from bson import ObjectId
+import io
+
+class InterviewAnswerRequest(BaseModel):
+    answerText: str
+
+@app.post("/api/interview/create-session")
+async def create_interview_session(
+    resume: UploadFile = File(...),
+    jd: str = Form(...),
+    roleTitle: str = Form(...),
+    userId: Optional[str] = Form(None)
+):
+    """Create a new interview session"""
+    try:
+        user_id = userId or "default-user"
+        
+        # Read and parse resume
+        file_content = await resume.read()
+        
+        # Simple text extraction (you can enhance this with pdf-parse or mammoth)
+        if resume.filename.endswith('.pdf'):
+            # For now, just store as binary - you can add PDF parsing later
+            parsed_text = f"[PDF Resume: {resume.filename}]"
+        elif resume.filename.endswith('.docx'):
+            parsed_text = f"[DOCX Resume: {resume.filename}]"
+        else:
+            parsed_text = file_content.decode('utf-8', errors='ignore')
+        
+        # Save resume document
+        resume_doc = {
+            "userId": user_id,
+            "originalName": resume.filename,
+            "parsedText": parsed_text,
+            "createdAt": datetime.utcnow()
+        }
+        resume_id = resumes_collection.insert_one(resume_doc).inserted_id
+        
+        # Create interview session
+        session = {
+            "userId": user_id,
+            "resumeId": str(resume_id),
+            "jobDescription": jd,
+            "roleTitle": roleTitle,
+            "status": "pending",
+            "questionCount": 0,
+            "targetQuestions": 5,
+            "createdAt": datetime.utcnow()
+        }
+        session_id = sessions_collection.insert_one(session).inserted_id
+        
+        return {
+            "success": True,
+            "sessionId": str(session_id),
+            "message": "Session created successfully"
+        }
+    
+    except Exception as e:
+        logger.error(f"Session creation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/interview/start/{session_id}")
+async def start_interview(session_id: str):
+    """Start interview and get first question"""
+    try:
+        orchestrator = InterviewOrchestrator(session_id)
+        result = await orchestrator.generate_initial_question()
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Start interview error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/interview/answer/{session_id}")
+async def submit_answer(session_id: str, request: InterviewAnswerRequest):
+    """Submit answer and get next question"""
+    try:
+        orchestrator = InterviewOrchestrator(session_id)
+        result = await orchestrator.process_answer_and_get_next(request.answerText)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Submit answer error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/interview/finalize/{session_id}")
+async def finalize_interview(session_id: str):
+    """Finalize interview and generate report"""
+    try:
+        orchestrator = InterviewOrchestrator(session_id)
+        report = await orchestrator.finalize_and_generate_report()
+        return report
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Finalize interview error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/interview/report/{session_id}")
+async def get_interview_report(session_id: str):
+    """Get interview report for a session"""
+    try:
+        from interview_service import reports_collection
+        
+        report = reports_collection.find_one({"sessionId": session_id})
+        if not report:
+            raise HTTPException(status_code=404, detail="Report not found")
+        
+        # Convert ObjectId to string
+        report['_id'] = str(report['_id'])
+        return report
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get report error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/health-check")
 async def health_check():
     # from resume_analyzer import GROQ_API_KEY - Removing broken import
