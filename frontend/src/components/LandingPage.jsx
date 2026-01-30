@@ -34,6 +34,7 @@ import BrandLogo from './BrandLogo';
 import './SideMenu.css';
 import '../LandingPage.css';
 import { SocialTooltip } from './ui/SocialTooltip';
+import SearchPreview from './SearchPreview';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -95,12 +96,6 @@ const LandingPage = () => {
     daily: 1000
   });
 
-  const stats = [
-    { number: jobStats.total.toLocaleString(), label: "Jobs Scanned" },
-    { number: applicationCount.toLocaleString(), label: "Applications Sent" },
-    { number: interviewCount.toLocaleString(), label: "Interviews Booked" }
-  ];
-
   useEffect(() => {
     // Increment total jobs slightly every few seconds for a "live" feel
     const interval = setInterval(() => {
@@ -133,48 +128,105 @@ const LandingPage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const toolCards = [
+  const features = [
     {
-      title: "Interview Prep",
-      description: "Practice with AI and get real-time feedback.",
-      path: "/landing/interview-prep",
-      buttonText: "Practice Now",
-      color: "teal"
+      icon: FileText,
+      title: 'AI Resume Builder',
+      description: 'AI generates tailored resumes for each job application, optimized for ATS systems.',
+      cta: 'Build Resume',
+      path: '/chatgpt-resume'
     },
     {
-      title: "Resume AI",
-      description: "ATS-optimized resumes in seconds.",
-      path: "/landing/resume-ai",
-      buttonText: "Build Resume",
-      color: "green"
+      icon: MessageSquare,
+      title: 'AI Cover Letter',
+      description: 'Generate personalized cover letters that highlight your relevant experience.',
+      cta: 'Create Letter',
+      path: '/chatgpt-cover-letter'
     },
     {
-      title: "Cover Letter",
-      description: "Write tailored cover letters for any job.",
-      path: "/landing/cover-letter",
-      buttonText: "Create Letter",
-      color: "blue"
+      icon: Bot,
+      title: 'AI Ninja Apply',
+      description: 'One-click application with AI-tailored documents for every job you want.',
+      cta: 'Start Applying',
+      path: '/jobs'
     },
     {
-      title: "AI Job Match",
-      description: "Find H1B-friendly jobs matched to your profile.",
-      path: "/landing/ai-job-match",
-      buttonText: "Find Matches",
-      color: "purple"
+      icon: Mic,
+      title: 'Interview Prep',
+      description: 'Practice with AI-generated interviews and get real-time feedback.',
+      cta: 'Coming Soon',
+      path: '/interview-prep',
+      comingSoon: true
     },
     {
-      title: "LinkedIn Optimizer",
-      description: "Transform your profile into a recruiter magnet.",
-      path: "/landing/linkedin",
-      buttonText: "Optimize Now",
-      color: "indigo"
+      icon: Target,
+      title: 'ATS Scanner',
+      description: 'Check your resume compatibility and get optimization suggestions.',
+      cta: 'Scan Resume',
+      path: '/scanner'
     },
     {
-      title: "Job Autofill",
-      description: "1-Click apply to thousands of jobs.",
-      path: "/landing/autofill",
-      buttonText: "Start Applying",
-      color: "orange"
+      icon: Search,
+      title: 'Job Board',
+      description: 'Browse visa-friendly, high-paying roles curated for international talent.',
+      cta: 'Find Jobs',
+      path: '/jobs'
+    }
+  ];
+
+  const testimonials = [
+    {
+      name: 'Priya Sharma',
+      role: 'Software Engineer',
+      location: 'CA',
+      text: 'Applied to 80+ jobs in a week using AI Ninja. Got 4 interviews and landed my dream job at a FAANG company. The visa-friendly filter saved me hours!',
+      avatar: 'PS'
+    },
+    {
+      name: 'Rahul Patel',
+      role: 'Data Scientist',
+      location: 'TX',
+      text: 'Human Ninja service is incredible. They applied to 200 jobs for me while I focused on interview prep. Got 12 callbacks!',
+      avatar: 'RP'
+    },
+    {
+      name: 'Ananya Reddy',
+      role: 'Product Manager',
+      location: 'WA',
+      text: 'The tailored resumes are spot-on. Each application feels personalized. Way better than copy-pasting the same resume everywhere.',
+      avatar: 'AR'
+    }
+  ];
+
+  const stats = [
+    { number: applicationCount.toLocaleString() + '+', label: 'Applications Submitted', live: true },
+    { number: interviewCount.toLocaleString() + '+', label: 'Interviews Cracked', live: true },
+    { number: '3x', label: 'More Responses' },
+    { number: '20hrs', label: 'Saved Per Week' }
+  ];
+
+  const faqs = [
+
+    {
+      question: 'How does AI Ninja work?',
+      answer: 'AI Ninja analyzes the job description and your resume, then generates a tailored resume, cover letter, and suggested answers for application questions. You review the materials and submit them yourself—staying in full control of your applications.'
+    },
+    {
+      question: 'What is Human Ninja?',
+      answer: 'Human Ninja is our done-for-you service. Our team of specialists finds relevant roles, tailors your applications using AI + human judgment, and submits them on your behalf. Perfect for busy professionals or those needing visa sponsorship.'
+    },
+
+    {
+      question: 'Do you guarantee a job or visa?',
+      answer: 'No. We don\'t make fake promises. We guarantee a serious, structured application process that significantly increases your chances. Your interview performance and the market still matter.'
+    },
+    {
+      question: 'Is my data safe?',
+      answer: 'Yes. We encrypt your data, never sell it, and you can delete your account anytime. We only use your information to deliver our services.'
+    },
+    {
+      question: 'What if I\'m not satisfied?',
+      answer: 'You can cancel anytime. We handle refund requests case-by-case and often provide credits when issues arise. Reach out to our support team and we\'ll make it right.'
     }
   ];
 
@@ -183,88 +235,453 @@ const LandingPage = () => {
       {/* Side Menu */}
       <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
 
-      {/* Navigation Header */}
+      {/* Navigation Header - Using shared Header component */}
       <Header onMenuClick={() => setSideMenuOpen(true)} />
 
       {/* Hero Section */}
-      <section className="hero-modern min-h-[80vh] flex items-center">
+      <section className="hero-modern">
+        {/* Large Curved Blob Background - AiApply Style */}
         <div className="hero-blob-bg"></div>
         <div className="hero-blob-bg-2"></div>
 
-        <div className="hero-container-modern px-4 lg:px-0">
-          <div className="hero-content-wrapper max-w-4xl mx-auto text-center">
-            <div className="hero-badge-modern mx-auto mb-6">
+        <div className="hero-container-modern">
+          <div className="hero-content-wrapper">
+            <div className="hero-badge-modern">
               <Zap className="w-4 h-4" />
-              <span>AI Job Search Copilot for Visa Seekers</span>
+              <span>AI-powered job applications for visa seekers & busy professionals</span>
             </div>
 
-            <h1 className="hero-title-modern text-5xl lg:text-7xl mb-6">
-              No More Solo<br />
-              <span className="hero-title-gradient">Job Hunting.</span>
+            <h1 className="hero-title-modern">
+              Land Your Dream Job<br />
+              <span className="hero-title-gradient">10x Faster!</span>
             </h1>
 
-            <p className="hero-subtitle-modern text-xl lg:text-2xl mb-10 max-w-2xl mx-auto">
-              Land your dream job with an AI copilot that finds jobs, builds resumes, and prepares you for interviews.
+            <p className="hero-subtitle-modern">
+              Tailored Resume • Tailored CV • Tailored Cold Email<br />
+              Get your dream job with AI-powered applications — lightning fast, perfectly tailored.
             </p>
 
-            <div className="hero-cta-group justify-center gap-6">
-              <Button className="btn-cta-primary px-10 py-6 text-lg" onClick={() => navigate('/signup')}>
-                Get Started for Free
+            <div className="hero-cta-group">
+              <Button className="btn-cta-primary" onClick={() => navigate('/ai-ninja')}>
+                <Bot className="w-5 h-5" /> Try AI Ninja Free
+              </Button>
+              <Button variant="outline" className="btn-cta-secondary" onClick={() => navigate('/human-ninja')}>
+                <UserCheck className="w-5 h-5" /> Let Humans Apply For Me
               </Button>
             </div>
 
-            <p className="text-gray-500 mt-6 font-medium">
-              No credit card required • Join 50,000+ candidates
-            </p>
+          </div>
+
+          {/* Ninja Illustration */}
+          <div className="hero-ninja-illustration">
+            <img
+              src="/ninja-hero.jpg"
+              alt="Applying Jobs in Ninja Speed"
+              className="ninja-hero-image"
+            />
+          </div>
+        </div>
+
+        {/* Floating UI Preview */}
+        <div className="hero-preview-section">
+          <div className="preview-cards-container">
+            {/* Resume Preview Card */}
+            <Card className="preview-card resume-preview-card">
+              <div className="preview-card-header">
+                <span className="preview-label">Optimized Resume</span>
+                <Badge className="match-badge">99.8% match</Badge>
+              </div>
+              <div className="resume-preview-content">
+                <h4>Your Name</h4>
+                <p className="preview-subtitle">Software Engineer</p>
+                <div className="preview-section">
+                  <strong>Summary</strong>
+                  <p>Experienced software engineer with 5+ years building scalable applications...</p>
+                </div>
+                <div className="preview-section">
+                  <strong>Experience</strong>
+                  <p>• Led development of microservices architecture</p>
+                  <p>• Improved system performance by 40%</p>
+                </div>
+              </div>
+            </Card>
+
+            {/* Auto Apply Card */}
+            <Card className="preview-card auto-apply-card">
+              <div className="preview-card-header">
+                <span className="preview-label">Auto Apply To Jobs</span>
+                <Badge variant="outline">Live</Badge>
+              </div>
+              <div className="job-list-preview">
+                <div className="job-item-preview applying">
+                  <div className="job-company">Google</div>
+                  <div className="job-role">Software Engineer</div>
+                  <Badge className="status-applying">Applying...</Badge>
+                </div>
+                <div className="job-item-preview applied">
+                  <div className="job-company">Microsoft</div>
+                  <div className="job-role">Senior SDE</div>
+                  <Badge className="status-applied">Applied</Badge>
+                </div>
+                <div className="job-item-preview applied">
+                  <div className="job-company">Meta</div>
+                  <div className="job-role">Product Manager</div>
+                  <Badge className="status-applied">Applied</Badge>
+                </div>
+                <div className="job-item-preview pending">
+                  <div className="job-company">Amazon</div>
+                  <div className="job-role">Data Scientist</div>
+                  <Badge className="status-pending">Pending</Badge>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
       </section>
 
-      {/* Main Tool Grid Section */}
-      <section className="py-24 bg-white">
-        <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-16">The Ultimate AI Job Search Toolkit</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {toolCards.map((tool, index) => (
-              <Card key={index} className="p-8 hover:shadow-2xl transition-all duration-300 border-gray-100 group">
-                <div className={`w-12 h-12 rounded-xl bg-${tool.color}-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                  <Zap className={`w-6 h-6 text-${tool.color}-600`} />
+      {/* Search Result Branding Section */}
+      <section className="search-branding-section">
+        <div className="container">
+          <h2 className="section-title-modern">
+            Recognized as the <span className="highlight-green">#1 Job Platform</span>
+          </h2>
+          <p className="section-subtitle-modern mb-12">
+            Trusted by search engines and professionals alike. Here's how jobNinjas appears to the world.
+          </p>
+          <SearchPreview />
+        </div>
+      </section>
+
+      {/* Company Logos - Scrolling Marquee */}
+      <section className="companies-section">
+        <p className="companies-label">Get hired by top companies worldwide</p>
+        <div className="companies-marquee-container">
+          <div className="companies-marquee-content">
+            {/* First set */}
+            <div className="companies-logos-scroll">
+              <span className="company-logo">Google</span>
+              <span className="company-logo">Microsoft</span>
+              <span className="company-logo">Amazon</span>
+              <span className="company-logo">Meta</span>
+              <span className="company-logo">Apple</span>
+              <span className="company-logo">Netflix</span>
+              <span className="company-logo">Tesla</span>
+              <span className="company-logo">Uber</span>
+              <span className="company-logo">Airbnb</span>
+              <span className="company-logo">Spotify</span>
+              <span className="company-logo">Adobe</span>
+              <span className="company-logo">Salesforce</span>
+            </div>
+            {/* Duplicate set for seamless loop */}
+            <div className="companies-logos-scroll">
+              <span className="company-logo">Google</span>
+              <span className="company-logo">Microsoft</span>
+              <span className="company-logo">Amazon</span>
+              <span className="company-logo">Meta</span>
+              <span className="company-logo">Apple</span>
+              <span className="company-logo">Netflix</span>
+              <span className="company-logo">Tesla</span>
+              <span className="company-logo">Uber</span>
+              <span className="company-logo">Airbnb</span>
+              <span className="company-logo">Spotify</span>
+              <span className="company-logo">Adobe</span>
+              <span className="company-logo">Salesforce</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      {/* Stats Bar */}
+      <section className="stats-section-modern">
+        <div className="stats-grid-modern">
+          {stats.map((stat, index) => (
+            <div key={index} className="stat-item-modern">
+              <span className="stat-number-modern">
+                {stat.live && <span className="live-pulse"></span>}
+                {stat.number}
+              </span>
+              <span className="stat-label-modern">{stat.label}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* You are 80% more likely section */}
+      <section className="likelihood-section">
+        <div className="container">
+          <h2 className="section-title-modern">
+            You are <span className="highlight-green">80% more likely</span> to get<br />
+            hired faster if you use <BrandLogo className="inline-flex" />
+          </h2>
+        </div>
+      </section>
+
+      {/* Three Pillars - Prepare, Apply, Succeed */}
+      <section className="pillars-section">
+        <div className="container">
+          {/* Prepare */}
+          <div className="pillar-row">
+            <div className="pillar-content">
+              <Badge className="pillar-badge">Prepare</Badge>
+              <h3 className="pillar-title">AI Resume & Cover Letter Creator</h3>
+              <p className="pillar-description">
+                Generate tailored resumes and cover letters for each job application,
+                based on your skills and experience. Our AI analyzes the job description
+                and optimizes your documents for ATS systems.
+              </p>
+              <Button className="btn-primary-modern" onClick={() => navigate('/ai-ninja')}>
+                Start now for free <ArrowRight className="w-4 h-4" />
+              </Button>
+              <p className="pillar-stat">
+                <Zap className="w-4 h-4 inline" /> <strong>ATS-optimized</strong> for maximum visibility
+              </p>
+            </div>
+            <div className="pillar-visual">
+              <Card className="pillar-card">
+                <div className="ai-chat-preview">
+                  <div className="chat-input-preview">
+                    <span>Make it more impactful</span>
+                    <span className="cursor-blink">|</span>
+                  </div>
                 </div>
-                <h3 className="text-2xl font-bold mb-3">{tool.title}</h3>
-                <p className="text-gray-600 mb-8 h-12">{tool.description}</p>
+                <div className="resume-mini-preview">
+                  <h5>Your Name</h5>
+                  <p>Software Engineer • San Francisco</p>
+                  <div className="skill-dots">
+                    <span>React</span>
+                    <span>Python</span>
+                    <span>AWS</span>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </div>
+
+          {/* Apply */}
+          <div className="pillar-row reverse">
+            <div className="pillar-content">
+              <Badge className="pillar-badge orange">Apply</Badge>
+              <h3 className="pillar-title">Auto Apply To Jobs</h3>
+              <p className="pillar-description">
+                Let <BrandLogo className="inline-flex" /> apply to hundreds of jobs for you automatically.
+                Our Human Ninja service manually submits applications on your behalf,
+                with AI-tailored documents for each role.
+              </p>
+              <Button className="btn-primary-modern" onClick={() => navigate('/human-ninja')}>
+                Start now for free <ArrowRight className="w-4 h-4" />
+              </Button>
+              <p className="pillar-stat">
+                <strong>{applicationCount.toLocaleString()}+</strong> applications submitted
+              </p>
+            </div>
+            <div className="pillar-visual">
+              <Card className="pillar-card jobs-card">
+                <div className="jobs-preview-list">
+                  <div className="job-preview-item">
+                    <div className="job-preview-info">
+                      <strong>Staff Engineer</strong>
+                      <span>Google • AI/ML</span>
+                    </div>
+                    <Badge className="status-applying">Applying...</Badge>
+                  </div>
+                  <div className="job-preview-item">
+                    <div className="job-preview-info">
+                      <strong>Senior SDE</strong>
+                      <span>Amazon • Cloud</span>
+                    </div>
+                    <Badge className="status-applied">Applied</Badge>
+                  </div>
+                  <div className="job-preview-item">
+                    <div className="job-preview-info">
+                      <strong>Product Manager</strong>
+                      <span>Meta • Growth</span>
+                    </div>
+                    <Badge className="status-applied">Applied</Badge>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </div>
+
+          {/* Succeed */}
+          <div className="pillar-row">
+            <div className="pillar-content">
+              <Badge className="pillar-badge purple">Succeed</Badge>
+              <h3 className="pillar-title">Interview Prep & Tracking</h3>
+              <p className="pillar-description">
+                Track all your applications in one dashboard. Practice with AI-generated
+                interview questions and get real-time feedback to ace your interviews.
+              </p>
+              <Button className="btn-primary-modern" onClick={() => navigate('/interview-prep')}>
+                Coming Soon <ArrowRight className="w-4 h-4" />
+              </Button>
+              <p className="pillar-stat">
+                <Target className="w-4 h-4 inline" /> <strong>All-in-one</strong> application tracking
+              </p>
+            </div>
+            <div className="pillar-visual">
+              <Card className="pillar-card interview-card">
+                <div className="interview-preview">
+                  <div className="interview-question">
+                    <p>"Tell me about a time you led a challenging project..."</p>
+                  </div>
+                  <div className="interview-actions">
+                    <Button size="sm" variant="outline">
+                      <Play className="w-4 h-4" /> Answer
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Fresh Jobs Section */}
+      <section className="fresh-jobs-section">
+        <div className="container">
+          <div className="fresh-jobs-card">
+            <div className="fresh-jobs-content">
+              <Badge className="fresh-badge">
+                <RefreshCw className="w-3 h-3 animate-spin-slow" /> Live Market Update
+              </Badge>
+              <h2 className="fresh-title">Find the Freshest Jobs</h2>
+              <p className="fresh-description">
+                Our AI constantly scans the global job market, bringing you up-to-date
+                opportunities to ensure you don't miss out on your best matches.
+              </p>
+
+              <div className="fresh-stats-grid">
+                <div className="fresh-stat-item">
+                  <div className="fresh-stat-number">1k+</div>
+                  <div className="fresh-stat-label">jobs everyday</div>
+                </div>
+                <div className="fresh-stat-divider" />
+                <div className="fresh-stat-item">
+                  <div className="fresh-stat-number">1million+</div>
+                  <div className="fresh-stat-label">jobs overall</div>
+                </div>
+              </div>
+
+              <div className="fresh-actions">
                 <Button
-                  variant="outline"
-                  className="w-full py-4 text-base hover:bg-black hover:text-white transition-colors"
-                  onClick={() => navigate(tool.path)}
+                  className="btn-primary-modern btn-large"
+                  onClick={() => navigate('/jobs')}
                 >
-                  {tool.buttonText} <ArrowRight className="ml-2 w-4 h-4" />
+                  Browse All Jobs <ArrowRight className="w-5 h-5" />
                 </Button>
+                <div className="fresh-trust">
+                  <Users className="w-4 h-4" /> Trusted by 50,000+ candidates worldwide
+                </div>
+              </div>
+            </div>
+            <div className="fresh-jobs-visual">
+              <div className="floating-job-cards">
+                <div className="job-card-float card-1">
+                  <Badge variant="outline" className="text-primary border-primary/20 bg-white/50 backdrop-blur-sm">Active Now</Badge>
+                  <h4>Senior Software Engineer</h4>
+                  <p>Google • Mountain View, CA</p>
+                </div>
+                <div className="job-card-float card-2">
+                  <Badge variant="outline" className="text-secondary border-secondary/20 bg-white/50 backdrop-blur-sm">Recently Added</Badge>
+                  <h4>Product Designer</h4>
+                  <p>Airbnb • San Francisco, CA</p>
+                </div>
+                <div className="job-card-float card-3">
+                  <Badge variant="outline" className="text-green-600 border-green-200 bg-white/50 backdrop-blur-sm">New</Badge>
+                  <h4>Data Scientist</h4>
+                  <p>Tesla • Austin, TX</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section className="features-section-modern">
+        <div className="container">
+          <h2 className="section-title-modern">
+            Everything you need to get hired <span className="highlight-green">FAST!</span>
+          </h2>
+          <div className="features-grid-modern">
+            {features.map((feature, index) => {
+              const Icon = feature.icon;
+              return (
+                <Card
+                  key={index}
+                  className={`feature-card-modern ${feature.comingSoon ? 'coming-soon' : ''}`}
+                  onClick={() => !feature.comingSoon && navigate(feature.path)}
+                >
+                  <div className="feature-icon-modern">
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.description}</p>
+                  <button className="feature-cta">
+                    {feature.cta} <ChevronRight className="w-4 h-4" />
+                  </button>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+
+      {/* Testimonials */}
+      <section className="testimonials-section-modern">
+        <div className="container">
+          <h2 className="section-title-modern">Success Stories</h2>
+          <div className="testimonials-grid-modern">
+            {testimonials.map((testimonial, index) => (
+              <Card key={index} className="testimonial-card-modern">
+                <div className="testimonial-quote-icon">
+                  <MessageSquare className="w-6 h-6" />
+                </div>
+                <p className="testimonial-text">"{testimonial.text}"</p>
+                <div className="testimonial-author">
+                  <div className="author-avatar">{testimonial.avatar}</div>
+                  <div className="author-info">
+                    <strong>{testimonial.name}</strong>
+                    <span>{testimonial.role} • {testimonial.location}</span>
+                  </div>
+                </div>
               </Card>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Simpler Stats Section */}
-      <section className="stats-section-modern py-20 bg-gray-50 border-y border-gray-100">
-        <div className="stats-grid-modern container mx-auto px-4 flex justify-around">
-          {stats.slice(0, 3).map((stat, index) => (
-            <div key={index} className="stat-item-modern">
-              <span className="stat-number-modern text-4xl font-bold">{stat.number}</span>
-              <span className="stat-label-modern text-gray-500 mt-2">{stat.label}</span>
-            </div>
-          ))}
+      {/* FAQ Section */}
+      <section className="faq-section-modern">
+        <div className="container">
+          <h2 className="section-title-modern">Frequently Asked Questions</h2>
+          <div className="faq-container-modern">
+            <Accordion type="single" collapsible className="faq-accordion-modern">
+              {faqs.map((faq, index) => (
+                <AccordionItem key={index} value={`faq-${index}`}>
+                  <AccordionTrigger className="faq-trigger-modern">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="faq-content-modern">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
         </div>
       </section>
 
-
-      {/* Final CTA Section */}
-      <section className="final-cta-modern py-24 bg-black text-white text-center">
-        <div className="container mx-auto px-4">
-          <h2 className="text-5xl font-bold mb-8">Ready to land your dream job?</h2>
-          <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">Join thousands of job seekers who found success with {BRAND.name}'s AI toolkit.</p>
-          <Button className="btn-cta-primary px-12 py-8 text-xl" onClick={() => navigate('/signup')}>
-            Build My Career Copilot <ArrowRight className="ml-3 w-6 h-6" />
+      {/* Final CTA */}
+      <section className="final-cta-modern">
+        <div className="container">
+          <h2>Ready to land your dream job?</h2>
+          <p>Join thousands of job seekers who found success with <BrandLogo className="inline-flex justify-center" /></p>
+          <Button className="btn-cta-primary" onClick={() => navigate('/signup')}>
+            Start now for free <ArrowRight className="w-5 h-5" />
           </Button>
         </div>
       </section>

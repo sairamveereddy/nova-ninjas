@@ -39,14 +39,6 @@ const MegaMenu = () => {
             label: 'Products',
             sections: [
                 {
-                    title: 'AI Tools',
-                    items: [
-                        { icon: "/tool-icons/interview-prep.png", label: 'Interview Prep', desc: 'AI mock interviews', path: '/landing/interview-prep', color: '#14b8a6' },
-                        { icon: "/tool-icons/chatgpt-resume.png", label: 'Resume AI', desc: 'AI resume builder', path: '/landing/resume-ai', color: '#10b981' },
-                        { icon: "/tool-icons/chatgpt-cover-letter.png", label: 'Cover Letter', desc: 'AI-powered letters', path: '/landing/cover-letter', color: '#10b981' }
-                    ]
-                },
-                {
                     title: 'Resume Tools',
                     items: [
                         { icon: "/tool-icons/resume-scanner.png", label: 'Resume Scanner', desc: 'ATS score & insights', path: '/scanner', color: '#3b82f6' },
@@ -56,10 +48,17 @@ const MegaMenu = () => {
                     ]
                 },
                 {
+                    title: 'Cover Letter',
+                    items: [
+                        { icon: "/tool-icons/chatgpt-cover-letter.png", label: 'ChatGPT Cover Letter', desc: 'AI-powered letters', path: '/chatgpt-cover-letter', color: '#10b981' },
+                        { icon: "/tool-icons/cover-letter-templates.png", label: 'Cover Letter Templates', desc: 'Ready-to-use templates', path: '/cover-letter-templates', color: '#06b6d4' }
+                    ]
+                },
+                {
                     title: 'Career Tools',
                     items: [
                         { icon: "/tool-icons/career-change.png", label: 'Career Change Tool', desc: 'Find your path', path: '/career-change', color: '#6366f1' },
-                        { icon: "/tool-icons/cover-letter-templates.png", label: 'Cover Letter Templates', desc: 'Ready-to-use templates', path: '/cover-letter-templates', color: '#06b6d4' }
+                        { icon: "/tool-icons/interview-prep.png", label: 'Interview Prep', desc: 'AI mock interviews', path: '/interview-prep', color: '#14b8a6' }
                     ]
                 }
             ]
@@ -90,25 +89,13 @@ const MegaMenu = () => {
                 {
                     title: 'Optimization',
                     items: [
-                        { icon: "/tool-icons/linkedin-optimizer.png", label: 'LinkedIn Optimizer', desc: 'Profile optimization', path: '/landing/linkedin', color: '#0077b5' }
+                        { icon: "/tool-icons/linkedin-optimizer.png", label: 'LinkedIn Optimizer', desc: 'Profile optimization', path: '/linkedin-optimizer', color: '#0077b5' }
                     ]
                 },
                 {
                     title: 'Examples & Guides',
                     items: [
                         { icon: "/tool-icons/linkedin-examples.png", label: 'LinkedIn Examples', desc: 'Headlines & summaries', path: '/linkedin-examples', color: '#06b6d4' }
-                    ]
-                }
-            ]
-        },
-        aiAgent: {
-            label: 'AI Agent',
-            sections: [
-                {
-                    title: 'Job Assistance',
-                    items: [
-                        { icon: "/tool-icons/ai-job-match.png", label: 'AI Job Match', desc: 'Find your perfect role', path: '/landing/ai-job-match', color: '#8b5cf6' },
-                        { icon: "/tool-icons/autofill.png", label: 'Autofill', desc: '1-click applications', path: '/landing/autofill', color: '#10b981' }
                     ]
                 }
             ]
@@ -145,6 +132,17 @@ const MegaMenu = () => {
                                                     className="dropdown-item"
                                                     onClick={() => handleItemClick(item.path)}
                                                 >
+                                                    <div className="item-icon" style={{ backgroundColor: `${item.color}15`, color: item.color }}>
+                                                        {typeof item.icon === 'string' ? (
+                                                            <img
+                                                                src={item.icon}
+                                                                alt={item.label}
+                                                                className="w-full h-full object-contain p-1 transform scale-125"
+                                                            />
+                                                        ) : (
+                                                            <item.icon className="w-5 h-5" />
+                                                        )}
+                                                    </div>
                                                     <div className="item-content">
                                                         <span className="item-label">{item.label}</span>
                                                         <span className="item-desc">{item.desc}</span>
