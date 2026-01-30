@@ -27,9 +27,6 @@ const InterviewPrep = () => {
   const [roleTitle, setRoleTitle] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  // use centralized config
-  const INTERVIEW_API_BASE = INTERVIEW_API_URL;
-
   const handleFileChange = (e) => {
     if (e.target.files?.[0]) {
       setFile(e.target.files[0]);
