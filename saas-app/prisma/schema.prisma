@@ -3,25 +3,25 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
 model ResumeDocument {
-  id              String   @id @default(cuid())
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
   userId          String
   originalName    String
-  parsedText      String?  @db.Text
+  parsedText      String?
   structuredJson  Json?
   createdAt       DateTime @default(now())
   sessions        InterviewSession[]
 }
 
 model InterviewSession {
-  id              String   @id @default(cuid())
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
   userId          String
-  resumeId        String
-  jobDescription  String   @db.Text
+  resumeId        String   @db.ObjectId
+  jobDescription  String
   roleTitle       String
   status          String   @default("pending") // pending, active, completed
   questionCount   Int      @default(0)
@@ -34,21 +34,21 @@ model InterviewSession {
 }
 
 model InterviewTurn {
-  id              String   @id @default(cuid())
-  sessionId       String
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId       String   @db.ObjectId
   turnNumber      Int
-  questionText    String   @db.Text
+  questionText    String
   audioQuestionUrl String?
-  answerText      String?  @db.Text
+  answerText      String?
   timestamp       DateTime @default(now())
   
   session         InterviewSession @relation(fields: [sessionId], references: [id])
 }
 
 model EvaluationReport {
-  id              String   @id @default(cuid())
-  sessionId       String   @unique
-  summary         String   @db.Text
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId       String   @unique @db.ObjectId
+  summary         String
   strengths       String[]
   gaps            String[]
   repetition      Json?
