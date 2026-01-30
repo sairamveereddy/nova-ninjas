@@ -4475,6 +4475,29 @@ async def finalize_interview(session_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/interview/transcribe")
+async def transcribe_audio(audio: UploadFile = File(...)):
+    """Transcribe audio to text using Groq Whisper"""
+    try:
+        from interview_service import AIService
+        
+        # Read audio file
+        audio_bytes = await audio.read()
+        
+        # Create a temporary file-like object
+        import io
+        audio_file = io.BytesIO(audio_bytes)
+        audio_file.name = "recording.webm"
+        
+        # Transcribe
+        text = AIService.transcribe_audio(audio_file)
+        
+        return {"text": text}
+    except Exception as e:
+        logger.error(f"Transcription error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/interview/report/{session_id}")
 async def get_interview_report(session_id: str):
     """Get interview report for a session"""

@@ -137,6 +137,20 @@ class AIService:
         except Exception as e:
             print(f"Groq chat failed: {e}")
             raise
+    
+    @staticmethod
+    def transcribe_audio(audio_file) -> str:
+        """Transcribe audio using Groq Whisper"""
+        try:
+            transcription = groq_client.audio.transcriptions.create(
+                file=audio_file,
+                model="whisper-large-v3",
+                response_format="text"
+            )
+            return transcription
+        except Exception as e:
+            print(f"Groq transcription failed: {e}")
+            raise
 
 
 class InterviewOrchestrator:

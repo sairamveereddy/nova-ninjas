@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle, AlertCircle, Mic, Square, Volume2 } from 'lucide-react';
 import { API_URL } from '../config/api';
 import './InterviewRoom.css';
 
@@ -10,13 +10,19 @@ const InterviewRoom = () => {
     const { sessionId } = useParams();
     const navigate = useNavigate();
 
-    const [status, setStatus] = useState('loading'); // loading, active, completed, error
+    const [status, setStatus] = useState('loading');
     const [currentQuestion, setCurrentQuestion] = useState(null);
     const [answer, setAnswer] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [questionNumber, setQuestionNumber] = useState(0);
     const [totalQuestions] = useState(5);
+
+    // Audio recording states
+    const [isRecording, setIsRecording] = useState(false);
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
 
     useEffect(() => {
         startInterview();
@@ -43,9 +49,70 @@ const InterviewRoom = () => {
         }
     };
 
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                await transcribeAudio(audioBlob);
+
+                // Stop all tracks
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+        } catch (err) {
+            console.error('Microphone access error:', err);
+            alert('Unable to access microphone. Please check your permissions.');
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            setIsTranscribing(true);
+        }
+    };
+
+    const transcribeAudio = async (audioBlob) => {
+        try {
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'recording.webm');
+
+            const response = await fetch(`${API_URL}/api/interview/transcribe`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error('Transcription failed');
+            }
+
+            const data = await response.json();
+            setAnswer(data.text);
+        } catch (err) {
+            console.error('Transcription error:', err);
+            alert('Failed to transcribe audio. Please try recording again.');
+        } finally {
+            setIsTranscribing(false);
+        }
+    };
+
     const handleSubmitAnswer = async () => {
         if (!answer.trim()) {
-            alert('Please provide an answer before continuing.');
+            alert('Please record your answer before continuing.');
             return;
         }
 
@@ -66,10 +133,8 @@ const InterviewRoom = () => {
             const data = await response.json();
 
             if (data.status === 'completed') {
-                // Interview completed, finalize and get report
                 await finalizeInterview();
             } else {
-                // Got next question
                 setCurrentQuestion(data);
                 setQuestionNumber(prev => prev + 1);
                 setAnswer('');
@@ -183,34 +248,81 @@ const InterviewRoom = () => {
                     </CardContent>
                 </Card>
 
-                {/* Answer Input */}
+                {/* Voice Recording Card */}
                 <Card className="answer-card">
                     <CardContent className="p-6">
-                        <label className="answer-label">Your Answer</label>
-                        <textarea
-                            className="answer-textarea"
-                            rows={8}
-                            value={answer}
-                            onChange={(e) => setAnswer(e.target.value)}
-                            placeholder="Type your answer here... Be specific and use examples from your experience."
-                            disabled={isSubmitting}
-                        />
-                        <div className="answer-actions">
-                            <Button
-                                onClick={handleSubmitAnswer}
-                                disabled={isSubmitting || !answer.trim()}
-                                className="btn-primary"
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Submitting...
-                                    </>
-                                ) : (
-                                    'Submit Answer'
-                                )}
-                            </Button>
+                        <label className="answer-label">
+                            <Volume2 className="w-4 h-4 inline mr-2" />
+                            Voice Answer
+                        </label>
+
+                        {/* Recording Controls */}
+                        <div className="recording-controls">
+                            {!isRecording && !answer && (
+                                <Button
+                                    onClick={startRecording}
+                                    className="record-button"
+                                    disabled={isTranscribing}
+                                >
+                                    <Mic className="w-5 h-5 mr-2" />
+                                    Start Recording
+                                </Button>
+                            )}
+
+                            {isRecording && (
+                                <Button
+                                    onClick={stopRecording}
+                                    className="stop-button"
+                                >
+                                    <Square className="w-5 h-5 mr-2" />
+                                    Stop Recording
+                                </Button>
+                            )}
+
+                            {isTranscribing && (
+                                <div className="transcribing-state">
+                                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                    Transcribing your answer...
+                                </div>
+                            )}
                         </div>
+
+                        {/* Transcript Display (Read-only) */}
+                        {answer && (
+                            <div className="transcript-container">
+                                <div className="transcript-label">Your Transcript (Read-only)</div>
+                                <div className="transcript-text">{answer}</div>
+                                {!isSubmitting && (
+                                    <Button
+                                        onClick={() => setAnswer('')}
+                                        variant="outline"
+                                        className="re-record-button"
+                                    >
+                                        Re-record Answer
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Submit Button */}
+                        {answer && (
+                            <div className="answer-actions">
+                                <Button
+                                    onClick={handleSubmitAnswer}
+                                    disabled={isSubmitting}
+                                    className="btn-primary"
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            Submitting...
+                                        </>
+                                    ) : (
+                                        'Submit Answer'
+                                    )}
+                                </Button>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
