@@ -10,7 +10,7 @@ const InterviewPrepLanding = () => {
     const navigate = useNavigate();
 
     const handleTryForFree = () => {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('auth_token');
         if (token) {
             navigate('/dashboard/tools/interview-prep');
         } else {
