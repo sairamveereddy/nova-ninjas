@@ -90,13 +90,25 @@ const MegaMenu = () => {
                 {
                     title: 'Optimization',
                     items: [
-                        { icon: "/tool-icons/linkedin-optimizer.png", label: 'LinkedIn Optimizer', desc: 'Profile optimization', path: '/linkedin-optimizer', color: '#0077b5' }
+                        { icon: "/tool-icons/linkedin-optimizer.png", label: 'LinkedIn Optimizer', desc: 'Profile optimization', path: '/landing/linkedin', color: '#0077b5' }
                     ]
                 },
                 {
                     title: 'Examples & Guides',
                     items: [
                         { icon: "/tool-icons/linkedin-examples.png", label: 'LinkedIn Examples', desc: 'Headlines & summaries', path: '/linkedin-examples', color: '#06b6d4' }
+                    ]
+                }
+            ]
+        },
+        aiAgent: {
+            label: 'AI Agent',
+            sections: [
+                {
+                    title: 'Job Assistance',
+                    items: [
+                        { icon: "/tool-icons/ai-job-match.png", label: 'AI Job Match', desc: 'Find your perfect role', path: '/landing/ai-job-match', color: '#8b5cf6' },
+                        { icon: "/tool-icons/autofill.png", label: 'Autofill', desc: '1-click applications', path: '/landing/autofill', color: '#10b981' }
                     ]
                 }
             ]

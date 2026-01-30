@@ -59,9 +59,15 @@ import ContactPage from "./components/ContactPage";
 import InterviewPrepLanding from "./pages/InterviewPrepLanding";
 import ResumeAILanding from "./pages/ResumeAILanding";
 import CoverLetterLanding from "./pages/CoverLetterLanding";
+import LinkedInLanding from "./pages/LinkedInLanding";
+import AutofillLanding from "./pages/AutofillLanding";
+import AIJobMatchLanding from "./pages/AIJobMatchLanding";
 // Dashboard Components
 import DashboardLayout from "./components/Dashboard/DashboardLayout";
 import ToolsPage from "./pages/Dashboard/ToolsPage";
+import JobsPage from "./pages/Dashboard/JobsPage";
+import ResumesPage from "./pages/Dashboard/ResumesPage";
+import ProfilePage from "./pages/Dashboard/ProfilePage";
 import "./components/Jobs.css";
 import "./components/InterviewPrep.css";
 import "./components/ResumeScanner.css";
@@ -119,6 +125,9 @@ function App() {
             <Route path="/landing/interview-prep" element={<InterviewPrepLanding />} />
             <Route path="/landing/resume-ai" element={<ResumeAILanding />} />
             <Route path="/landing/cover-letter" element={<CoverLetterLanding />} />
+            <Route path="/landing/linkedin" element={<LinkedInLanding />} />
+            <Route path="/landing/autofill" element={<AutofillLanding />} />
+            <Route path="/landing/ai-job-match" element={<AIJobMatchLanding />} />
 
             {/* Interview Prep Route - Keep for backward compatibility */}
             <Route path="/interview-prep" element={<InterviewPrep />} />
@@ -226,9 +235,9 @@ function App() {
 
               {/* Dashboard Pages */}
               <Route path="tools" element={<ToolsPage />} />
-              <Route path="jobs" element={<Jobs />} />
-              <Route path="resumes" element={<MyResumes />} />
-              <Route path="profile" element={<Dashboard />} />
+              <Route path="jobs" element={<JobsPage />} />
+              <Route path="resumes" element={<ResumesPage />} />
+              <Route path="profile" element={<ProfilePage />} />
               <Route path="settings" element={<Dashboard />} />
 
               {/* Tool Routes within Dashboard */}
