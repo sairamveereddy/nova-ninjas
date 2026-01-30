@@ -25,77 +25,55 @@ import './SideMenu.css';
 const InterviewPrep = () => {
   const navigate = useNavigate();
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
-  const [email, setEmail] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [step, setStep] = useState('setup'); // 'setup' or 'active'
+  const [file, setFile] = useState(null);
+  const [jd, setJd] = useState('');
+  const [roleTitle, setRoleTitle] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
-  const plannedFeatures = [
-    {
-      icon: FileText,
-      title: 'Resume-based questions',
-      description: 'Upload your resume or pick one of your tailored resumes to generate personalized interview questions.'
-    },
-    {
-      icon: Target,
-      title: 'Job-specific practice',
-      description: 'Paste a job description or select a role you applied for to practice with targeted questions.'
-    },
-    {
-      icon: MessageSquare,
-      title: 'Chat (Text Q&A)',
-      description: 'Practice answering interview questions via text chat with AI feedback on your responses.'
-    },
-    {
-      icon: Mic,
-      title: 'Audio Practice',
-      description: 'Speak your answers out loud and receive feedback on clarity, pacing, and content.'
-    },
-    {
-      icon: Video,
-      title: 'Video Mock Interviews',
-      description: 'Full video mock interviews with Google-style behavioral and technical questions.'
-    },
-    {
-      icon: CheckCircle,
-      title: 'Structured Feedback',
-      description: 'Get detailed feedback on clarity, relevance, and alignment with the role requirements.'
+  // In production, this should point to the Next.js app URL or be proxied
+  const INTERVIEW_API_BASE = window.location.hostname === 'localhost'
+    ? 'http://localhost:3001'
+    : ''; // Assume same origin for production if hosted together
+
+  const handleFileChange = (e) => {
+    if (e.target.files?.[0]) {
+      setFile(e.target.files[0]);
     }
-  ];
+  };
 
-  const handleSubscribe = async () => {
-    if (!email || !email.includes('@')) {
-      alert('Please enter a valid email address');
-      return;
-    }
+  const handleCreateSession = async () => {
+    if (!file || !jd || !roleTitle) return;
 
-    setIsSubmitting(true);
+    setIsCreating(true);
     try {
-      const response = await fetch(`${API_URL}/api/waitlist`, {
+      const formData = new FormData();
+      formData.append('resume', file);
+      formData.append('jd', jd);
+      formData.append('roleTitle', roleTitle);
+
+      const response = await fetch(`${INTERVIEW_API_BASE}/api/interview/create-session`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          source: 'interview-prep',
-          createdAt: new Date().toISOString()
-        })
+        body: formData,
       });
 
-      if (response.ok) {
-        setIsSubscribed(true);
+      const data = await response.json();
+      if (data.sessionId) {
+        // Redirect to the Next.js interview room
+        window.location.href = `${INTERVIEW_API_BASE}/interview-prep/${data.sessionId}`;
       } else {
-        alert('Something went wrong. Please try again.');
+        alert('Failed to create session. Please try again.');
       }
     } catch (error) {
-      console.error('Error subscribing:', error);
-      // Still show success for demo purposes
-      setIsSubscribed(true);
+      console.error('Failed to create session:', error);
+      alert('Network error. Make sure the interview service is running.');
     } finally {
-      setIsSubmitting(false);
+      setIsCreating(false);
     }
   };
 
   return (
-    <div className="interview-prep-page">
+    <div className="interview-prep-page dark-theme">
       {/* Side Menu */}
       <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
 
@@ -111,7 +89,7 @@ const InterviewPrep = () => {
           </button>
         </div>
         <div className="nav-actions">
-          <Button variant="secondary" onClick={() => navigate('/ai-ninja')}>
+          <Button variant="ghost" onClick={() => navigate('/ai-ninja')}>
             AI Ninja
           </Button>
           <Button className="btn-primary" onClick={() => navigate('/pricing')}>
@@ -120,111 +98,85 @@ const InterviewPrep = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="interview-hero">
-        <div className="container">
-          <h1 className="interview-title">
-            AI Interview Prep
-          </h1>
-          <p className="interview-subtitle">
-            Practice for your interviews with our AI-powered mock interviewer. Get real-time feedback and improve your performance.
-          </p>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="interview-features">
-        <div className="container">
-          <h2 className="section-title">Planned Features</h2>
-          <div className="features-grid">
-            {plannedFeatures.map((feature, index) => {
-              const Icon = feature.icon;
-              return (
-                <Card key={index} className="feature-card-prep">
-                  <CardContent className="pt-6">
-                    <div className="feature-icon-wrapper">
-                      <Icon className="w-8 h-8" />
-                    </div>
-                    <h3>{feature.title}</h3>
-                    <p>{feature.description}</p>
-                  </CardContent>
-                </Card>
-              );
-            })}
+      {/* Setup Form */}
+      <main className="interview-setup-container">
+        <div className="setup-card">
+          <div className="setup-header">
+            <h1 className="text-3xl font-bold mb-2">AI Interview Prep</h1>
+            <p className="text-gray-400">Practice with our real-time voice interviewer grounded in your resume.</p>
           </div>
-        </div>
-      </section>
 
-      {/* Email Capture Section */}
-      <section className="email-capture-section">
-        <div className="container">
-          <Card className="email-capture-card">
-            <CardContent className="pt-6">
-              {isSubscribed ? (
-                <div className="subscribed-message">
-                  <CheckCircle className="w-12 h-12 text-green-500" />
-                  <h3>You're on the list!</h3>
-                  <p>We'll notify you as soon as Interview Prep is ready.</p>
-                </div>
+          <div className="setup-body space-y-8">
+            {/* Step 1: Role */}
+            <section className="setup-section">
+              <div className="section-title">
+                <Briefcase className="w-5 h-5 text-blue-500" />
+                <span>What role are you practicing for?</span>
+              </div>
+              <Input
+                placeholder="e.g. Senior Product Manager"
+                value={roleTitle}
+                onChange={(e) => setRoleTitle(e.target.value)}
+                className="setup-input"
+              />
+            </section>
+
+            {/* Step 2: Resume */}
+            <section className="setup-section">
+              <div className="section-title">
+                <FileText className="w-5 h-5 text-blue-500" />
+                <span>Upload your Resume</span>
+              </div>
+              <div
+                className={`file-upload-zone ${file ? 'has-file' : ''}`}
+                onClick={() => document.getElementById('resume-upload').click()}
+              >
+                <Upload className="w-8 h-8 mb-2 opacity-50" />
+                <p className="text-sm font-medium">{file ? file.name : 'Click to upload PDF or DOCX'}</p>
+                <input
+                  id="resume-upload"
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.docx"
+                  onChange={handleFileChange}
+                />
+              </div>
+            </section>
+
+            {/* Step 3: Job Description */}
+            <section className="setup-section">
+              <div className="section-title">
+                <Target className="w-5 h-5 text-blue-500" />
+                <span>Paste the Job Description (optional but recommended)</span>
+              </div>
+              <textarea
+                placeholder="Paste the full job details here to get targeted questions..."
+                value={jd}
+                onChange={(e) => setJd(e.target.value)}
+                className="setup-textarea"
+              />
+            </section>
+
+            <Button
+              className="w-full h-14 btn-primary text-lg font-bold flex items-center justify-center gap-3"
+              onClick={handleCreateSession}
+              disabled={!file || !roleTitle || isCreating}
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="animate-spin" />
+                  Preparing Interview...
+                </>
               ) : (
                 <>
-                  <div className="email-capture-icon">
-                    <Bell className="w-10 h-10" />
-                  </div>
-                  <h3>Get Notified When It's Live</h3>
-                  <p>
-                    Be the first to know when Interview Prep launches.
-                    We'll send you one email—no spam.
-                  </p>
-                  <div className="email-form">
-                    <div className="email-input-wrapper">
-                      <Mail className="email-icon" />
-                      <Input
-                        type="email"
-                        placeholder="your@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="email-input"
-                      />
-                    </div>
-                    <Button
-                      className="btn-primary"
-                      onClick={handleSubscribe}
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Subscribing...</>
-                      ) : (
-                        <>Notify Me</>
-                      )}
-                    </Button>
-                  </div>
+                  <Play className="w-5 h-5" />
+                  Start Mock Interview
                 </>
               )}
-            </CardContent>
-          </Card>
+            </Button>
+          </div>
         </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="interview-cta-section">
-        <div className="container">
-          <Card className="interview-cta-card">
-            <h2>In the meantime, perfect your applications</h2>
-            <p>
-              Use AI Ninja to tailor your resume and cover letter for every job you apply to.
-            </p>
-            <div className="cta-buttons">
-              <Button className="btn-primary btn-large" onClick={() => navigate('/ai-ninja')}>
-                Try AI Ninja
-              </Button>
-              <Button variant="outline" onClick={() => navigate('/jobs')}>
-                Browse Jobs
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </section>
+      </main>
 
       {/* Footer */}
       <footer className="footer footer-simple">
@@ -236,7 +188,6 @@ const InterviewPrep = () => {
             </div>
             <div className="footer-links-simple">
               <button onClick={() => navigate('/ai-ninja')} className="footer-link">AI Ninja</button>
-              <button onClick={() => navigate('/human-ninja')} className="footer-link">Human Ninja</button>
               <button onClick={() => navigate('/pricing')} className="footer-link">Pricing</button>
             </div>
           </div>
