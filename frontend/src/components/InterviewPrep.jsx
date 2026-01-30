@@ -14,7 +14,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { BRAND } from '../config/branding';
-import { INTERVIEW_API_URL } from '../config/api';
+import { API_URL } from '../config/api';
 import SideMenu from './SideMenu';
 import './SideMenu.css';
 
