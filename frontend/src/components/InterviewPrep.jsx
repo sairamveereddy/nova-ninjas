@@ -4,13 +4,13 @@ import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-import { 
+import {
   Menu,
-  Mic, 
-  Video, 
-  MessageSquare, 
-  FileText, 
-  Target, 
+  Mic,
+  Video,
+  MessageSquare,
+  FileText,
+  Target,
   CheckCircle,
   Mail,
   Loader2,
@@ -73,8 +73,8 @@ const InterviewPrep = () => {
       const response = await fetch(`${API_URL}/api/waitlist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email, 
+        body: JSON.stringify({
+          email,
           source: 'interview-prep',
           createdAt: new Date().toISOString()
         })
@@ -123,14 +123,11 @@ const InterviewPrep = () => {
       {/* Hero Section */}
       <section className="interview-hero">
         <div className="container">
-          <Badge className="coming-soon-badge">
-            <Sparkles className="w-4 h-4" /> Coming Soon
-          </Badge>
           <h1 className="interview-title">
             AI Interview Prep
           </h1>
           <p className="interview-subtitle">
-            Soon, you'll be able to use {BRAND.name} not just to apply, but to practice for your interviews.
+            Practice for your interviews with our AI-powered mock interviewer. Get real-time feedback and improve your performance.
           </p>
         </div>
       </section>
@@ -176,7 +173,7 @@ const InterviewPrep = () => {
                   </div>
                   <h3>Get Notified When It's Live</h3>
                   <p>
-                    Be the first to know when Interview Prep launches. 
+                    Be the first to know when Interview Prep launches.
                     We'll send you one email—no spam.
                   </p>
                   <div className="email-form">
@@ -190,7 +187,7 @@ const InterviewPrep = () => {
                         className="email-input"
                       />
                     </div>
-                    <Button 
+                    <Button
                       className="btn-primary"
                       onClick={handleSubscribe}
                       disabled={isSubmitting}

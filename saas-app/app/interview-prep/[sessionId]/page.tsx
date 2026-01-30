@@ -16,10 +16,21 @@ export default function InterviewRoom() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [questionCount, setQuestionCount] = useState(1);
     const [targetQuestions, setTargetQuestions] = useState(10);
-
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    const [useWebSpeech, setUseWebSpeech] = useState(false);
+    const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+    useEffect(() => {
+        const loadVoices = () => {
+            const availableVoices = window.speechSynthesis.getVoices();
+            setVoices(availableVoices);
+        };
+        loadVoices();
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+    }, []);
 
     // Initial load: start interview
     useEffect(() => {
@@ -46,6 +57,15 @@ export default function InterviewRoom() {
     }, [sessionId]);
 
     const playTTS = async (text: string) => {
+        if (useWebSpeech) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            // Try to find a good English voice
+            const preferredVoice = voices.find(v => v.name.includes('Google US English') || v.name.includes('Samantha')) || voices[0];
+            if (preferredVoice) utterance.voice = preferredVoice;
+            window.speechSynthesis.speak(utterance);
+            return;
+        }
+
         try {
             const res = await fetch('/api/interview/tts', {
                 method: 'POST',
@@ -59,6 +79,9 @@ export default function InterviewRoom() {
             }
         } catch (err) {
             console.error('TTS error:', err);
+            // Fallback to browser speech if API fails
+            const utterance = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(utterance);
         }
     };
 
@@ -110,8 +133,8 @@ export default function InterviewRoom() {
             if (data.success) {
                 setTranscript(prev => [
                     ...prev,
-                    { role: 'user', text: data.answerTranscript },
-                    ...(data.status === 'active' ? [{ role: 'ai', text: data.question }] : [])
+                    { role: 'user' as const, text: data.answerTranscript },
+                    ...(data.status === 'active' ? [{ role: 'ai' as const, text: data.question }] : [])
                 ]);
 
                 if (data.status === 'active') {
@@ -174,8 +197,19 @@ export default function InterviewRoom() {
                     <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
                     <span className="font-semibold text-lg">Live Interview</span>
                 </div>
-                <div className="bg-white/10 px-4 py-2 rounded-full text-sm font-medium">
-                    Question {questionCount} of {targetQuestions}
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter">Zero-Cost Voice</span>
+                        <button
+                            onClick={() => setUseWebSpeech(!useWebSpeech)}
+                            className={`w-10 h-5 rounded-full transition-colors relative ${useWebSpeech ? 'bg-green-500' : 'bg-slate-700'}`}
+                        >
+                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${useWebSpeech ? 'left-6' : 'left-1'}`} />
+                        </button>
+                    </div>
+                    <div className="bg-white/10 px-4 py-2 rounded-full text-sm font-medium">
+                        Question {questionCount} of {targetQuestions}
+                    </div>
                 </div>
             </header>
 

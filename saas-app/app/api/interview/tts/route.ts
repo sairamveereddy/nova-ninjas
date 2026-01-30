@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai } from '@/lib/openai';
+import { AIService } from '@/lib/ai/service';
 
 export async function POST(req: NextRequest) {
     try {
@@ -9,19 +9,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Text is required' }, { status: 400 });
         }
 
-        const mp3 = await openai.audio.speech.create({
-            model: "tts-1",
-            voice: "alloy", // alloy, echo, fable, onyx, nova, shimmer
-            input: text,
-        });
-
-        const buffer = Buffer.from(await mp3.arrayBuffer());
-
-        return new Response(buffer, {
-            headers: {
-                'Content-Type': 'audio/mpeg',
-            },
-        });
+        return await AIService.speak(text);
 
     } catch (error) {
         console.error('TTS error:', error);

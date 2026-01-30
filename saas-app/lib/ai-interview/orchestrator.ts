@@ -1,4 +1,4 @@
-import { openai } from '../openai';
+import { AIService } from '../ai/service';
 import { INTERVIEW_PROMPTS } from './prompts';
 import { prisma } from '../prisma';
 
@@ -21,13 +21,8 @@ export class InterviewOrchestrator {
             .replace('{{profile}}', JSON.stringify(session.resume.structuredJson || session.resume.parsedText))
             .replace('{{jd}}', session.jobDescription);
 
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: [{ role: 'user', content: prompt }],
-            response_format: { type: 'json_object' },
-        });
-
-        const result = JSON.parse(completion.choices[0].message.content || '{}');
+        const response = await AIService.chat(prompt, true);
+        const result = JSON.parse(response || '{}');
 
         // Save the turn
         await prisma.interviewTurn.create({
@@ -74,13 +69,8 @@ export class InterviewOrchestrator {
             .replace('{{history}}', history)
             .replace('{{lastAnswer}}', answerText);
 
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: [{ role: 'user', content: prompt }],
-            response_format: { type: 'json_object' },
-        });
-
-        const result = JSON.parse(completion.choices[0].message.content || '{}');
+        const response = await AIService.chat(prompt, true);
+        const result = JSON.parse(response || '{}');
 
         // Create next turn
         await prisma.interviewTurn.create({
@@ -118,13 +108,8 @@ export class InterviewOrchestrator {
             .replace('{{jd}}', session.jobDescription)
             .replace('{{transcript}}', transcript);
 
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: [{ role: 'user', content: prompt }],
-            response_format: { type: 'json_object' },
-        });
-
-        const result = JSON.parse(completion.choices[0].message.content || '{}');
+        const response = await AIService.chat(prompt, true);
+        const result = JSON.parse(response || '{}');
 
         // Save report
         const report = await prisma.evaluationReport.create({

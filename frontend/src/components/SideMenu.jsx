@@ -95,9 +95,6 @@ const SideMenu = ({ isOpen, onClose }) => {
                     <item.icon className="side-menu-icon" />
                   )}
                   <span>{item.label}</span>
-                  {item.label === 'Interview Prep' && (
-                    <span className="side-menu-badge">Soon</span>
-                  )}
                 </button>
               );
             })}
