@@ -156,7 +156,7 @@ const Dashboard = () => {
             role: app.jobTitle || app.job_title || 'Unknown',
             status: app.status || 'materials_ready',
             applicationLink: app.sourceUrl || app.application_link || '',
-            date: app.createdAt ? new Date(app.createdAt).toLocaleDateString() : (app.submitted_date || '-'),
+            date: app.appliedAt ? new Date(app.appliedAt).toLocaleDateString() : (app.createdAt ? new Date(app.createdAt).toLocaleDateString() : (app.submitted_date || '-')),
             location: app.location || '',
             matchScore: app.matchScore || 0,
             notes: app.notes || '',

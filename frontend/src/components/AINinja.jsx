@@ -135,6 +135,18 @@ const AINinja = () => {
       ]
     },
     {
+      name: "Extension & Simulation",
+      tools: [
+        {
+          icon: "/ninjasface.png",
+          name: "LinkedIn Mockup",
+          description: "See our Autofill Extension in action on LinkedIn",
+          path: "/linkedin-mockup",
+          color: "bg-blue-50"
+        }
+      ]
+    },
+    {
       name: "Templates & Resources",
       tools: [
         {

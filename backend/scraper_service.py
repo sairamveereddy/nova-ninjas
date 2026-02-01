@@ -233,9 +233,15 @@ async def scrape_job_description(url: str) -> Dict[str, Any]:
                 "error": "This job posting appears to be inactive or no longer exists (404 Error). Please verify the link is still valid."
             }
         
+        domain_name = "This site"
+        if "linkedin" in url.lower(): domain_name = "LinkedIn"
+        elif "monster" in url.lower(): domain_name = "Monster"
+        elif "indeed" in url.lower(): domain_name = "Indeed"
+        elif "jpmc" in url.lower() or "oraclecloud" in url.lower(): domain_name = "JPMorgan/Oracle"
+        
         return {
             "success": False, 
-            "error": "Access blocked by the job board. This site (like Monster, LinkedIn, or Indeed) has strong anti-scraping measures. Please copy and paste the job description manually."
+            "error": f"Access blocked by {domain_name}. This site has strong anti-scraping measures. Please copy and paste the job description manually."
         }
 
     raw_text = extract_main_text(html)
@@ -244,9 +250,14 @@ async def scrape_job_description(url: str) -> Dict[str, Any]:
     # Check if text is too short or just boilerplate after cleaning
     if len(raw_text) < 300:
         logger.warning(f"Extracted text too short or blocked ({len(raw_text)} chars). Sample: {raw_text[:200]}")
+        
+        domain_name = "The job board"
+        if "linkedin" in url.lower(): domain_name = "LinkedIn"
+        elif "jpmc" in url.lower() or "oraclecloud" in url.lower(): domain_name = "JPMorgan/Oracle"
+
         return {
             "success": False,
-            "error": "LinkedIn is blocking access to this job's details. Please copy the job description and paste it manually into the field below."
+            "error": f"{domain_name} is blocking access to this job's details. Please copy the job description and paste it manually into the field below."
         }
     
     # Truncate text to avoid hitting token limits

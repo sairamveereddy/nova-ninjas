@@ -249,6 +249,49 @@ async def get_current_user(token: str = Header(None, alias="token")):
     return user
 
 
+async def check_and_increment_daily_usage(user_email: str, usage_type: str, limit: Union[int, str]) -> bool:
+    """
+    Check if user has reached their daily limit for a specific usage type and increment if not.
+    usage_type: 'apps' or 'autofills'
+    """
+    if limit == "Unlimited" or limit == "Unlimited (BYOK)":
+        return True
+        
+    try:
+        now = datetime.now(timezone.utc)
+        today = now.strftime("%Y-%m-%d")
+        
+        # We'll store usage in a separate collection for efficiency
+        usage_doc = await db.daily_usage.find_one({"email": user_email, "date": today})
+        
+        if not usage_doc:
+            # Create new doc for today
+            usage_doc = {
+                "email": user_email,
+                "date": today,
+                "apps": 0,
+                "autofills": 0,
+                "created_at": now
+            }
+            await db.daily_usage.insert_one(usage_doc)
+        
+        current_usage = usage_doc.get(usage_type, 0)
+        
+        if current_usage >= int(limit):
+            return False
+            
+        # Increment usage
+        await db.daily_usage.update_one(
+            {"email": user_email, "date": today},
+            {"$inc": {usage_type: 1}}
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Error checking daily usage for {user_email}: {e}")
+        # Fail safe: allow if error
+        return True
+
+
 async def get_decrypted_byok_key(email: str) -> dict:
     """Helper to get and decrypt user's BYOK key if it exists"""
     if not email:
@@ -300,6 +343,7 @@ class StatusCheckCreate(BaseModel):
 
 class JobUrlFetchRequest(BaseModel):
     url: str
+    userId: Optional[str] = None
 
 
 class WaitlistEntry(BaseModel):
@@ -1927,7 +1971,7 @@ async def remove_byok_key(user: dict = Depends(get_current_user)):
 # ============ GOOGLE SHEETS INTEGRATION ============
 
 
-@api_router.get("/applications/{user_email}")
+@api_router.get("/sheets/applications/{user_email}")
 async def get_user_applications(user_email: str):
     """
     Fetch applications for a specific user from Google Sheets.
@@ -2698,28 +2742,36 @@ async def get_user_usage_limits(identifier: str) -> dict:
     sub = user.get("subscription", {})
     if sub and sub.get("status") == "active":
         tier_id = sub.get("plan_id", tier)
-        if "pro" in tier_id.lower():
+        if "pro" in tier_id.lower() or "monthly" in tier_id.lower() or "quarterly" in tier_id.lower() or "weekly" in tier_id.lower():
             tier = "pro"
         elif "beginner" in tier_id.lower():
             tier = "beginner"
 
-    # Updated limits as per user instruction
-    # Free: 5 total
-    # Beginner ($19.99): 200 per month/total depending on sub
-    # Pro ($29.99): Unlimited
+    # Get daily usage
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    daily_usage = await db.daily_usage.find_one({"email": user.get("email"), "date": today}) or {}
+    current_daily_apps = daily_usage.get("apps", 0)
+    current_daily_autofills = daily_usage.get("autofills", 0)
 
-    limit = 5
-    current_count = total_resumes
+    # Updated limits as per user instruction
+    # Free: 10 applications per day, 5 auto-fills per day
+    # Paid (Weekly, Monthly, Quarterly): Unlimited
+
+    limit = 10  # Default for free
+    autofills_limit = 5
+    current_count = current_daily_apps
     can_generate = False
     reset_date = None
 
     tier_lower = str(tier).strip().lower()
 
-    if tier_lower == "pro" or tier_lower == "unlimited":
+    if tier_lower in ["pro", "unlimited", "ai-pro", "ai-monthly", "ai-quarterly", "ai-weekly"]:
         limit = "Unlimited"
+        autofills_limit = "Unlimited"
         can_generate = True
-    elif tier_lower == "beginner" or tier_lower == "standard":
+    elif tier_lower == "beginner" or tier_lower == "standard" or tier_lower == "ai-beginner":
         limit = 200
+        autofills_limit = "Unlimited"
         # Calculate monthly count if subscription is active
         activated_at = sub.get("activated_at") if sub else None
         if activated_at:
@@ -2754,13 +2806,19 @@ async def get_user_usage_limits(identifier: str) -> dict:
         can_generate = current_count < limit
     elif tier_lower == "free_byok" or user.get("byok_enabled"):
         limit = "Unlimited (BYOK)"
+        autofills_limit = "Unlimited"
         can_generate = True
-    else:  # free
-        limit = 100  # Increased to 100 for beta
-        can_generate = total_resumes < limit
+    else:  # free or ai-free
+        limit = 10
+        autofills_limit = 5
+        current_count = current_daily_apps
+        can_generate = current_count < limit
+
     return {
         "limit": limit,
         "usage": current_count,
+        "autofillsLimit": autofills_limit,
+        "autofillsUsage": current_daily_autofills,
         "canGenerate": can_generate,
         "resetDate": reset_date,
         "totalResumes": total_resumes,
@@ -2805,12 +2863,27 @@ async def fetch_job_desc(request: JobUrlFetchRequest):
     Fetch and extract job description from a URL.
     """
     try:
-        # SAFETY PATCH: Define user to prevent NameError from ghost code/corruption
-        user = None 
-        
         url = request.url.strip()
         if not url:
             raise HTTPException(status_code=400, detail="URL is required")
+
+        # Optional usage tracking if userId provided
+        if request.userId and request.userId != "guest":
+            usage = await get_user_usage_limits(request.userId)
+            # We don't have user object here easily, but get_user_usage_limits returns enough
+            # We need user email for check_and_increment_daily_usage
+            user = await db.users.find_one({"$or": [{"email": request.userId}, {"id": request.userId}]})
+            if user:
+                can_autofill = await check_and_increment_daily_usage(
+                    user["email"], 
+                    "autofills", 
+                    usage.get("autofillsLimit", 5)
+                )
+                if not can_autofill:
+                     return {
+                         "success": False, 
+                         "error": f"Daily auto-fill limit reached ({usage.get('autofillsLimit')} per day). Please upgrade to continue or wait until tomorrow."
+                     }
 
         logger.info(f"Fetching job description for URL: {url}")
         result = await scrape_job_description(url)
@@ -2879,8 +2952,11 @@ async def ai_ninja_apply(request: Request):
         if not usage["canGenerate"]:
             raise HTTPException(
                 status_code=403,
-                detail=f"Usage limit reached ({usage['limit']} resumes). Please upgrade to continue.",
+                detail=f"Usage limit reached ({usage['limit']} applications per day). Please upgrade to continue.",
             )
+            
+        # Increment usage
+        await check_and_increment_daily_usage(user["email"], "apps", usage["limit"])
 
         jobId = form.get("jobId", "")
         jobTitle = form.get("jobTitle", "")
@@ -4271,7 +4347,7 @@ class ApplicationData(BaseModel):
     coverLetterText: Optional[str] = ""
 
 
-@app.post("/api/applications")
+@api_router.post("/applications")
 async def save_application(application: ApplicationData):
     """
     Save a job application to the tracker

@@ -59,6 +59,7 @@ import "./components/Jobs.css";
 import "./components/InterviewPrep.css";
 import "./components/ResumeScanner.css";
 import "./components/AIApplyFlow.css";
+import LinkedInMockup from "./components/LinkedInMockup";
 
 function App() {
   return (
@@ -175,6 +176,7 @@ function App() {
             />
             <Route path="/linkedin-examples" element={<LinkedInExamples />} />
             <Route path="/resume-examples" element={<LinkedInExamples />} />
+            <Route path="/linkedin-mockup" element={<LinkedInMockup />} />
 
             {/* Phase 3 Tools Routes */}
             <Route path="/resume-templates" element={<ResumeTemplates />} />

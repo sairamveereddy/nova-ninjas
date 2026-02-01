@@ -1,5 +1,6 @@
 :root {
-    --primary-green: #00e696;
+    --primary-blue: #0066ff;
+    --primary-gradient: linear-gradient(135deg, #0066ff 0%, #0052cc 100%);
     --bg-light: #f8f9fa;
     --card-white: #ffffff;
     --text-main: #000000;
@@ -48,10 +49,13 @@ header {
 .logo-icon {
     width: 32px;
     height: 32px;
+    background: white;
     background-image: url('../../icons/icon48.png');
-    background-size: contain;
+    background-size: 80%;
+    background-position: center;
     background-repeat: no-repeat;
     border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .logo-section h1 {
@@ -142,8 +146,8 @@ main {
 
 /* Primary Button */
 .btn-primary {
-    background: var(--primary-green);
-    color: #000;
+    background: var(--primary-gradient);
+    color: #fff;
     border: none;
     padding: 16px;
     border-radius: 12px;
@@ -151,7 +155,7 @@ main {
     font-size: 1.1rem;
     cursor: pointer;
     width: 100%;
-    box-shadow: 0 4px 12px rgba(0, 230, 150, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 102, 255, 0.2);
     transition: all 0.2s;
 }
 
@@ -188,8 +192,8 @@ main {
 }
 
 .btn-pill {
-    background: #dcfce7;
-    color: #059669;
+    background: #dbeafe;
+    color: #1e40af;
     border: none;
     padding: 6px 12px;
     border-radius: 8px;
@@ -220,7 +224,7 @@ main {
 
 .progress-fill {
     height: 100%;
-    background: var(--primary-green);
+    background: var(--primary-gradient);
     width: 0%;
     transition: width 0.3s ease;
 }
@@ -257,7 +261,7 @@ main {
 .checklist li.done::before {
     content: '✓';
     border: none;
-    color: #10B981;
+    color: var(--primary-blue);
     font-weight: 900;
     text-align: center;
     line-height: 14px;
@@ -306,7 +310,7 @@ main {
 
 .form-group-modern input:focus,
 .form-group-modern textarea:focus {
-    border-color: var(--primary-green);
+    border-color: var(--primary-blue);
 }
 
 /* Footer Section */

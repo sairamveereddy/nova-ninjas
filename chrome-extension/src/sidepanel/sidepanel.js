@@ -55,39 +55,54 @@ function setupEventListeners() {
 }
 
 // 2. Auth Logic
+let authCheckInterval = null;
+
 async function checkAuth() {
-    chrome.runtime.sendMessage({ type: 'GET_AUTH_TOKEN' }, async (response) => {
-        if (response && response.token) {
+    chrome.runtime.sendMessage({ type: 'GET_AUTH_TOKEN' }, (response) => {
+        if (chrome.runtime.lastError || !response || !response.token) {
+            showScreen('auth');
+            startAuthPolling();
+            return;
+        }
+
+        // Token or data changed
+        if (response.token !== currentToken || JSON.stringify(response.userData) !== JSON.stringify(currentUser)) {
             currentToken = response.token;
             currentUser = response.userData;
 
-            // Fetch full profile for better autofill
-            try {
-                const profileRes = await fetch(`${API_BASE_URL}/api/user/profile`, {
-                    headers: { 'token': currentToken }
-                });
-                if (profileRes.ok) {
-                    const profileData = await profileRes.json();
-                    if (profileData.success && profileData.profile) {
-                        currentUser = { ...currentUser, ...profileData.profile };
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to fetch profile:', err);
-            }
-
+            stopAuthPolling();
             showScreen('dashboard');
             updateProfileUI();
-        } else {
-            showScreen('auth');
         }
     });
 }
 
+function startAuthPolling() {
+    if (authCheckInterval) return;
+    console.log('[jobNinjas] Starting auth polling...');
+    authCheckInterval = setInterval(() => {
+        // Only poll if the auth screen is actually visible
+        if (!screens.auth.classList.contains('hidden')) {
+            checkAuth();
+        } else {
+            stopAuthPolling();
+        }
+    }, 3000); // Check every 3 seconds
+}
+
+function stopAuthPolling() {
+    if (authCheckInterval) {
+        console.log('[jobNinjas] Stopping auth polling.');
+        clearInterval(authCheckInterval);
+        authCheckInterval = null;
+    }
+}
+
 function updateProfileUI() {
     if (currentUser) {
-        elements.resumeName.innerText = currentUser.name || currentUser.fullName || 'Sai_Ram_Resume.docx';
-        elements.creditsCount.innerText = '4'; // Mock credits
+        const resumeName = currentUser.latestResume?.fileName || currentUser.person?.fullName || currentUser.fullName || currentUser.name || 'Sai_Ram_Resume.docx';
+        elements.resumeName.innerText = resumeName;
+        elements.creditsCount.innerText = currentUser.plan === 'Pro' ? 'Unlimited' : '10';
     }
 }
 
@@ -149,21 +164,41 @@ function startAutofill() {
                 ...currentUser,
                 // Ensure top-level mappings for backward compatibility in content script
                 name: currentUser.person?.fullName || currentUser.name || currentUser.fullName || '',
-                firstName: (currentUser.person?.fullName || currentUser.name || '').split(' ')[0],
-                lastName: (currentUser.person?.fullName || currentUser.name || '').split(' ').slice(1).join(' '),
+                firstName: (currentUser.person?.fullName || currentUser.fullName || currentUser.name || '').split(' ')[0],
+                lastName: (currentUser.person?.fullName || currentUser.fullName || currentUser.name || '').split(' ').slice(1).join(' '),
                 email: currentUser.person?.email || currentUser.email || '',
                 phone: currentUser.person?.phone || currentUser.phone || '',
-                linkedin: currentUser.person?.linkedinUrl || currentUser.linkedinUrl || '',
-                address: currentUser.address?.line1 || currentUser.address || '',
+                linkedin: currentUser.person?.linkedinUrl || currentUser.linkedin || '',
+                github: currentUser.person?.githubUrl || currentUser.githubUrl || '',
+                portfolio: currentUser.person?.portfolioUrl || currentUser.portfolioUrl || '',
+                address: currentUser.address?.line1 || currentUser.line1 || currentUser.address || '',
                 city: currentUser.address?.city || currentUser.city || '',
                 state: currentUser.address?.state || currentUser.state || '',
-                zip: currentUser.address?.zip || currentUser.zip || '',
+                zip: currentUser.address?.zip || currentUser.zip || currentUser.postalCode || '',
                 country: currentUser.address?.country || currentUser.country || '',
+                work_authorization: {
+                    authorized_to_work: currentUser.work_authorization?.authorized_to_work || currentUser.authorized_to_work || 'Yes',
+                    requires_sponsorship_now: currentUser.work_authorization?.requires_sponsorship_now || currentUser.requires_sponsorship_now || 'No',
+                    requires_sponsorship_future: currentUser.work_authorization?.requires_sponsorship_future || currentUser.requires_sponsorship_future || 'No'
+                },
+                sensitive: {
+                    gender: currentUser.sensitive?.gender || currentUser.gender || 'Decline',
+                    race: currentUser.sensitive?.race || currentUser.race || 'Decline',
+                    disability: currentUser.sensitive?.disability || currentUser.disability || 'No',
+                    veteran: currentUser.sensitive?.veteran || currentUser.veteran || 'No'
+                }
             }
         }, (response) => {
+            const error = chrome.runtime.lastError;
             isAutofilling = false;
             elements.btnAutofill.innerText = 'Autofill';
             elements.btnAutofill.classList.remove('loading');
+
+            if (error) {
+                console.warn('[jobNinjas] Autofill failed:', error.message);
+                alert('Autofill failed: Please ensure you are on a supported job board and the page is fully loaded.');
+                return;
+            }
 
             if (response && response.status === 'completed') {
                 showFooterAction(true);
@@ -219,6 +254,13 @@ function showFooterAction(show) {
 
 function handleNextStep() {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        chrome.tabs.sendMessage(tabs[0].id, { type: 'CLICK_NEXT' });
+        if (tabs[0] && tabs[0].id) {
+            chrome.tabs.sendMessage(tabs[0].id, { type: 'CLICK_NEXT' }, (response) => {
+                const error = chrome.runtime.lastError;
+                if (error) {
+                    console.warn('[jobNinjas] Could not click next:', error.message);
+                }
+            });
+        }
     });
 }

@@ -8,6 +8,7 @@
         "storage",
         "scripting",
         "activeTab",
+        "tabs",
         "cookies"
     ],
     "host_permissions": [
@@ -15,6 +16,10 @@
         "https://www.jobninjas.ai/*",
         "https://jobninjas.org/*",
         "https://www.jobninjas.org/*",
+        "https://jobninjas.io/*",
+        "https://www.jobninjas.io/*",
+        "https://jobninjas.com/*",
+        "https://www.jobninjas.com/*",
         "https://*.greenhouse.io/*",
         "https://*.lever.co/*",
         "https://*.workday.com/*",
@@ -24,7 +29,7 @@
         "service_worker": "src/background/background.js"
     },
     "action": {
-        "default_title": "Open Nova Ninjas Side Panel"
+        "default_title": "Open JobNinjas"
     },
     "side_panel": {
         "default_path": "src/sidepanel/sidepanel.html"
@@ -38,12 +43,22 @@
                 "src/content/content.js"
             ],
             "run_at": "document_end",
-            "all_frames": true
+            "all_frames": false
         }
     ],
     "icons": {
         "16": "icons/icon16.png",
         "48": "icons/icon48.png",
         "128": "icons/icon128.png"
-    }
+    },
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "icons/bird.png"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ]
 }

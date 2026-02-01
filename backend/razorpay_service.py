@@ -29,13 +29,25 @@ RAZORPAY_PLANS = {
         'amount': 0,
         'currency': 'INR',
         'name': 'AI Ninja – Free',
-        'description': 'Up to 5 AI-tailored applications'
+        'description': 'Essential job search tools'
     },
-    'ai-pro': {
+    'ai-weekly': {
+        'amount': 84900,  # ₹849 in paise (roughly $9.99)
+        'currency': 'INR',
+        'name': 'AI Ninja Weekly',
+        'description': 'Unlimited AI applications for 1 week'
+    },
+    'ai-monthly': {
         'amount': 249900,  # ₹2,499 in paise (roughly $29.99)
         'currency': 'INR',
-        'name': 'AI Ninja Pro',
-        'description': 'Up to 200 AI-tailored applications per month'
+        'name': 'AI Ninja Monthly',
+        'description': 'Unlimited AI applications for 1 month'
+    },
+    'ai-quarterly': {
+        'amount': 579900,  # ₹5,799 in paise (roughly $69.99)
+        'currency': 'INR',
+        'name': 'AI Ninja Quarterly',
+        'description': 'Unlimited AI applications for 3 months'
     },
     'human-starter': {
         'amount': 399900,  # ₹3,999 in paise (roughly $50)
@@ -59,11 +71,23 @@ RAZORPAY_PLANS = {
 
 # USD Plans (for international users)
 RAZORPAY_PLANS_USD = {
-    'ai-pro': {
+    'ai-weekly': {
+        'amount': 999,  # $9.99 in cents
+        'currency': 'USD',
+        'name': 'AI Ninja Weekly',
+        'description': 'Unlimited AI applications for 1 week'
+    },
+    'ai-monthly': {
         'amount': 2999,  # $29.99 in cents
         'currency': 'USD',
-        'name': 'AI Ninja Pro',
-        'description': 'Up to 200 AI-tailored applications per month'
+        'name': 'AI Ninja Monthly',
+        'description': 'Unlimited AI applications for 1 month'
+    },
+    'ai-quarterly': {
+        'amount': 6999,  # $69.99 in cents
+        'currency': 'USD',
+        'name': 'AI Ninja Quarterly',
+        'description': 'Unlimited AI applications for 3 months'
     },
     'human-starter': {
         'amount': 5000,  # $50

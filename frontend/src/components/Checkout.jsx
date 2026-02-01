@@ -32,7 +32,7 @@ const Checkout = () => {
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
   // Get plan from URL params
-  const planId = searchParams.get('plan') || 'ai-pro';
+  const planId = searchParams.get('plan') || 'ai-monthly';
 
   // Get auto-checkout flag
   const shouldAutoCheckout = searchParams.get('auto') === 'true';
@@ -55,8 +55,18 @@ const Checkout = () => {
       icon: Bot,
       color: 'blue'
     },
-    'ai-pro': {
-      ...PRICING.AI_PRO,
+    'ai-weekly': {
+      ...PRICING.AI_WEEKLY,
+      icon: Bot,
+      color: 'blue'
+    },
+    'ai-monthly': {
+      ...PRICING.AI_MONTHLY,
+      icon: Bot,
+      color: 'blue'
+    },
+    'ai-quarterly': {
+      ...PRICING.AI_QUARTERLY,
       icon: Bot,
       color: 'blue'
     },
@@ -77,7 +87,7 @@ const Checkout = () => {
     }
   };
 
-  const selectedPlan = planDetails[planId] || planDetails['ai-pro'];
+  const selectedPlan = planDetails[planId] || planDetails['ai-monthly'];
   const PlanIcon = selectedPlan.icon;
 
   // Load Razorpay script

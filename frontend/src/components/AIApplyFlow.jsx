@@ -149,12 +149,12 @@ const AIApplyFlow = () => {
     }
   }, [isAuthenticated, navigate, location.pathname]);
 
-  // Auto-save application when results are ready
+  // Auto-save feedback: we now save automatically in the backend during generation
   useEffect(() => {
-    if (currentStep === 5 && !applicationSaved && (tailoredResume || detailedCv) && isAuthenticated) {
-      handleSaveApplication();
+    if (currentStep === 5 && !applicationSaved) {
+      setApplicationSaved(true);
     }
-  }, [currentStep, applicationSaved, tailoredResume, detailedCv, isAuthenticated]);
+  }, [currentStep, applicationSaved]);
 
   // Fetch usage and resumes on mount
   useEffect(() => {
@@ -274,7 +274,10 @@ const AIApplyFlow = () => {
       const response = await fetch(`${API_URL}/api/fetch-job-description`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: jobUrl.trim() })
+        body: JSON.stringify({
+          url: jobUrl.trim(),
+          userId: user?.id || user?.email
+        })
       });
 
       if (!response.ok) {
@@ -425,6 +428,7 @@ const AIApplyFlow = () => {
 
       setGenerationProgress('Done! Your application materials are ready.');
       setCurrentStep(5); // Move to Results step
+      setApplicationSaved(true); // Backend already saved it to tracker
 
       // Show save resume prompt if user uploaded a new resume
       if (resumeFile && !selectedResume && isAuthenticated) {
@@ -442,49 +446,6 @@ const AIApplyFlow = () => {
     }
   };
 
-  const handleSaveApplication = async () => {
-    if (!isAuthenticated || !user?.email) {
-      return;
-    }
-
-    setIsSavingApplication(true);
-
-    try {
-      // Calculate final score: original + improvement (clamped at 99)
-      const baseScore = analysisResult?.matchScore || 75;
-      const finalScore = Math.min(99, baseScore + matchImprovement);
-
-      const applicationData = {
-        userEmail: user.email,
-        jobId: jobData.jobId || null,
-        jobTitle: customJobTitle || jobData.jobTitle,
-        company: companyName || jobData.company,
-        location: jobData.location || '',
-        jobDescription: customJobDescription || jobData.description,
-        sourceUrl: jobUrl || jobData.sourceUrl || '',
-        salaryRange: jobData.salaryRange || '',
-        matchScore: finalScore,
-        status: 'materials_ready',
-        resumeText: tailoredResume || '',
-        coverLetterText: tailoredCoverLetter || '',
-        createdAt: new Date().toISOString()
-      };
-
-      const response = await fetch(`${API_URL}/api/applications`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(applicationData)
-      });
-
-      if (response.ok) {
-        setApplicationSaved(true);
-      }
-    } catch (error) {
-      console.error('Failed to save application:', error);
-    } finally {
-      setIsSavingApplication(false);
-    }
-  };
 
   const handleSaveResume = async () => {
     if (!isAuthenticated || !user?.email) {
@@ -1243,32 +1204,24 @@ const AIApplyFlow = () => {
                 )}
               </div>
 
-              <div className="p-4 border-t border-slate-100 bg-white grid grid-cols-2 gap-3">
+              <div className="p-4 border-t border-slate-100 bg-white space-y-3">
                 <Button
-                  variant="outline"
-                  className="h-12 rounded-xl font-bold"
+                  className="w-full h-14 rounded-2xl font-black text-lg bg-slate-900 hover:bg-black shadow-xl transition-all transform hover:-translate-y-1"
                   onClick={() => handleDownload(activeTab === 'letter' ? 'cover' : 'resume')}
                   disabled={activeTab === 'letter' ? !tailoredCoverLetter : (!tailoredResume && !detailedCv)}
                 >
-                  <Download className="w-4 h-4 mr-2" /> {activeTab === 'letter' ? 'Download Letter' : 'Download Resume'}
-                </Button>
-                <Button
-                  className={`h-12 rounded-xl font-bold transition-all ${applicationSaved ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-900'}`}
-                  onClick={handleSaveApplication}
-                  disabled={isSavingApplication}
-                >
-                  {isSavingApplication ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : applicationSaved ? (
-                    <>
-                      <CheckCircle className="w-4 h-4 mr-2" /> SAVED TO TRACKER
-                    </>
+                  {isDownloading === (activeTab === 'letter' ? 'cover' : 'resume') ? (
+                    <Loader2 className="w-5 h-5 mr-3 animate-spin" />
                   ) : (
-                    <>
-                      <Zap className="w-4 h-4 mr-2 text-yellow-500 fill-yellow-500" /> APPLY NOW
-                    </>
+                    <Download className="w-5 h-5 mr-3" />
                   )}
+                  {activeTab === 'letter' ? 'Download Cover Letter' : 'Download Tailored Resume'}
                 </Button>
+
+                <div className="flex items-center justify-center gap-2 py-2 px-4 bg-green-50 rounded-xl border border-green-100">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span className="text-xs font-bold text-green-700 uppercase tracking-tight">Automatically Saved to Tracker</span>
+                </div>
               </div>
             </div>
           </div>

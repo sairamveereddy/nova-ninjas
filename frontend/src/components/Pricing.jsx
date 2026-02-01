@@ -94,9 +94,9 @@ const Pricing = () => {
   };
 
   const aiNinjaPlans = [
-    { ...PRICING.AI_FREE, popular: false, buttonVariant: 'outline', description: 'Try jobNinjas with 100 free applications as a beta.' },
-    { ...PRICING.AI_BEGINNER, popular: false, buttonVariant: 'outline', description: 'Perfect for more applications and interview prep.' },
-    { ...PRICING.AI_PRO, popular: true, buttonVariant: 'default', description: 'Unlimited high-volume tailored applications.' },
+    { ...PRICING.AI_WEEKLY, popular: false, buttonVariant: 'outline', description: PRICING.AI_WEEKLY.description },
+    { ...PRICING.AI_MONTHLY, popular: true, buttonVariant: 'default', description: PRICING.AI_MONTHLY.description },
+    { ...PRICING.AI_QUARTERLY, popular: false, buttonVariant: 'outline', description: PRICING.AI_QUARTERLY.description },
   ];
 
   const humanNinjaPlans = [

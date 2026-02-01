@@ -141,6 +141,22 @@ I'm open to connecting with fellow professionals and exploring new opportunities
                     </div>
                     <h1>Optimize Your <span className="text-gradient-blue">LinkedIn Profile</span></h1>
                     <p>Get noticed by recruiters with an optimized headline, summary, and about section.</p>
+                    <div style={{ marginTop: '1.5rem' }}>
+                        <Button
+                            variant="outline"
+                            className="li-mockup-btn"
+                            style={{
+                                borderRadius: '50px',
+                                padding: '0.75rem 1.5rem',
+                                background: 'rgba(255,255,255,0.1)',
+                                borderColor: 'var(--primary)'
+                            }}
+                            onClick={() => navigate('/linkedin-mockup')}
+                        >
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            See Simulation on LinkedIn
+                        </Button>
+                    </div>
                 </div>
 
                 <Card className="linkedin-card">
