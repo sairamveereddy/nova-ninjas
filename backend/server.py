@@ -4117,7 +4117,7 @@ async def get_unified_resumes(email: str):
             
         merged.sort(key=lambda x: str(x.get("updatedAt", "")), reverse=True)
         
-        return {"success": True, "resumes": merged}
+        return {"success": True, "resumes": merged[:3]}
     except Exception as e:
         logger.error(f"Unified resume fetch error: {e}")
         return {"success": False, "error": str(e), "resumes": []}
