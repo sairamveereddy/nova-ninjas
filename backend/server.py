@@ -4508,7 +4508,7 @@ class InterviewAnswerRequest(BaseModel):
 @app.post("/api/interview/create-session")
 async def create_interview_session(
     resume: UploadFile = File(...),
-    jd: str = Form(...),
+    jd: str = Form(""),
     roleTitle: str = Form(...),
     user: dict = Depends(get_current_user)
 ):
