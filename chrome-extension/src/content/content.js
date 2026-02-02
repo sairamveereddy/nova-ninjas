@@ -12,15 +12,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.type === 'GET_AUTH_TOKEN') {
+        const token = localStorage.getItem('auth_token');
+        const userData = localStorage.getItem('user_data');
         const host = window.location.hostname;
-        if (host.includes('jobninjas.ai') || host.includes('jobninjas.org') || host.includes('jobninjas.com') || host.includes('jobninjas.io')) {
-            const token = localStorage.getItem('auth_token');
-            const userData = localStorage.getItem('user_data');
+        const isPlatform = host.includes('jobninjas.ai') || host.includes('jobninjas.org') || host.includes('jobninjas.com') || host.includes('jobninjas.io');
+
+        if (isPlatform && token) {
+            chrome.storage.local.set({ 'auth_token': token, 'user_data': userData });
+        }
+
+        if (isPlatform) {
             sendResponse({ token, userData: userData ? JSON.parse(userData) : null });
         } else {
             sendResponse({ error: 'Not on platform' });
         }
-        return false; // Sync
+        return false;
     }
 
     if (message.type === 'CLICK_NEXT') {
@@ -741,20 +747,33 @@ function startSidebarAuthPolling() {
 async function sidebarCheckAuth() {
     if (!chrome.runtime || !chrome.runtime.id) return;
 
-    chrome.runtime.sendMessage({ type: 'GET_AUTH_TOKEN' }, (response) => {
-        if (chrome.runtime.lastError || !response || !response.token) {
-            updateViewWithAuth(false);
+    // 1. Try local storage first for speed and stability
+    chrome.storage.local.get(['auth_token', 'user_data'], (local) => {
+        if (local.auth_token) {
+            if (local.auth_token !== currentSidebarToken) {
+                currentSidebarToken = local.auth_token;
+                currentSidebarUser = typeof local.user_data === 'string' ? JSON.parse(local.user_data) : local.user_data;
+                updateViewWithAuth(true);
+                updateSidebarDashboardData();
+            }
             return;
         }
 
-        // Token or data changed
-        if (response.token !== currentSidebarToken || JSON.stringify(response.userData) !== JSON.stringify(currentSidebarUser)) {
-            currentSidebarToken = response.token;
-            currentSidebarUser = response.userData;
+        // 2. Fall back to background sync if not in storage
+        chrome.runtime.sendMessage({ type: 'GET_AUTH_TOKEN' }, (response) => {
+            if (chrome.runtime.lastError || !response || !response.token) {
+                // Only show login if we really have nothing
+                if (!currentSidebarToken) updateViewWithAuth(false);
+                return;
+            }
 
-            updateViewWithAuth(true);
-            updateSidebarDashboardData();
-        }
+            if (response.token !== currentSidebarToken) {
+                currentSidebarToken = response.token;
+                currentSidebarUser = response.userData;
+                updateViewWithAuth(true);
+                updateSidebarDashboardData();
+            }
+        });
     });
 }
 
@@ -892,6 +911,12 @@ function injectBirdButton() {
     }
 }
 
-// Initial Launch
+// Initial Launch auto-sync for platform tabs
+if (window.location.hostname.includes('jobninjas.')) {
+    const t = localStorage.getItem('auth_token');
+    const u = localStorage.getItem('user_data');
+    if (t) chrome.storage.local.set({ 'auth_token': t, 'user_data': u });
+}
+
 setTimeout(injectBirdButton, 1000);
 setInterval(injectBirdButton, 5000);

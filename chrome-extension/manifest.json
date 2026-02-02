@@ -9,7 +9,8 @@
         "scripting",
         "activeTab",
         "tabs",
-        "cookies"
+        "cookies",
+        "webNavigation"
     ],
     "host_permissions": [
         "https://jobninjas.ai/*",
