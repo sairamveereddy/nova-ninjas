@@ -2,10 +2,13 @@
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'START_AUTOFILL') {
-        console.log('[jobNinjas] Starting autofill for Jobboard...', message.data);
+        const isFrame = window.top !== window.self;
+        console.log(`[jobNinjas] Starting autofill in ${isFrame ? 'IFRAME' : 'TOP FRAME'}...`, message.data);
         performAutofill(message.data).then(result => {
+            console.log(`[jobNinjas] Autofill finished in ${isFrame ? 'IFRAME' : 'TOP FRAME'}:`, result);
             sendResponse({ status: 'completed', details: result });
         }).catch(err => {
+            console.error('[jobNinjas] Autofill failed:', err);
             sendResponse({ status: 'error', message: err.message });
         });
         return true; // Async
@@ -58,41 +61,41 @@ async function performAutofill(userData) {
         // Helper to get string value safely
         const getStr = (val) => (typeof val === 'object' && val !== null) ? (val.line1 || val.name || val.text || JSON.stringify(val)) : (val || '');
 
-        if (isField(context, ['first name', 'given name', 'firstName', 'legalNameSection_firstName', '_firstName'])) {
+        // Identification
+        if (isField(context, ['first name', 'given name', 'firstName', 'legalNameSection_firstName', '_firstName', 'fname'])) {
             label = 'First Name';
             const val = getStr(userData.firstName || userData.person?.fullName?.split(' ')[0] || userData.name?.split(' ')[0]);
             filled = fillField(input, val, label);
-        } else if (isField(context, ['last name', 'family name', 'surname', 'lastName', 'legalNameSection_lastName', '_lastName'])) {
+        } else if (isField(context, ['last name', 'family name', 'surname', 'lastName', 'legalNameSection_lastName', '_lastName', 'lname'])) {
             label = 'Last Name';
             const full = getStr(userData.person?.fullName || userData.fullName || userData.name);
             const parts = full.trim().split(/\s+/);
-            const val = parts.length > 1 ? parts.slice(1).join(' ') : getStr(userData.lastName || '');
+            const val = userData.lastName || (parts.length > 1 ? parts.slice(1).join(' ') : '');
             filled = fillField(input, val, label);
-        } else if (isField(context, ['email', 'email address', 'user_email', 'contactInformation_email', '_email'])) {
+        } else if (isField(context, ['email', 'email address', 'user_email', 'contactInformation_email', '_email', 'userEmail'])) {
             label = 'Email';
             filled = fillField(input, getStr(userData.person?.email || userData.email), label);
-        } else if (isField(context, ['phone', 'mobile', 'telephone', 'contact number', 'phone-number', '_phone'])) {
+        } else if (isField(context, ['phone', 'mobile', 'telephone', 'contact number', 'phone-number', '_phone', 'mobileNumber'])) {
             label = 'Phone';
             filled = fillField(input, getStr(userData.person?.phone || userData.phone), label);
         }
+
+        // Login / Credentials
+        else if (isField(context, ['login', 'username', 'loginInfo_login'])) {
+            label = 'Login';
+            filled = fillField(input, getStr(userData.email || userData.person?.email), label);
+        }
+
+        // Address Details
         else if (isField(context, ['address line 1', 'street address', 'mailing address', 'addressSection_addressLine1', '_address'])) {
             label = 'Address Line 1';
             filled = fillField(input, getStr(userData.address?.line1 || userData.line1 || userData.address), label);
-        } else if (isField(context, ['address line 2', 'apartment', 'suite', 'unit', 'addressSection_addressLine2'])) {
-            label = 'Address Line 2';
-            filled = fillField(input, getStr(userData.address?.line2 || userData.line2), label);
         } else if (isField(context, ['city', 'location', 'town', 'addressSection_city', '_city'])) {
             label = 'City';
             filled = fillField(input, getStr(userData.address?.city || userData.city), label);
-        } else if (isField(context, ['state', 'province', 'region', 'addressSection_state', '_state'])) {
-            label = 'State';
-            filled = selectSmart(input, getStr(userData.address?.state || userData.state), label);
-        } else if (isField(context, ['zip', 'postal', 'zipcode', 'postcode', 'addressSection_postalCode', 'postal-code'])) {
+        } else if (isField(context, ['zip', 'postal', 'zipcode', 'postcode', 'addressSection_postalCode', 'postal-code', '_zip'])) {
             label = 'Postal Code';
             filled = fillField(input, getStr(userData.address?.zip || userData.zip || userData.postalCode), label);
-        } else if (isField(context, ['country', 'nation', 'addressSection_country', '_country'])) {
-            label = 'Country';
-            filled = selectSmart(input, getStr(userData.address?.country || userData.country), label);
         }
 
         if (filled) {
@@ -161,6 +164,7 @@ function findLabelText(input) {
 function fillField(input, value, label) {
     if (!value || input.disabled || input.readOnly) return false;
 
+    console.log(`[jobNinjas] Filling ${label} with:`, value);
     input.value = value;
     // Trigger all common events
     input.dispatchEvent(new Event('input', { bubbles: true }));
