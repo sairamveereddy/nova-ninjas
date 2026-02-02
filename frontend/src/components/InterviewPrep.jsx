@@ -36,7 +36,7 @@ const InterviewPrep = () => {
   };
 
   const handleCreateSession = async () => {
-    if (!file || !jd || !roleTitle) return;
+    if (!file || !roleTitle) return;
 
     setIsCreating(true);
     try {
@@ -53,7 +53,16 @@ const InterviewPrep = () => {
         body: formData,
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Session creation failed:', response.status, errorText);
+        alert(`Failed to create session: ${response.status} - ${errorText}`);
+        return;
+      }
+
       const data = await response.json();
+      console.log('Session created:', data);
+
       if (data.sessionId) {
         // Navigate to React interview room
         navigate(`/interview-prep/${data.sessionId}`);
