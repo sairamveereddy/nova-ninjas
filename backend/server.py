@@ -3858,10 +3858,17 @@ async def generate_resume_docx(request: GenerateResumeRequest):
 
         # Check if we should use raw text or structured data
         if request.is_already_tailored and request.resume_text:
-            # It's already tailored content (possibly edited by user)
-            # Use the provided text directly and respect local fonts/templates
+            logger.info("Generating already tailored resume (fast path)")
+            
+            # Clean up the resume text to remove excessive empty lines
+            import re
+            resume_text = request.resume_text.strip()
+            # Reduce multiple newlines to single newlines and clean each line
+            resume_text = re.sub(r'\n{3,}', '\n\n', resume_text) # Allow at most 1 blank line between paragraphs
+            resume_text = "\n".join([line.rstrip() for line in resume_text.split("\n")])
+            
             docx_file = create_text_docx(
-                request.resume_text, 
+                resume_text, 
                 "ATS_Resume", 
                 font_family=request.fontFamily,
                 template=request.template

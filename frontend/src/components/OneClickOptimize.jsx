@@ -12,7 +12,9 @@ import {
     CheckCircle,
     ArrowRight,
     Sparkles,
-    X
+    X,
+    Type,
+    Palette
 } from 'lucide-react';
 import { BRAND } from '../config/branding';
 import { API_URL } from '../config/api';
@@ -29,6 +31,8 @@ const OneClickOptimize = () => {
     const [jobDescription, setJobDescription] = useState('');
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [optimizedResume, setOptimizedResume] = useState(null);
+    const [selectedFont, setSelectedFont] = useState('Times New Roman');
+    const [selectedTemplate, setSelectedTemplate] = useState('standard');
     const [error, setError] = useState(null);
 
     const handleFileUpload = (e) => {
@@ -80,8 +84,11 @@ const OneClickOptimize = () => {
                 body: JSON.stringify({
                     userId: user?.id || 'guest',
                     resume_text: optimizedResume?.resumeText || '',
+                    is_already_tailored: true,
                     job_description: jobDescription,
-                    analysis: optimizedResume?.analysis
+                    analysis: optimizedResume?.analysis,
+                    fontFamily: selectedFont,
+                    template: selectedTemplate
                 })
             });
 
@@ -208,6 +215,38 @@ const OneClickOptimize = () => {
                                 <span className="score-number">{optimizedResume.analysis?.matchScore || 85}%</span>
                             </div>
                             <p>ATS Compatibility Score</p>
+                        </div>
+
+                        <div className="style-options">
+                            <h3><Palette className="w-4 h-4" /> Export Style</h3>
+                            <div className="style-grid">
+                                <button
+                                    className={`style-btn ${selectedTemplate === 'standard' ? 'active' : ''}`}
+                                    onClick={() => setSelectedTemplate('standard')}
+                                >
+                                    Standard
+                                </button>
+                                <button
+                                    className={`style-btn ${selectedTemplate === 'modern' ? 'active' : ''}`}
+                                    onClick={() => setSelectedTemplate('modern')}
+                                >
+                                    Modern
+                                </button>
+                            </div>
+
+                            <h3><Type className="w-4 h-4" /> Font Family</h3>
+                            <div className="font-list">
+                                {['Times New Roman', 'Arial', 'Georgia'].map(font => (
+                                    <button
+                                        key={font}
+                                        className={`font-btn ${selectedFont === font ? 'active' : ''}`}
+                                        onClick={() => setSelectedFont(font)}
+                                        style={{ fontFamily: font }}
+                                    >
+                                        {font}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
                         <div className="action-buttons">

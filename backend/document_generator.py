@@ -613,7 +613,7 @@ def create_resume_docx(resume_data: Dict, font_family: str = "Times New Roman") 
     name_para = doc.add_paragraph()
     name_run = name_para.add_run(name)
     name_run.bold = True
-    name_run.font.size = Pt(20)
+    name_run.font.size = Pt(18)
     name_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     name_para.paragraph_format.space_after = Pt(0)
     
@@ -899,10 +899,14 @@ def create_text_docx(text: str, title: str = "Document", font_family: str = "Tim
     # First line is usually the name
     if lines:
         name_para = doc.add_paragraph()
-        name_text = lines[0].strip().upper()
-        name_run = name_para.add_run(name_text)
+        # Strip literal "NAME:" prefix if AI included it 
+        name_text = lines[0].strip()
+        if name_text.upper().startswith("NAME:"):
+            name_text = name_text[5:].strip()
+            
+        name_run = name_para.add_run(name_text.upper())
         name_run.bold = True
-        name_run.font.size = Pt(24)
+        name_run.font.size = Pt(18)  # Reduced from 24pt for better appearance
         if not is_modern:
             name_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         name_para.paragraph_format.space_after = Pt(2)
@@ -918,6 +922,11 @@ def create_text_docx(text: str, title: str = "Document", font_family: str = "Tim
             # Section header
             p = doc.add_paragraph()
             clean_title = line_stripped.replace('=', '').strip().upper()
+            
+            # Skip literal generic headers that AI might provide
+            if clean_title in ["NAME", "CONTACT"]:
+                continue
+                
             run = p.add_run(clean_title)
             run.bold = True
             run.font.size = Pt(11)
@@ -928,6 +937,11 @@ def create_text_docx(text: str, title: str = "Document", font_family: str = "Tim
         elif (line_stripped.isupper() and len(line_stripped) < 50) or (line_stripped.startswith('#') and len(line_stripped) < 60):
             # Main sections like PROFESSIONAL EXPERIENCE
             clean_title = line_stripped.replace('#', '').strip().upper()
+            
+            # Skip literal generic headers
+            if clean_title in ["NAME", "CONTACT"]:
+                continue
+                
             p = doc.add_paragraph()
             run = p.add_run(clean_title)
             run.bold = True
@@ -943,6 +957,11 @@ def create_text_docx(text: str, title: str = "Document", font_family: str = "Tim
         else:
             p = doc.add_paragraph(line)
             # Try to center contact info if it's the first non-empty line after the name
+            # Strip literal "CONTACT:" prefix if AI included it
+            if i == 0 and line_stripped.upper().startswith("CONTACT:"):
+                 p.clear()
+                 p.add_run(line_stripped[8:].strip())
+                 
             if i == 0 and ('@' in line or '|' in line) and not is_modern:
                  p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             p.paragraph_format.space_after = Pt(0)
