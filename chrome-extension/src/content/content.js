@@ -31,173 +31,68 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function performAutofill(userData) {
-    // Select all interactive elements
+    console.log('[jobNinjas] Starting smarter autofill...', userData);
     const inputs = document.querySelectorAll('input:not([type="hidden"]), select, textarea, [role="checkbox"], [role="radio"]');
     const itemsToFill = [];
+    const filledLabels = [];
 
-    // Identify candidate fields
     inputs.forEach(input => {
         const context = getFieldContext(input);
         itemsToFill.push({ input, context });
     });
 
-    // Notify total discovered to sidepanel
     chrome.runtime.sendMessage({ type: 'AUTOFILL_TOTAL', total: itemsToFill.length });
 
     let filledCount = 0;
     for (const item of itemsToFill) {
         const { input, context } = item;
         let filled = false;
+        let label = '';
 
-        // Smart Mapping Logic
-        // Identification
-        if (isField(context, ['first name', 'given name', 'firstName'])) {
-            filled = fillField(input, userData.person?.fullName?.split(' ')[0] || userData.firstName || userData.name?.split(' ')[0] || '', 'First Name');
-        } else if (isField(context, ['last name', 'family name', 'surname', 'lastName'])) {
-            const parts = (userData.person?.fullName || userData.fullName || userData.name || '').trim().split(/\s+/);
-            filled = fillField(input, parts.length > 1 ? parts.slice(1).join(' ') : (userData.lastName || ''), 'Last Name');
-        } else if (isField(context, ['email', 'email address', 'user_email'])) {
-            filled = fillField(input, userData.person?.email || userData.email || '', 'Email Address');
-        } else if (isField(context, ['phone', 'mobile', 'telephone', 'contact number'])) {
-            filled = fillField(input, userData.person?.phone || userData.phone || '', 'Phone Number');
+        // Helper to get string value safely
+        const getStr = (val) => (typeof val === 'object' && val !== null) ? (val.line1 || val.name || val.text || JSON.stringify(val)) : (val || '');
+
+        if (isField(context, ['first name', 'given name', 'firstName', 'legalNameSection_firstName'])) {
+            label = 'First Name';
+            filled = fillField(input, getStr(userData.person?.fullName?.split(' ')[0] || userData.firstName || userData.name?.split(' ')[0]), label);
+        } else if (isField(context, ['last name', 'family name', 'surname', 'lastName', 'legalNameSection_lastName'])) {
+            label = 'Last Name';
+            const parts = getStr(userData.person?.fullName || userData.fullName || userData.name).trim().split(/\s+/);
+            filled = fillField(input, parts.length > 1 ? parts.slice(1).join(' ') : getStr(userData.lastName), label);
+        } else if (isField(context, ['email', 'email address', 'user_email', 'contactInformation_email'])) {
+            label = 'Email';
+            filled = fillField(input, getStr(userData.person?.email || userData.email), label);
+        } else if (isField(context, ['phone', 'mobile', 'telephone', 'contact number', 'phone-number'])) {
+            label = 'Phone';
+            filled = fillField(input, getStr(userData.person?.phone || userData.phone), label);
+        }
+        else if (isField(context, ['address line 1', 'street address', 'mailing address', 'addressSection_addressLine1'])) {
+            label = 'Address Line 1';
+            filled = fillField(input, getStr(userData.address?.line1 || userData.line1 || userData.address), label);
+        } else if (isField(context, ['address line 2', 'apartment', 'suite', 'unit', 'addressSection_addressLine2'])) {
+            label = 'Address Line 2';
+            filled = fillField(input, getStr(userData.address?.line2 || userData.line2), label);
+        } else if (isField(context, ['city', 'location', 'town', 'addressSection_city'])) {
+            label = 'City';
+            filled = fillField(input, getStr(userData.address?.city || userData.city), label);
+        } else if (isField(context, ['state', 'province', 'region', 'addressSection_state'])) {
+            label = 'State';
+            filled = selectSmart(input, getStr(userData.address?.state || userData.state), label);
+        } else if (isField(context, ['zip', 'postal', 'zipcode', 'postcode', 'addressSection_postalCode'])) {
+            label = 'Postal Code';
+            filled = fillField(input, getStr(userData.address?.zip || userData.zip || userData.postalCode), label);
+        } else if (isField(context, ['country', 'nation', 'addressSection_country'])) {
+            label = 'Country';
+            filled = selectSmart(input, getStr(userData.address?.country || userData.country), label);
         }
 
-        // Address Details
-        else if (isField(context, ['address line 1', 'street address', 'mailing address'])) {
-            filled = fillField(input, userData.address?.line1 || userData.line1 || userData.address || '', 'Address Line 1');
-        } else if (isField(context, ['address line 2', 'apartment', 'suite', 'unit'])) {
-            filled = fillField(input, userData.address?.line2 || userData.line2 || '', 'Address Line 2');
-        } else if (isField(context, ['city', 'location', 'town'])) {
-            filled = fillField(input, userData.address?.city || userData.city || '', 'City/Location');
-        } else if (isField(context, ['state', 'province', 'region'])) {
-            filled = selectSmart(input, userData.address?.state || userData.state || '', 'State');
-        } else if (isField(context, ['zip', 'postal', 'zipcode', 'postcode'])) {
-            filled = fillField(input, userData.address?.zip || userData.zip || userData.postalCode || '', 'Postal Code');
-        } else if (isField(context, ['country', 'nation'])) {
-            filled = selectSmart(input, userData.address?.country || userData.country || '', 'Country');
-        }
-
-        // Work Authorization & Sponsorship
-        else if (isField(context, ['authorized to work', 'right to work', 'legally authorized', 'permission to work'])) {
-            filled = selectSmart(input, userData.work_authorization?.authorized_to_work || userData.authorized_to_work || 'Yes', 'Work Authorization');
-        } else if (isField(context, ['require sponsorship', 'require visa', 'need sponsorship', 'sponsorship in the future'])) {
-            filled = selectSmart(input, userData.work_authorization?.requires_sponsorship_now || userData.requires_sponsorship_now || 'No', 'Sponsorship Needs');
-        }
-
-        // Education Details (Mapping from education array)
-        else if (isField(context, ['school', 'university', 'college', 'institution'])) {
-            const edu = userData.education?.[0] || {};
-            filled = fillField(input, edu.school || '', 'School/University');
-        } else if (isField(context, ['degree', 'qualification'])) {
-            const edu = userData.education?.[0] || {};
-            filled = selectSmart(input, edu.degree || '', 'Degree');
-        } else if (isField(context, ['major', 'field of study', 'discipline'])) {
-            const edu = userData.education?.[0] || {};
-            filled = fillField(input, edu.major || '', 'Major');
-        } else if (isField(context, ['graduation', 'graduated', 'end date', 'graduation year'])) {
-            const edu = userData.education?.[0] || {};
-            filled = fillField(input, edu.graduationDate || '', 'Graduation Date');
-        }
-
-        // Experience / Recent Role (Mapping from employment_history)
-        else if (isField(context, ['current title', 'most recent title', 'job title'])) {
-            const exp = userData.employment_history?.[0] || {};
-            filled = fillField(input, exp.title || '', 'Job Title');
-        } else if (isField(context, ['current company', 'most recent company', 'previous company'])) {
-            const exp = userData.employment_history?.[0] || {};
-            filled = fillField(input, exp.company || '', 'Company');
-        }
-
-        // Social Media & Portfolio
-        else if (isField(context, ['linkedin', 'linkedin profile', 'linkedin url'])) {
-            filled = fillField(input, userData.person?.linkedinUrl || userData.linkedin || '', 'LinkedIn');
-        } else if (isField(context, ['github', 'github url', 'github profile'])) {
-            filled = fillField(input, userData.person?.githubUrl || userData.github || '', 'GitHub');
-        } else if (isField(context, ['portfolio', 'website', 'personal website'])) {
-            filled = fillField(input, userData.person?.portfolioUrl || userData.portfolio || '', 'Portfolio');
-        }
-
-        // Skills & Keywords
-        else if (isField(context, ['skills', 'keywords', 'technologies'])) {
-            const skills = userData.skills?.technical || userData.skills || [];
-            filled = fillField(input, Array.isArray(skills) ? skills.join(', ') : skills, 'Skills');
-        }
-
-        // Preferences & Logistics
-        else if (isField(context, ['salary', 'compensation', 'expected pay'])) {
-            filled = fillField(input, userData.preferences?.expected_salary || '', 'Expected Salary');
-        } else if (isField(context, ['notice period', 'availability', 'start date'])) {
-            filled = fillField(input, userData.preferences?.notice_period || '', 'Notice Period');
-        }
-
-        // Diversity / EEO
-        else if (isField(context, ['gender', 'sex', 'how do you identify'])) {
-            filled = selectSmart(input, userData.sensitive?.gender || 'Decline', 'Gender');
-        } else if (isField(context, ['race', 'ethnicity', 'hispanic', 'latino'])) {
-            filled = selectSmart(input, userData.sensitive?.race || 'Decline', 'Race/Ethnicity');
-        } else if (isField(context, ['disability', 'voluntary self-identification'])) {
-            filled = selectSmart(input, userData.sensitive?.disability || 'No', 'Disability');
-        } else if (isField(context, ['veteran', 'military'])) {
-            filled = selectSmart(input, userData.sensitive?.veteran || 'No', 'Veteran');
-        }
-
-        // Social / Pro Links
-        else if (isField(context, ['linkedin', 'linkedin profile', 'url_linkedin'])) {
-            filled = fillField(input, userData.person?.linkedinUrl || userData.linkedin, 'LinkedIn URL');
-        } else if (isField(context, ['github', 'github profile', 'url_github'])) {
-            filled = fillField(input, userData.person?.githubUrl || '', 'GitHub URL');
-        } else if (isField(context, ['portfolio', 'website', 'personal website', 'url_portfolio'])) {
-            filled = fillField(input, userData.person?.portfolioUrl || '', 'Portfolio/Website');
-        }
-
-        // Preferences & Salary
-        else if (isField(context, ['desired salary', 'expected salary', 'compensation', 'pay expectation'])) {
-            filled = fillField(input, userData.preferences?.expected_salary || '', 'Expected Salary');
-        } else if (isField(context, ['notice period', 'start date'])) {
-            filled = fillField(input, userData.preferences?.notice_period || '', 'Notice Period');
-        }
-
-        // Screening Answer Bank
-        else if (isField(context, ['why our company', 'why do you want to work here', 'interest in this company'])) {
-            filled = fillField(input, userData.screening_questions?.why_this_company || '', 'Interest Pitch');
-        } else if (isField(context, ['challenging project', 'example of a project'])) {
-            filled = fillField(input, userData.screening_questions?.project_example || '', 'Project Example');
-        }
-
-        // Diversity / EEO
-        else if (isField(context, ['gender', 'sex'])) {
-            filled = selectSmart(input, userData.sensitive?.gender || 'Decline', 'Gender');
-        } else if (isField(context, ['race', 'ethnicity'])) {
-            filled = selectSmart(input, userData.sensitive?.race || 'Decline', 'Race/Ethnicity');
-        } else if (isField(context, ['disability'])) {
-            filled = selectSmart(input, userData.sensitive?.disability || 'No', 'Disability');
-        } else if (isField(context, ['veteran'])) {
-            filled = selectSmart(input, userData.sensitive?.veteran || 'No', 'Veteran');
-        }
-
-        // Education & Experience Fallbacks
-        else if (isField(context, ['school', 'university', 'college', 'institution'])) {
-            const edu = userData.education?.[0];
-            filled = fillField(input, edu?.school || '', 'School');
-        } else if (isField(context, ['degree'])) {
-            const edu = userData.education?.[0];
-            filled = fillField(input, edu?.degree || '', 'Degree');
-        } else if (isField(context, ['major', 'field of study'])) {
-            const edu = userData.education?.[0];
-            filled = fillField(input, edu?.major || '', 'Major');
-        } else if (isField(context, ['most recent job', 'current title', 'previous title', 'job title'])) {
-            const job = userData.employment_history?.[0];
-            filled = fillField(input, job?.title || '', 'Job Title');
-        } else if (isField(context, ['most recent company', 'current company', 'previous company', 'employer'])) {
-            const job = userData.employment_history?.[0];
-            filled = fillField(input, job?.company || '', 'Company');
-        }
         if (filled) {
             filledCount++;
-            await new Promise(r => setTimeout(r, 100)); // Human-like delay
+            filledLabels.push(label);
+            await new Promise(r => setTimeout(r, 100));
         }
     }
-    return { filled: filledCount };
+    return { filled: filledCount, labels: filledLabels };
 }
 
 function getFieldContext(input) {
@@ -543,51 +438,43 @@ function injectNinjaSidebar() {
             transition: width 0.3s ease;
         }
 
-        .analyzing-sparkle {
-            font-size: 40px;
-            margin-bottom: 20px;
-            animation: pulse 2s infinite ease-in-out;
+        .filled-feedback {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f0fdfa;
+            border-radius: 12px;
+            border: 1px solid #ccfbf1;
+            font-size: 0.8rem;
+            color: #115e59;
+            text-align: left;
         }
 
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.8; }
+        .filled-tag {
+            display: inline-block;
+            background: #ccfbf1;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 2px;
+            font-weight: 600;
         }
 
-        .back-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 1.2rem;
-            color: #999;
-            padding: 5px;
-        }
-
-        .resume-card {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #f9fafb;
+        .btn-next-page {
+            margin-top: 16px;
+            background: #000;
+            color: white;
             padding: 12px;
             border-radius: 12px;
-            margin-top: 15px;
-            font-size: 0.9rem;
-            border: 1px solid var(--border-light);
-        }
-
-        .close-btn {
-            background: #f0f2f5;
-            border: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
+            text-align: center;
+            font-weight: 700;
             cursor: pointer;
-            font-size: 14px;
+            transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 8px;
         }
+
+        .btn-next-page:hover { background: #333; }
 
         .hidden { display: none !important; }
     `;
@@ -641,6 +528,17 @@ function injectNinjaSidebar() {
                     </div>
                     <div class="progress-bar-container">
                         <div class="progress-fill" id="bar-completion-fill"></div>
+                    </div>
+                </div>
+
+                <div id="autofill-feedback-container" class="hidden">
+                    <div class="filled-feedback">
+                        <div style="font-weight: 700; margin-bottom: 4px;">Filled Fields:</div>
+                        <div id="list-filled-fields"></div>
+                    </div>
+                    <div class="btn-next-page" id="btn-next-step">
+                        <span>Go to Next Step</span>
+                        <span>❯</span>
                     </div>
                 </div>
             </div>
@@ -738,7 +636,8 @@ function injectNinjaSidebar() {
         triggerAddJob: overlay.querySelector('#btn-trigger-add-job'),
         continueAddJob: overlay.querySelector('#btn-continue-add-job'),
         dashAutofill: overlay.querySelector('#btn-dashboard-autofill'),
-        resultAutofill: overlay.querySelector('#btn-result-autofill')
+        resultAutofill: overlay.querySelector('#btn-result-autofill'),
+        nextStep: overlay.querySelector('#btn-next-step')
     };
 
     const inputs = {
@@ -797,10 +696,20 @@ function injectNinjaSidebar() {
     const handleAutofillAction = (btn) => {
         if (currentSidebarUser) {
             btn.innerText = 'Filling...';
-            performAutofill(currentSidebarUser).then(() => {
+            performAutofill(currentSidebarUser).then((result) => {
                 btn.innerText = 'Autofill';
+                if (result.labels && result.labels.length > 0) {
+                    const listEl = overlay.querySelector('#list-filled-fields');
+                    const feedbackCont = overlay.querySelector('#autofill-feedback-container');
+                    listEl.innerHTML = result.labels.map(l => `<span class="filled-tag">${l}</span>`).join('');
+                    feedbackCont.classList.remove('hidden');
+                }
             });
         }
+    };
+
+    btns.nextStep.onclick = () => {
+        clickNextButton();
     };
 
     btns.dashAutofill.onclick = () => handleAutofillAction(btns.dashAutofill);
