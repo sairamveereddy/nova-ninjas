@@ -153,9 +153,8 @@ const LandingPage = () => {
       icon: Mic,
       title: 'Interview Prep',
       description: 'Practice with AI-generated interviews and get real-time feedback.',
-      cta: 'Coming Soon',
-      path: '/interview-prep',
-      comingSoon: true
+      cta: 'Start Practice',
+      path: '/interview-prep'
     },
     {
       icon: Target,
@@ -501,7 +500,7 @@ const LandingPage = () => {
                 interview questions and get real-time feedback to ace your interviews.
               </p>
               <Button className="btn-primary-modern" onClick={() => navigate('/interview-prep')}>
-                Coming Soon <ArrowRight className="w-4 h-4" />
+                Start Practice <ArrowRight className="w-4 h-4" />
               </Button>
               <p className="pillar-stat">
                 <Target className="w-4 h-4 inline" /> <strong>All-in-one</strong> application tracking
