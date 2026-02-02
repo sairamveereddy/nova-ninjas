@@ -245,6 +245,7 @@ let sidebarAuthInterval = null;
 const API_BASE_URL = 'https://nova-ninjas-production.up.railway.app';
 
 function injectNinjaSidebar() {
+    if (window.top !== window.self) return; // Prevent multiple sidebars in iframes
     if (sidebarContainer) return;
 
     sidebarContainer = document.createElement('div');
@@ -703,15 +704,21 @@ function injectNinjaSidebar() {
     const handleAutofillAction = (btn) => {
         if (currentSidebarUser) {
             btn.innerText = 'Filling...';
-            performAutofill(currentSidebarUser).then((result) => {
+            const feedbackCont = overlay.querySelector('#autofill-feedback-container');
+            const listEl = overlay.querySelector('#list-filled-fields');
+
+            // Clear previous feedback
+            listEl.innerHTML = '';
+            feedbackCont.classList.add('hidden');
+            updateOverallProgress(0);
+
+            // Broadcast to all frames (including current if it has fields)
+            chrome.runtime.sendMessage({ type: 'BROADCAST_AUTOFILL', data: currentSidebarUser });
+
+            // Reset button after 3 seconds
+            setTimeout(() => {
                 btn.innerText = 'Autofill';
-                if (result.labels && result.labels.length > 0) {
-                    const listEl = overlay.querySelector('#list-filled-fields');
-                    const feedbackCont = overlay.querySelector('#autofill-feedback-container');
-                    listEl.innerHTML = result.labels.map(l => `<span class="filled-tag">${l}</span>`).join('');
-                    feedbackCont.classList.remove('hidden');
-                }
-            });
+            }, 3000);
         }
     };
 
@@ -796,6 +803,7 @@ function updateOverallProgress(pct) {
 }
 
 function injectBirdButton() {
+    if (window.top !== window.self) return; // Only top frame
     if (!chrome.runtime || !chrome.runtime.id) return;
 
     let btn = document.getElementById('job-ninja-floating-bird');
@@ -862,11 +870,23 @@ function injectBirdButton() {
         chrome.runtime.onMessage.addListener((msg) => {
             if (msg.type === 'TOGGLE_SIDEBAR') toggleSidebar();
             if (msg.type === 'FIELD_FILLED' && sidebarShadow) {
-                // Approximate progress for demo
-                const textEl = sidebarShadow.querySelector('#txt-completion-pct');
-                const currentPercent = parseInt(textEl.innerText) || 0;
+                // Update Progress
+                const currentPercent = parseInt(sidebarShadow.querySelector('#txt-completion-pct').innerText) || 0;
                 const nextPercent = Math.min(95, currentPercent + 8);
                 updateOverallProgress(nextPercent);
+
+                // Add to filled fields list
+                const listEl = sidebarShadow.querySelector('#list-filled-fields');
+                const feedbackCont = sidebarShadow.querySelector('#autofill-feedback-container');
+                feedbackCont.classList.remove('hidden');
+
+                // Add tag if not already there
+                if (!listEl.innerHTML.includes(`>${msg.label}</span>`)) {
+                    const tag = document.createElement('span');
+                    tag.className = 'filled-tag';
+                    tag.innerText = msg.label;
+                    listEl.appendChild(tag);
+                }
             }
         });
     }

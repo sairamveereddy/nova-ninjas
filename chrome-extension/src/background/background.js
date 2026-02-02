@@ -68,6 +68,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
+    if (message.type === 'BROADCAST_AUTOFILL') {
+        chrome.tabs.sendMessage(sender.tab.id, { type: 'START_AUTOFILL', data: message.data });
+        return false;
+    }
+
     if (message.type === 'TOGGLE_SIDEBAR') {
         // Toggle message for content script in-page overlay
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
