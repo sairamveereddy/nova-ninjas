@@ -305,13 +305,11 @@ function injectNinjaSidebar() {
         .logo-icon {
             width: 32px;
             height: 32px;
-            background: var(--primary-blue);
             border-radius: 8px;
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-weight: bold;
         }
 
         .logo-text h1 { margin: 0; font-size: 1.1rem; }
@@ -485,7 +483,9 @@ function injectNinjaSidebar() {
     overlay.innerHTML = `
         <div class="header">
             <div class="logo-section">
-                <div class="logo-icon" id="sidebar-header-icon">JN</div>
+                <div class="logo-icon" id="sidebar-header-icon">
+                    <img src="${chrome.runtime.getURL('icons/icon128.png')}" style="width: 100%; height: 100%; object-fit: cover;" />
+                </div>
                 <div class="logo-text">
                     <h1>jobNinjas</h1>
                     <p>AI Career Copilot</p>
