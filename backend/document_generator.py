@@ -92,6 +92,63 @@ def cleanup_bullet(s: str) -> str:
     return cleaned
 
 
+def render_preview_text_from_json(data: Dict) -> str:
+    """
+    Converts the structured JSON from generate_optimized_resume_content 
+    into a plain text format that ResumePaper can parse.
+    """
+    if not data:
+        return ""
+        
+    out = []
+    
+    # Header
+    contact = data.get("contactInfo", {})
+    out.append(f"NAME\n{contact.get('name', 'Your Name')}")
+    
+    contacts = [
+        contact.get("email"),
+        contact.get("phone"),
+        contact.get("location"),
+        contact.get("linkedin"),
+        contact.get("website")
+    ]
+    contact_line = " | ".join([c for c in contacts if c])
+    out.append(f"CONTACT\n{contact_line}")
+    
+    # Summary
+    out.append(f"SUMMARY\n{data.get('summary', '')}")
+    
+    # Skills
+    skills = data.get("skills", [])
+    out.append(f"SKILLS\n" + "\n".join([f"• {s}" for s in skills]))
+    
+    # Experience
+    out.append("EXPERIENCE")
+    for job in data.get("experience", []):
+        out.append(f"{job.get('company', '')} — {job.get('title', '')} | {job.get('location', '')}")
+        out.append(f"{job.get('dates', '')}")
+        for b in job.get("bullets", []):
+            out.append(f"- {b}")
+            
+    # Projects
+    if data.get("projects"):
+        out.append("PROJECTS")
+        for proj in data.get("projects", []):
+            out.append(f"{proj.get('name', '')} — {proj.get('subtitle', '')}")
+            for b in proj.get("bullets", []):
+                out.append(f"- {b}")
+                
+    # Education
+    if data.get("education"):
+        out.append("EDUCATION")
+        for edu in data.get("education", []):
+            edu_line = f"{edu.get('degree', '')}, {edu.get('school', '')} | {edu.get('date', '')}"
+            out.append(edu_line)
+            
+    return "\n\n".join(out)
+
+
 def render_ats_resume_from_json(r: ResumeDataSchema) -> str:
     """
     Deterministic rendering of the ATS template (Step 4).

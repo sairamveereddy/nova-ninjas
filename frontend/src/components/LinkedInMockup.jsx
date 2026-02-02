@@ -21,7 +21,8 @@ import {
     Info,
     ChevronDown,
     Building2,
-    CheckCircle2
+    CheckCircle2,
+    Sparkles
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
