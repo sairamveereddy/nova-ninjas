@@ -56,6 +56,8 @@ const Dashboard = () => {
   const [profile, setProfile] = useState({
     // Identity & Contact (Person)
     person: {
+      firstName: user?.name?.split(' ')[0] || '',
+      lastName: user?.name?.split(' ').slice(1).join(' ') || '',
       fullName: user?.name || '',
       email: user?.email || '',
       phone: '',
@@ -64,6 +66,8 @@ const Dashboard = () => {
       portfolioUrl: '',
       preferredName: '',
       middleName: '',
+      gender: '',
+      pronouns: '',
     },
 
     // Address
@@ -401,14 +405,26 @@ const Dashboard = () => {
         // Map backend structure to frontend profile state
         setProfile(prev => ({
           ...prev,
+          sensitive: {
+            ...prev.sensitive,
+            gender: data.person?.gender || prev.sensitive.gender,
+            race: data.sensitive?.race || prev.sensitive.race,
+            veteran: data.sensitive?.veteran || prev.sensitive.veteran,
+            disability: data.sensitive?.disability || prev.sensitive.disability,
+          },
           person: {
             ...prev.person,
+            firstName: data.person?.firstName || data.person?.fullName?.split(' ')[0] || prev.person.firstName,
+            lastName: data.person?.lastName || data.person?.fullName?.split(' ').slice(1).join(' ') || prev.person.lastName,
+            middleName: data.person?.middleName || prev.person.middleName,
             fullName: data.person?.fullName || prev.person.fullName,
             phone: data.person?.phone || prev.person.phone,
             linkedinUrl: data.person?.linkedinUrl || prev.person.linkedinUrl,
             githubUrl: data.person?.githubUrl || prev.person.githubUrl,
             portfolioUrl: data.person?.portfolioUrl || prev.person.portfolioUrl,
             location: data.person?.location || prev.person.location,
+            gender: data.person?.gender || prev.person.gender,
+            pronouns: data.person?.pronouns || prev.person.pronouns,
           },
           address: {
             ...prev.address,
@@ -444,7 +460,7 @@ const Dashboard = () => {
             ...prev.work_authorization,
             authorized_to_work: (data.work_authorization?.authorized_to_work?.toLowerCase() === 'yes' ? 'yes' : 'no'),
             requires_sponsorship_now: (data.work_authorization?.requires_sponsorship_now?.toLowerCase() === 'yes' ? 'yes' : 'no'),
-            visa_type: data.work_authorization?.visa_status || '',
+            visa_type: data.work_authorization?.visa_status || prev.work_authorization.visa_type,
           }
         }));
 
@@ -1135,16 +1151,42 @@ const Dashboard = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:col-span-2">
+                      <div>
+                        <Label>First Name</Label>
+                        <Input
+                          value={profile.person.firstName}
+                          onChange={(e) => handleProfileChange('person', 'firstName', e.target.value)}
+                          placeholder="John"
+                        />
+                      </div>
+                      <div>
+                        <Label>Middle Name</Label>
+                        <Input
+                          value={profile.person.middleName}
+                          onChange={(e) => handleProfileChange('person', 'middleName', e.target.value)}
+                          placeholder="Quincy"
+                        />
+                      </div>
+                      <div>
+                        <Label>Last Name</Label>
+                        <Input
+                          value={profile.person.lastName}
+                          onChange={(e) => handleProfileChange('person', 'lastName', e.target.value)}
+                          placeholder="Doe"
+                        />
+                      </div>
+                    </div>
                     <div>
-                      <Label>Full Name</Label>
+                      <Label>Full Name (as on legal docs)</Label>
                       <Input
                         value={profile.person.fullName}
                         onChange={(e) => handleProfileChange('person', 'fullName', e.target.value)}
-                        placeholder="John Doe"
+                        placeholder="John Quincy Doe"
                       />
                     </div>
                     <div>
-                      <Label>Preferred Name</Label>
+                      <Label>Preferred Name / Nickname</Label>
                       <Input
                         value={profile.person.preferredName}
                         onChange={(e) => handleProfileChange('person', 'preferredName', e.target.value)}
@@ -1152,11 +1194,29 @@ const Dashboard = () => {
                       />
                     </div>
                     <div>
-                      <Label>Middle Name</Label>
+                      <Label>Gender</Label>
+                      <Select
+                        value={profile.person.gender}
+                        onValueChange={(val) => handleProfileChange('person', 'gender', val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="nonbinary">Non-binary</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                          <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Pronouns</Label>
                       <Input
-                        value={profile.person.middleName}
-                        onChange={(e) => handleProfileChange('person', 'middleName', e.target.value)}
-                        placeholder="Quincy"
+                        value={profile.person.pronouns}
+                        onChange={(e) => handleProfileChange('person', 'pronouns', e.target.value)}
+                        placeholder="He/Him, She/Her, They/Them"
                       />
                     </div>
                     <div>
@@ -1258,6 +1318,72 @@ const Dashboard = () => {
                         onChange={(e) => handleProfileChange('address', 'country', e.target.value)}
                         placeholder="United States"
                       />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Demographic Information (EEO) */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5" />
+                      Demographic Information (EEO)
+                    </CardTitle>
+                    <p className="text-sm text-gray-500">Optional: This information is used for Equal Employment Opportunity tracking on applications.</p>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Ethnicity / Race</Label>
+                      <Select
+                        value={profile.sensitive.race}
+                        onValueChange={(val) => handleProfileChange('sensitive', 'race', val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select ethnicity" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hispanic">Hispanic or Latino</SelectItem>
+                          <SelectItem value="white">White (Not Hispanic or Latino)</SelectItem>
+                          <SelectItem value="black">Black or African American (Not Hispanic or Latino)</SelectItem>
+                          <SelectItem value="native_hawaiian">Native Hawaiian or Other Pacific Islander (Not Hispanic or Latino)</SelectItem>
+                          <SelectItem value="asian">Asian (Not Hispanic or Latino)</SelectItem>
+                          <SelectItem value="native_american">American Indian or Alaska Native (Not Hispanic or Latino)</SelectItem>
+                          <SelectItem value="two_or_more">Two or More Races (Not Hispanic or Latino)</SelectItem>
+                          <SelectItem value="prefer_not_to_say">I do not wish to disclose</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Veteran Status</Label>
+                      <Select
+                        value={profile.sensitive.veteran}
+                        onValueChange={(val) => handleProfileChange('sensitive', 'veteran', val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="not_a_veteran">I am not a protected veteran</SelectItem>
+                          <SelectItem value="protected_veteran">I identify as one or more of the classifications of protected veteran</SelectItem>
+                          <SelectItem value="prefer_not_to_say">I do not wish to disclose</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label>Disability Status</Label>
+                      <Select
+                        value={profile.sensitive.disability}
+                        onValueChange={(val) => handleProfileChange('sensitive', 'disability', val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="no">No, I do not have a disability</SelectItem>
+                          <SelectItem value="yes">Yes, I have a disability (or previously had one)</SelectItem>
+                          <SelectItem value="prefer_not_to_say">I do not wish to disclose</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </CardContent>
                 </Card>
@@ -1379,13 +1505,33 @@ const Dashboard = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <Label>Visa Type (If applicable)</Label>
-                      <Input
-                        value={profile.work_authorization.visa_type}
-                        onChange={(e) => handleProfileChange('work_authorization', 'visa_type', e.target.value)}
-                        placeholder="H1B, F1-OPT, etc."
-                      />
+                    <div className="md:col-span-2">
+                      <Label>Work Authorization Status</Label>
+                      <Select value={profile.work_authorization.visa_type} onValueChange={(v) => handleProfileChange('work_authorization', 'visa_type', v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your current status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="citizen">U.S. Citizen</SelectItem>
+                          <SelectItem value="permanent_resident">Permanent Resident (Green Card)</SelectItem>
+                          <SelectItem value="h1b">H1-B Visa</SelectItem>
+                          <SelectItem value="f1_opt">F-1 OPT</SelectItem>
+                          <SelectItem value="j1">J-1 Visa</SelectItem>
+                          <SelectItem value="other">Other / Not Listed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label>Relocation Preference</Label>
+                      <Select value={profile.work_authorization.relocation_ok} onValueChange={(v) => handleProfileChange('work_authorization', 'relocation_ok', v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Are you open to relocation?" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="yes">Yes, I am open to relocation</SelectItem>
+                          <SelectItem value="no">No, I am not open to relocation at this time</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </CardContent>
                 </Card>

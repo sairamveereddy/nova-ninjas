@@ -64,13 +64,17 @@ async function performAutofill(userData) {
         // Identification
         if (isField(context, ['first name', 'given name', 'firstName', 'legalNameSection_firstName', '_firstName', 'fname'])) {
             label = 'First Name';
-            const val = getStr(userData.firstName || userData.person?.fullName?.split(' ')[0] || userData.name?.split(' ')[0]);
+            const val = getStr(userData.person?.firstName || userData.firstName || userData.person?.fullName?.split(' ')[0] || userData.name?.split(' ')[0]);
+            filled = fillField(input, val, label);
+        } else if (isField(context, ['middle name', 'middleName', 'legalNameSection_middleName', '_middleName', 'mname'])) {
+            label = 'Middle Name';
+            const val = getStr(userData.person?.middleName || userData.middleName);
             filled = fillField(input, val, label);
         } else if (isField(context, ['last name', 'family name', 'surname', 'lastName', 'legalNameSection_lastName', '_lastName', 'lname'])) {
             label = 'Last Name';
             const full = getStr(userData.person?.fullName || userData.fullName || userData.name);
             const parts = full.trim().split(/\s+/);
-            const val = userData.lastName || (parts.length > 1 ? parts.slice(1).join(' ') : '');
+            const val = userData.person?.lastName || userData.lastName || (parts.length > 1 ? parts.slice(1).join(' ') : '');
             filled = fillField(input, val, label);
         } else if (isField(context, ['email', 'email address', 'user_email', 'contactInformation_email', '_email', 'userEmail'])) {
             label = 'Email';
@@ -117,6 +121,21 @@ async function performAutofill(userData) {
         } else if (isField(context, ['summary', 'about you', 'professional summary', 'bio', 'objective'])) {
             label = 'Summary';
             filled = fillField(input, getStr(userData.summary || (userData.employment_history && userData.employment_history[0]?.summary)), label);
+        }
+
+        // EEO / Sensitive
+        else if (isField(context, ['gender', 'sex', 'identify as'])) {
+            label = 'Gender';
+            filled = selectSmart(input, getStr(userData.person?.gender || userData.sensitive?.gender), label);
+        } else if (isField(context, ['race', 'ethnicity', 'hispanic'])) {
+            label = 'Ethnicity';
+            filled = selectSmart(input, getStr(userData.sensitive?.race), label);
+        } else if (isField(context, ['veteran', 'military'])) {
+            label = 'Veteran Status';
+            filled = selectSmart(input, getStr(userData.sensitive?.veteran), label);
+        } else if (isField(context, ['disability', 'handicapped'])) {
+            label = 'Disability Status';
+            filled = selectSmart(input, getStr(userData.sensitive?.disability), label);
         }
 
         if (filled) {

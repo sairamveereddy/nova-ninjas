@@ -429,12 +429,18 @@ Return this EXACT JSON structure (Universal Profile Format):
 {{
     "person": {{
         "fullName": "<full name>",
+        "firstName": "<first name>",
+        "lastName": "<last name>",
+        "middleName": "<middle name or null>",
+        "preferredName": "<nick name or null>",
         "email": "<email or null>",
         "phone": "<phone or null>",
         "linkedinUrl": "<linkedin url or null>",
         "githubUrl": "<github url or null>",
         "portfolioUrl": "<portfolio url or null>",
-        "location": "<city, state or null>"
+        "location": "<city, state or null>",
+        "gender": "<male|female|non-binary|prefer not to say>",
+        "pronouns": "<he/him|she/her|they/them|null>"
     }},
     "address": {{
         "line1": "<street address or null>",
