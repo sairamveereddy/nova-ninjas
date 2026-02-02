@@ -159,6 +159,9 @@ const Dashboard = () => {
         setIsLoading(true);
 
         const response = await fetch(`${API_URL}/api/applications/${encodeURIComponent(user.email)}`, {
+          headers: {
+            'token': localStorage.getItem('auth_token')
+          },
           signal: controller.signal
         });
 
@@ -243,7 +246,7 @@ const Dashboard = () => {
         setIsLoading(true);
         const response = await fetch(`${API_URL}/api/user/profile`, {
           headers: {
-            'token': localStorage.getItem('token')
+            'token': localStorage.getItem('auth_token')
           },
           signal: controller.signal
         });
@@ -397,7 +400,9 @@ const Dashboard = () => {
 
       // We use the existing scan/parse endpoint which returns structured data
       const response = await fetch(`${API_URL}/api/scan/parse`, {
-        method: 'POST',
+        headers: {
+          'token': localStorage.getItem('auth_token')
+        },
         body: formData
       });
 
@@ -510,7 +515,7 @@ const Dashboard = () => {
       const response = await fetch(`${API_URL}/api/profile`, {
         method: 'POST',
         headers: {
-          'token': localStorage.getItem('token')
+          'token': localStorage.getItem('auth_token')
         },
         body: formData
       });

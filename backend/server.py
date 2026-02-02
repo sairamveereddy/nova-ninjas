@@ -3821,9 +3821,9 @@ async def scan_resume(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/scan/parse")
+@api_router.post("/scan/parse")
 async def parse_resume_endpoint(
-    resume: UploadFile = File(...), email: str = Form(None)
+    resume: UploadFile = File(...), user: dict = Depends(get_current_user)
 ):
     """
     Parse a resume and extract structured data
@@ -3842,8 +3842,8 @@ async def parse_resume_endpoint(
                 status_code=400, detail="Could not extract text from resume"
             )
 
-        # Check for BYOK - safely handle if email is missing
-        byok_config = await get_decrypted_byok_key(email or "")
+        # Check for BYOK - use authenticated user email
+        byok_config = await get_decrypted_byok_key(user.get("email", ""))
 
         # Extract structured data with Gemini / BYOK
         from resume_analyzer import extract_resume_data
