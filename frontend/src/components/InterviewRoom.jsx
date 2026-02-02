@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle, AlertCircle, Mic, Square, Edit2, Send } from 'lucide-react';
 import { API_URL } from '../config/api';
 import './InterviewRoom.css';
 
@@ -16,7 +16,14 @@ const InterviewRoom = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [questionNumber, setQuestionNumber] = useState(0);
-    const [totalQuestions] = useState(5);
+    const [totalQuestions, setTotalQuestions] = useState(5);
+
+    // Audio State
+    const [isRecording, setIsRecording] = useState(false);
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const [canEdit, setCanEdit] = useState(false);
+    const mediaRecorderRef = React.useRef(null);
+    const audioChunksRef = React.useRef([]);
 
     useEffect(() => {
         startInterview();
@@ -36,10 +43,83 @@ const InterviewRoom = () => {
             setCurrentQuestion(data);
             setQuestionNumber(1);
             setStatus('active');
+
+            // Try to get actual total questions if available (session details)
+            fetchSessionDetails();
         } catch (err) {
             console.error('Start interview error:', err);
             setError('Failed to start interview. Please try again.');
             setStatus('error');
+        }
+    };
+
+    const fetchSessionDetails = async () => {
+        try {
+            const response = await fetch(`${API_URL}/api/interview/session/${sessionId}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.targetQuestions) {
+                    setTotalQuestions(data.targetQuestions);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to fetch session details:', e);
+        }
+    };
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = handleRecordingStop;
+            mediaRecorder.start();
+            setIsRecording(true);
+        } catch (err) {
+            console.error('Recording error:', err);
+            alert('Could not access microphone.');
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+        }
+    };
+
+    const handleRecordingStop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setIsTranscribing(true);
+
+        try {
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'recording.webm');
+
+            const response = await fetch(`${API_URL}/api/interview/transcribe`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) throw new Error('Transcription failed');
+
+            const data = await response.json();
+            setAnswer(data.text || '');
+            setCanEdit(true); // Allow editing ONLY after transcription
+        } catch (err) {
+            console.error('Transcription error:', err);
+            alert('Failed to convert speech to text. Please try again.');
+        } finally {
+            setIsTranscribing(false);
         }
     };
 
@@ -73,6 +153,7 @@ const InterviewRoom = () => {
                 setCurrentQuestion(data);
                 setQuestionNumber(prev => prev + 1);
                 setAnswer('');
+                setCanEdit(false); // Reset edit lock for next question
             }
         } catch (err) {
             console.error('Submit answer error:', err);
@@ -186,20 +267,70 @@ const InterviewRoom = () => {
                 {/* Answer Input */}
                 <Card className="answer-card">
                     <CardContent className="p-6">
-                        <label className="answer-label">Your Answer</label>
-                        <textarea
-                            className="answer-textarea"
-                            rows={8}
-                            value={answer}
-                            onChange={(e) => setAnswer(e.target.value)}
-                            placeholder="Type your answer here... Be specific and use examples from your experience."
-                            disabled={isSubmitting}
-                        />
-                        <div className="answer-actions">
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="answer-label m-0">Your Answer</label>
+                            {canEdit && (
+                                <div className="flex items-center text-xs text-blue-400 font-medium">
+                                    <Edit2 className="w-3 h-3 mr-1" />
+                                    Mode: Edit Only
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="relative">
+                            <textarea
+                                className={`answer-textarea ${!canEdit ? 'bg-gray-900/50 cursor-not-allowed' : ''}`}
+                                rows={8}
+                                value={answer}
+                                onChange={(e) => setAnswer(e.target.value)}
+                                placeholder={isRecording ? "Listening..." : isTranscribing ? "Converting speech to text..." : "Click the button below to record your answer..."}
+                                disabled={isSubmitting || isTranscribing}
+                                readOnly={!canEdit}
+                            />
+
+                            {!canEdit && !isRecording && !isTranscribing && !answer && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <p className="text-gray-500 text-sm">Please record your answer first.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="answer-actions flex items-center justify-between mt-4">
+                            <div className="recording-controls flex items-center gap-3">
+                                {!isRecording ? (
+                                    <Button
+                                        onClick={startRecording}
+                                        disabled={isSubmitting || isTranscribing}
+                                        className="btn-secondary rounded-full w-12 h-12 p-0 flex items-center justify-center bg-blue-600/20 hover:bg-blue-600/30 text-blue-500 border-blue-500/50"
+                                    >
+                                        <Mic className="w-6 h-6" />
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        onClick={stopRecording}
+                                        className="btn-danger rounded-full w-12 h-12 p-0 flex items-center justify-center animate-pulse"
+                                    >
+                                        <Square className="w-6 h-6" />
+                                    </Button>
+                                )}
+
+                                {isRecording && (
+                                    <span className="text-red-500 font-medium animate-pulse text-sm">
+                                        Recording...
+                                    </span>
+                                )}
+                                {isTranscribing && (
+                                    <div className="flex items-center gap-2 text-blue-400 text-sm">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Processing...
+                                    </div>
+                                )}
+                            </div>
+
                             <Button
                                 onClick={handleSubmitAnswer}
-                                disabled={isSubmitting || !answer.trim()}
-                                className="btn-primary"
+                                disabled={isSubmitting || !answer.trim() || isRecording || isTranscribing}
+                                className="btn-primary min-w-[140px]"
                             >
                                 {isSubmitting ? (
                                     <>
@@ -207,7 +338,10 @@ const InterviewRoom = () => {
                                         Submitting...
                                     </>
                                 ) : (
-                                    'Submit Answer'
+                                    <>
+                                        <Send className="w-4 h-4 mr-2" />
+                                        Submit Answer
+                                    </>
                                 )}
                             </Button>
                         </div>

@@ -4571,6 +4571,23 @@ async def transcribe_audio(audio: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/interview/session/{session_id}")
+async def get_interview_session(session_id: str):
+    """Get interview session details"""
+    try:
+        from bson import ObjectId
+        session = sessions_collection.find_one({"_id": ObjectId(session_id)})
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        # Convert ObjectId to string
+        session['_id'] = str(session['_id'])
+        return session
+    except Exception as e:
+        logger.error(f"Get session details error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/interview/report/{session_id}")
 async def get_interview_report(session_id: str):
     """Get interview report for a session"""

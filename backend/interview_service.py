@@ -203,6 +203,12 @@ class InterviewOrchestrator:
             "createdAt": datetime.utcnow()
         })
         
+        # Update session count
+        sessions_collection.update_one(
+            {"_id": ObjectId(self.session_id)},
+            {"$set": {"questionCount": 1}}
+        )
+        
         return result
     
     async def process_answer_and_get_next(self, answer_text: str) -> Dict[str, Any]:
@@ -222,6 +228,7 @@ class InterviewOrchestrator:
             )
         
         # Check if we reached target questions
+        # If we have 5 turns, and we just answered the 5th one, we should stop.
         question_count = session.get('questionCount', 0)
         target_questions = session.get('targetQuestions', 5)
         

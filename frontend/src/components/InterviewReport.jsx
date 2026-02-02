@@ -76,7 +76,11 @@ const InterviewReport = () => {
                     <div className="report-actions">
                         <Button variant="outline" onClick={() => navigate('/interview-prep')}>
                             <Home className="w-4 h-4 mr-2" />
-                            New Interview
+                            Dashboard
+                        </Button>
+                        <Button className="btn-primary" onClick={() => navigate('/interview-prep')}>
+                            <TrendingUp className="w-4 h-4 mr-2" />
+                            Answer more questions and get better
                         </Button>
                     </div>
                 </div>
