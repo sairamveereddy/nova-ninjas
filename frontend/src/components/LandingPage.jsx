@@ -706,7 +706,9 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="footer-bottom-modern">
-            <p>{BRAND.copyright} • v2.0 Live</p>
+            <p>
+              {BRAND.copyright} • <a href="/live-dashboard" className="hover:text-primary transition-colors">v2.1 Dashboard</a>
+            </p>
           </div>
         </div>
       </footer>
