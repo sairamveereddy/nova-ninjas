@@ -712,7 +712,7 @@ async def send_welcome_email(
     logger.info(f"Attempting to send welcome email to {email} (Name: {name})")
     frontend_url = os.environ.get("FRONTEND_URL", "https://jobninjas.ai")
     verify_link = (
-        f"{frontend_url}/verify-email?token={token}"
+        f"{frontend_url}/verify-email?token={token}&email={email}"
         if token
         else f"{frontend_url}/dashboard"
     )
@@ -1045,23 +1045,32 @@ async def get_me(user: dict = Depends(get_current_user)):
 
 
 @api_router.get("/auth/verify-email")
-async def verify_email(token: str):
+async def verify_email(token: str, email: str = None):
     """
     Verify user email using the token.
+    Robustly handles already verified users if email is provided.
     """
-    user = await db.users.find_one({"verification_token": token})
+    # 1. Try to find user by token
+    user_by_token = await db.users.find_one({"verification_token": token})
 
-    if not user:
-        raise HTTPException(
-            status_code=400, detail="Invalid or expired verification token"
+    if user_by_token:
+        # User found with token -> Verify and consume token
+        await db.users.update_one(
+            {"_id": user_by_token["_id"]},
+            {"$set": {"is_verified": True}, "$unset": {"verification_token": ""}},
         )
+        return {"success": True, "message": "Email verified successfully"}
 
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$set": {"is_verified": True}, "$unset": {"verification_token": ""}},
+    # 2. Token not found? Check if user is ALREADY verified (if email provided)
+    if email:
+        user_by_email = await db.users.find_one({"email": email})
+        if user_by_email and user_by_email.get("is_verified"):
+             return {"success": True, "message": "Email is already verified"}
+    
+    # 3. If neither -> Invalid
+    raise HTTPException(
+        status_code=400, detail="Invalid verification link or already verified."
     )
-
-    return {"success": True, "message": "Email verified successfully"}
 
 
 @api_router.post("/auth/resend-verification")

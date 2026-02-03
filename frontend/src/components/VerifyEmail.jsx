@@ -13,6 +13,7 @@ const VerifyEmail = () => {
     const navigate = useNavigate();
     const { refreshUser, isAuthenticated } = useAuth();
     const token = searchParams.get('token');
+    const email = searchParams.get('email');
     const [status, setStatus] = useState('loading'); // loading, success, error
     const [message, setMessage] = useState('');
     const [sideMenuOpen, setSideMenuOpen] = useState(false);
@@ -26,7 +27,10 @@ const VerifyEmail = () => {
             }
 
             try {
-                const response = await fetch(`${API_URL}/api/auth/verify-email?token=${token}`);
+                let url = `${API_URL}/api/auth/verify-email?token=${token}`;
+                if (email) url += `&email=${encodeURIComponent(email)}`;
+
+                const response = await fetch(url);
                 const data = await response.json();
 
                 if (response.ok) {
