@@ -1330,11 +1330,6 @@ async def book_call(input: CallBookingCreate):
         raise HTTPException(status_code=500, detail=f"Failed to book call: {str(e)}")
 
 
-@api_router.get("/admin/bookings")
-async def get_all_bookings():
-    """Get all call bookings"""
-    bookings = await db.call_bookings.find({}, {"_id": 0}).to_list(1000)
-    return {"bookings": bookings, "count": len(bookings)}
 
 
 @api_router.get("/admin/all-users-export")
