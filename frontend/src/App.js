@@ -10,6 +10,7 @@ import Dashboard from "./components/Dashboard";
 import Pricing from "./components/Pricing";
 import Employee from "./components/Employee";
 import Admin from "./components/Admin";
+import AllUsersExport from "./components/AllUsersExport";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PaymentSuccess from "./components/PaymentSuccess";
 import PaymentCanceled from "./components/PaymentCanceled";
@@ -240,6 +241,16 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <Admin />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Admin User Export Route */}
+            <Route
+              path="/admin/users-export"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AllUsersExport />
                 </ProtectedRoute>
               }
             />

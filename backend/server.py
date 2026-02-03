@@ -1325,9 +1325,91 @@ async def book_call(input: CallBookingCreate):
             logger.error(f"Error sending emails: {email_error}")
 
         return booking_obj
-    except Exception as e:
-        logger.error(f"Error in book_call: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to book call: {str(e)}")
+
+
+@api_router.get("/admin/bookings")
+async def get_all_bookings():
+    """Get all call bookings"""
+    bookings = await db.call_bookings.find({}, {"_id": 0}).to_list(1000)
+    return {"bookings": bookings, "count": len(bookings)}
+
+
+@api_router.get("/admin/all-users-export")
+async def export_all_users_data():
+    """
+    Export ALL user data including names, emails, phone numbers, and resume info.
+    For admin viewing purposes.
+    """
+    try:
+        # Get all users
+        all_users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(5000)
+        
+        export_data = []
+        
+        for user in all_users:
+            # Get profile data
+            profile = await db.profiles.find_one({"email": user["email"]}, {"_id": 0})
+            
+            # Get latest resume
+            resume_data = await db.resumes.find_one(
+                {"email": user["email"]},
+                {"_id": 0},
+                sort=[("created_at", -1)]
+            )
+            
+            # Build export record
+            record = {
+                "name": user.get("name", "N/A"),
+                "email": user.get("email", "N/A"),
+                "role": user.get("role", "customer"),
+                "created_at": user.get("created_at", "N/A"),
+                "phone": (profile.get("phone") if profile else None) or "N/A",
+                "target_role": (profile.get("targetRole") if profile else None) or "N/A",
+                "years_experience": (profile.get("yearsOfExperience") if profile else None) or "N/A",
+                "visa_status": (profile.get("visaStatus") if profile else None) or "N/A",
+                "remote_preference": (profile.get("remotePreference") if profile else None) or "N/A",
+                "skills": (profile.get("skills") if profile else None) or "N/A",
+                "has_resume": "Yes" if resume_data else "No",
+                "resume_filename": resume_data.get("filename") if resume_data else "N/A",
+                "resume_created": resume_data.get("created_at") if resume_data else "N/A",
+            }
+            
+            # Add employment history if available in resume
+            if resume_data and resume_data.get("employment_history"):
+                record["employment_count"] = len(resume_data.get("employment_history", []))
+                record["latest_job_title"] = (
+                    resume_data["employment_history"][0].get("job_title")
+                    if resume_data["employment_history"]
+                    else "N/A"
+                )
+            else:
+                record["employment_count"] = 0
+                record["latest_job_title"] = "N/A"
+            
+            # Add education
+            if resume_data and resume_data.get("education"):
+                record["education_count"] = len(resume_data.get("education", []))
+                record["highest_education"] = (
+                    resume_data["education"][0].get("degree")
+                    if resume_data["education"]
+                    else "N/A"
+                )
+            else:
+                record["education_count"] = 0
+                record["highest_education"] = "N/A"
+            
+            export_data.append(record)
+        
+        return {
+            "total_users": len(export_data),
+            "users": export_data,
+            "generated_at": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error exporting user data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.get("/call-bookings", response_model=List[CallBooking])
