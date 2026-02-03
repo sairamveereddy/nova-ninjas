@@ -28,6 +28,7 @@ load_dotenv(ROOT_DIR / ".env")
 
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from bson import ObjectId
 import logging
 import asyncio
 from pydantic import BaseModel, Field, ConfigDict
@@ -1384,6 +1385,8 @@ async def export_all_users_data(admin_key: str = None):
                 "name": user.get("name", "N/A"),
                 "email": user.get("email", "N/A"),
                 "role": user.get("role", "customer"),
+                "plan": user.get("plan", "free"),
+                "byok_enabled": user.get("byok_enabled", False),
                 "created_at": user.get("created_at", "N/A"),
                 "phone": (profile.get("phone") if profile else None) or "N/A",
                 "target_role": (profile.get("targetRole") if profile else None) or "N/A",
@@ -1432,6 +1435,50 @@ async def export_all_users_data(admin_key: str = None):
         
     except Exception as e:
         logger.error(f"Error exporting user data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.patch("/admin/update-user-plan")
+async def admin_update_user_plan(request: Request):
+    """
+    Update a user's plan directly (Admin Only).
+    """
+    try:
+        data = await request.json()
+        admin_key = data.get("admin_key")
+        user_id = data.get("user_id")
+        new_plan = data.get("plan")
+        
+        if admin_key != "jobninjas2025admin":
+             raise HTTPException(status_code=403, detail="Unauthorized")
+             
+        if not user_id or not new_plan:
+            raise HTTPException(status_code=400, detail="Missing user_id or plan")
+            
+        update_doc = {"plan": new_plan}
+        
+        # Handle BYOK specific flags
+        if new_plan == "free_byok":
+            update_doc["byok_enabled"] = True
+        elif new_plan == "free":
+            update_doc["byok_enabled"] = False
+        # For paid plans, assume standard behavior (managed via plan ID)
+        
+        # Try finding by ObjectId first
+        try:
+            query = {"_id": ObjectId(user_id)}
+        except:
+            query = {"id": user_id}
+            
+        result = await db.users.update_one(query, {"$set": update_doc})
+        
+        if result.matched_count == 0:
+            return JSONResponse(status_code=404, content={"success": False, "detail": "User not found"})
+            
+        return {"success": True, "plan": new_plan, "user_id": user_id}
+        
+    except Exception as e:
+        logger.error(f"Error updating user plan: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
