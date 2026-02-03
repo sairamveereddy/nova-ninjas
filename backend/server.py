@@ -1617,6 +1617,11 @@ Be honest and insightful. Help the candidate make an informed decision."""
                                     }
                                 )
                 else:
+                    for line in lines:
+                        clean_line = line.strip("•").strip("-").strip("*").strip()
+                        if clean_line:
+                            analysis[current_section].append(clean_line)
+
         return {"analysis": analysis, "raw_content": content}
     except Exception as e:
         logger.error(f"Error decoding job description: {str(e)}")
