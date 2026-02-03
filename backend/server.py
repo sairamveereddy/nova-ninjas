@@ -3037,7 +3037,7 @@ async def get_user_usage_limits(identifier: str) -> dict:
 
     tier_lower = str(tier).strip().lower()
 
-    if tier_lower in ["pro", "unlimited", "ai-pro", "ai-monthly", "ai-quarterly", "ai-weekly"]:
+    if tier_lower in ["pro", "unlimited", "ai-pro", "ai-monthly", "ai-quarterly", "ai-weekly", "human-starter", "human-growth", "human-scale"]:
         limit = "Unlimited"
         autofills_limit = "Unlimited"
         can_generate = True
