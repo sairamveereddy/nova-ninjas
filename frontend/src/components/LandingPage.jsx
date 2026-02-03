@@ -706,7 +706,7 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="footer-bottom-modern">
-            <p>{BRAND.copyright}</p>
+            <p>{BRAND.copyright} • v2.0 Live</p>
           </div>
         </div>
       </footer>
