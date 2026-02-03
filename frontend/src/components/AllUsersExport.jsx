@@ -75,9 +75,19 @@ const AllUsersExport = () => {
     if (error) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md w-full">
                     <h3 className="text-red-800 font-semibold mb-2">Error Loading Data</h3>
-                    <p className="text-red-600">{error}</p>
+                    <p className="text-red-600 mb-4">{error}</p>
+                    <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded break-all font-mono">
+                        Included Admin Key: Yes<br />
+                        Target: {API_URL}/api/admin/all-users-export
+                    </div>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="mt-4 w-full px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition"
+                    >
+                        Retry
+                    </button>
                 </div>
             </div>
         );
