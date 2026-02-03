@@ -1464,18 +1464,28 @@ async def admin_update_user_plan(request: Request):
             update_doc["byok_enabled"] = False
         # For paid plans, assume standard behavior (managed via plan ID)
         
-        # Try finding by ObjectId first
-        try:
-            query = {"_id": ObjectId(user_id)}
-        except:
-            query = {"id": user_id}
-            
-        result = await db.users.update_one(query, {"$set": update_doc})
+        # Try finding and updating by various ID formats
+        # 1. Try as ObjectId (standard Mongo)
+        if ObjectId.is_valid(user_id):
+            result = await db.users.update_one({"_id": ObjectId(user_id)}, {"$set": update_doc})
+            if result.matched_count > 0:
+                logger.info(f"Updated user plan via ObjectId: {user_id}")
+                return {"success": True, "plan": new_plan, "user_id": user_id}
+
+        # 2. Try as String _id (custom IDs)
+        result = await db.users.update_one({"_id": user_id}, {"$set": update_doc})
+        if result.matched_count > 0:
+            logger.info(f"Updated user plan via String _id: {user_id}")
+            return {"success": True, "plan": new_plan, "user_id": user_id}
+
+        # 3. Try as String 'id' field (legacy/external)
+        result = await db.users.update_one({"id": user_id}, {"$set": update_doc})
+        if result.matched_count > 0:
+            logger.info(f"Updated user plan via String id: {user_id}")
+            return {"success": True, "plan": new_plan, "user_id": user_id}
         
-        if result.matched_count == 0:
-            return JSONResponse(status_code=404, content={"success": False, "detail": "User not found"})
-            
-        return {"success": True, "plan": new_plan, "user_id": user_id}
+        # If we reach here, no document matched
+        return JSONResponse(status_code=404, content={"success": False, "detail": "User not found"})
         
     except Exception as e:
         logger.error(f"Error updating user plan: {e}")
