@@ -1344,29 +1344,43 @@ async def export_all_users_data(admin_key: str = None):
         raise HTTPException(status_code=403, detail="Unauthorized. Use admin_key parameter.")
     
     try:
-        # Get all users
-        all_users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(5000)
+        # Get all users (include _id for linking)
+        all_users = await db.users.find({}, {"password_hash": 0}).to_list(5000)
         
         export_data = []
         
         for user in all_users:
+            user_id = str(user["_id"])
+            
             # Get profile data
             profile = await db.profiles.find_one({"email": user["email"]}, {"_id": 0})
             
-            # Get latest resume (check both email fields for compatibility)
+            # Get latest resume (check email fields AND userId)
+            resume_query = {
+                "$or": [
+                    {"email": user.get("email")}, 
+                    {"user_email": user.get("email")},
+                    {"userId": user_id}
+                ]
+            }
+            # Clean query to remove None values if email is missing
+            if not user.get("email"):
+                resume_query = {"userId": user_id}
+                
             resume_data = await db.resumes.find_one(
-                {"$or": [{"email": user["email"]}, {"user_email": user["email"]}]},
+                resume_query,
                 {"_id": 0},
                 sort=[("created_at", -1)]
             )
             
             # Get job application count
             jobs_applied_count = await db.job_applications.count_documents(
-                {"customer_email": user["email"]}
+                {"customer_email": user.get("email")}
             )
             
             # Build export record
             record = {
+                "id": user_id,
                 "name": user.get("name", "N/A"),
                 "email": user.get("email", "N/A"),
                 "role": user.get("role", "customer"),
