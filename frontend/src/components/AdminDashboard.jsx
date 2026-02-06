@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
@@ -196,9 +196,9 @@ const AdminDashboardContent = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <CardTitle>User Management</CardTitle>
-                                <DialogDescription className="mt-1">
+                                <CardDescription className="mt-1">
                                     View and manage user accounts and permissions.
-                                </DialogDescription>
+                                </CardDescription>
                             </div>
                             <div className="relative w-64">
                                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
