@@ -492,9 +492,9 @@ async def get_admin_users(admin: dict = Depends(check_admin), limit: int = 100):
             email = u.get("email")
             
             # Get counts for this user (could be optimized with aggregation but this is simpler for now)
-            resumes_count = await db.resumes.count_documents({"userId": uid}) 
+            resumes_count = await db.saved_resumes.count_documents({"userId": uid}) 
             if resumes_count == 0: # Try by email if ID match failed
-                 resumes_count = await db.resumes.count_documents({"userEmail": email})
+                 resumes_count = await db.saved_resumes.count_documents({"userEmail": email})
                  
             apps_query = {"$or": [{"userId": uid}, {"userEmail": email}]}
             if "@" in str(uid): # If ID is email-like, just query once
