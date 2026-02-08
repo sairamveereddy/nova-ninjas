@@ -44,9 +44,14 @@ export const AuthProvider = ({ children }) => {
 
       if (token && userData) {
         try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
           const response = await fetch(`${API_URL}/api/auth/me`, {
-            headers: { 'token': token }
+            headers: { 'token': token },
+            signal: controller.signal
           });
+          clearTimeout(timeoutId);
 
           if (response.ok) {
             const data = await response.json();
