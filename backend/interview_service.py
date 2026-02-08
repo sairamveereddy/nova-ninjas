@@ -4,20 +4,32 @@ Uses Groq for AI and MongoDB for storage
 """
 import json
 from typing import Dict, Any, Optional
-from groq import Groq
+try:
+    from groq import Groq
+except ImportError:
+    Groq = None
+    print("Warning: groq module not found. Interview features will be disabled.")
+
 from pymongo import MongoClient
 from bson import ObjectId
 import os
 from datetime import datetime
-
-# Initialize Groq client
-groq_client = Groq(api_key=os.getenv('GROQ_API_KEY'))
 
 # MongoDB connection
 mongo_url = os.getenv('MONGO_URL')
 db_name = os.getenv('DB_NAME', 'novaninjas')
 mongo_client = MongoClient(mongo_url)
 db = mongo_client[db_name]
+
+# Initialize Groq client
+if Groq:
+    try:
+        groq_client = Groq(api_key=os.getenv('GROQ_API_KEY'))
+    except Exception as e:
+        print(f"Failed to initialize Groq client: {e}")
+        groq_client = None
+else:
+    groq_client = None
 
 # Collections
 sessions_collection = db['interview_sessions']
@@ -128,6 +140,9 @@ class AIService:
     def chat(prompt: str, json_mode: bool = True) -> str:
         """Call Groq chat API"""
         try:
+            if not groq_client:
+                raise ValueError("Groq client not initialized")
+                
             response = groq_client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[{"role": "user", "content": prompt}],
@@ -142,6 +157,9 @@ class AIService:
     def transcribe_audio(audio_file) -> str:
         """Transcribe audio using Groq Whisper"""
         try:
+            if not groq_client:
+                raise ValueError("Groq client not initialized")
+
             transcription = groq_client.audio.transcriptions.create(
                 file=audio_file,
                 model="whisper-large-v3",
