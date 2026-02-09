@@ -400,13 +400,17 @@ const Dashboard = () => {
 
       // We use the existing scan/parse endpoint which returns structured data
       const response = await fetch(`${API_URL}/api/scan/parse`, {
+        method: 'POST',
         headers: {
           'token': localStorage.getItem('auth_token')
         },
         body: formData
       });
 
-      if (!response.ok) throw new Error('Failed to parse resume');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to parse resume: ${response.status} ${errorText}`);
+      }
 
       const result = await response.json();
       if (result.success && result.data) {

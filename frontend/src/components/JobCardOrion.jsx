@@ -57,7 +57,7 @@ const MatchScore = ({ score }) => {
     );
 };
 
-const JobCardOrion = ({ job }) => {
+const JobCardOrion = ({ job, onAskNova }) => {
     const navigate = useNavigate();
 
     // Parse date for "posted x hours ago"
@@ -85,13 +85,17 @@ const JobCardOrion = ({ job }) => {
 
     const handleAskNova = (e) => {
         e.stopPropagation();
-        // Open Nova chat with context
-        navigate('/ai-ninja', {
-            state: {
-                initialMessage: `Tell me about the ${job.title} role at ${job.company}. Is it a good fit for me?`,
-                jobContext: job
-            }
-        });
+        if (onAskNova) {
+            onAskNova(job);
+        } else {
+            // Open Nova chat with context (fallback)
+            navigate('/ai-ninja', {
+                state: {
+                    initialMessage: `Tell me about the ${job.title} role at ${job.company}. Is it a good fit for me?`,
+                    jobContext: job
+                }
+            });
+        }
     };
 
     return (

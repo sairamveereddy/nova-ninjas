@@ -48,6 +48,7 @@ from payment_service import (
     verify_webhook_signature,
     create_customer_portal_session,
 )
+from resume_job_matcher import calculate_bulk_relevance
 from job_fetcher import (
     fetch_all_job_categories,
     update_jobs_in_database,
@@ -168,6 +169,8 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all methods
     allow_headers=["*"],  # Allow all headers
 )
+
+# Note: api_router will be included at the end of the file after all routes are defined
 
 # Security Configuration
 JWT_SECRET = os.environ.get("JWT_SECRET", "your-secret-key-change-in-production")
@@ -1371,12 +1374,47 @@ async def save_profile(request: Request, user: dict = Depends(get_current_user))
             profile_data[key] = value
 
     # Handle resume file upload
+    # Handle resume file upload
     resume_file = form_data.get("resume")
     if resume_file and hasattr(resume_file, "read"):
-        # In production, upload to S3/GCS and store URL
-        # For now, just store the filename
-        profile_data["resumeFileName"] = resume_file.filename
-        logger.info(f"Resume uploaded for {email}: {resume_file.filename}")
+        filename = resume_file.filename
+        profile_data["resumeFileName"] = filename
+        
+        try:
+            # Read and parse resume
+            content = await resume_file.read()
+            from resume_parser import parse_resume
+            resume_text = await parse_resume(content, filename)
+            
+            if resume_text:
+                profile_data["resumeText"] = resume_text
+                
+                # Create Resume object for db.resumes
+                resume_id = str(uuid.uuid4())
+                
+                # Get User ID (handle both string and ObjectId)
+                user_id = user.get("id") or str(user.get("_id"))
+                
+                resume_doc = {
+                    "id": resume_id,
+                    "userId": user_id,
+                    "userEmail": email,
+                    "resumeName": filename,
+                    "resumeText": resume_text,
+                    "isSystemGenerated": False,
+                    "createdAt": datetime.now(timezone.utc).isoformat(),
+                    "updatedAt": datetime.now(timezone.utc).isoformat(),
+                    "origin": "profile_upload"
+                }
+                
+                # Save to both collections
+                await db.resumes.insert_one(resume_doc)
+                await db.saved_resumes.insert_one(resume_doc)
+                logger.info(f"Resume {filename} parsed and saved for {email}")
+                
+        except Exception as e:
+            logger.error(f"Error parsing resume file during profile save: {e}")
+            # Don't fail the whole profile save, just log it
 
     # Upsert profile (update if exists, insert if not)
     result = await db.profiles.update_one(
@@ -3290,6 +3328,129 @@ async def get_usage_limits(email: str = Query(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============ JOB BOARD ENDPOINTS ============
+
+@api_router.get("/jobs")
+async def get_jobs(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    country: Optional[str] = Query(None),
+    type: Optional[str] = Query(None),  # remote, hybrid, onsite
+    visa: Optional[bool] = Query(None),
+    token: Optional[str] = Header(None)
+):
+    """
+    Get jobs from database with optional smart sorting based on user's resume.
+    
+    Query Parameters:
+    - page: Page number (default: 1)
+    - limit: Results per page (default: 20, max: 100)
+    - search: Search keyword for job title/description
+    - country: Filter by country code (e.g., 'us', 'gb')
+    - type: Filter by work type (remote, hybrid, onsite)
+    - visa: Filter visa-friendly jobs (true/false)
+    - token: Auth token for personalized match scores (optional)
+    
+    Returns:
+    - jobs: List of job postings with match scores (if authenticated)
+    - pagination: Page info (page, limit, total, pages)
+    - stats: Job statistics
+    """
+    try:
+        # Build query filter
+        query_filter = {}
+        
+        if search:
+            query_filter["$or"] = [
+                {"title": {"$regex": search, "$options": "i"}},
+                {"description": {"$regex": search, "$options": "i"}},
+                {"company": {"$regex": search, "$options": "i"}}
+            ]
+        
+        if country and country != "all":
+            query_filter["country"] = country.lower()
+        
+        if type and type != "all":
+            query_filter["workType"] = type.lower()
+        
+        if visa:
+            query_filter["visaSponsorship"] = True
+        
+        # Get total count
+        total_jobs = await db.jobs.count_documents(query_filter)
+        total_pages = (total_jobs + limit - 1) // limit
+        
+        # Calculate skip for pagination
+        skip = (page - 1) * limit
+        
+        # Fetch jobs from database
+        cursor = db.jobs.find(query_filter).skip(skip).limit(limit)
+        jobs = await cursor.to_list(length=limit)
+        
+        # Convert ObjectId to string
+        for job in jobs:
+            if "_id" in job:
+                job["_id"] = str(job["_id"])
+        
+        # Get user's resume for smart sorting (if authenticated)
+        resume_text = None
+        if token:
+            try:
+                # Get user from token
+                email = get_current_user_email(token)
+                if email:
+                    # Fetch user's latest resume
+                    user_profile = await db.profiles.find_one({"email": email})
+                    if user_profile:
+                        # Try to get resume text from profile or resumes collection
+                        resume_text = user_profile.get("resumeText")
+                        
+                        if not resume_text:
+                            # Try to get from saved_resumes
+                            latest_resume = await db.saved_resumes.find_one(
+                                {"userId": email},
+                                sort=[("createdAt", -1)]
+                            )
+                            if latest_resume:
+                                resume_text = latest_resume.get("resumeText")
+            except Exception as e:
+                logger.warning(f"Could not fetch resume for smart sorting: {e}")
+        
+        # Calculate match scores and sort if we have a resume
+        if resume_text:
+            jobs = calculate_bulk_relevance(resume_text, jobs)
+            logger.info(f"Smart sorting applied for authenticated user")
+        else:
+            # No resume, add default match scores
+            for job in jobs:
+                job["matchScore"] = 0
+        
+        # Calculate stats
+        stats = {
+            "totalJobs": total_jobs,
+            "visaJobs": await db.jobs.count_documents({**query_filter, "visaSponsorship": True}),
+            "remoteJobs": await db.jobs.count_documents({**query_filter, "workType": "remote"}),
+            "highPayJobs": await db.jobs.count_documents({**query_filter, "salaryMax": {"$gte": 120000}})
+        }
+        
+        return {
+            "jobs": jobs,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total_jobs,
+                "pages": total_pages
+            },
+            "stats": stats
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching jobs: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to fetch jobs: {str(e)}")
+
+
 @api_router.post("/fetch-job-description")
 async def fetch_job_desc(request: JobUrlFetchRequest):
     """
@@ -3726,30 +3887,103 @@ app.add_middleware(
 # PROJECT ORION: JOB BOARD HELPERS
 # ============================================
 
+def _extract_target_role(resume_text: str) -> str:
+    """
+    Simple heuristic to extract a likely target job role from resume text.
+    Looks for common patterns or uses the first few lines.
+    """
+    if not resume_text:
+        return ""
+    
+    # Clean text
+    lines = [l.strip() for l in resume_text.split('\n') if l.strip()]
+    if not lines:
+        return ""
+        
+    # Heuristic 1: Look for "Target Role" or "Objective"
+    for i, line in enumerate(lines[:10]):
+        lower_line = line.lower()
+        if "objective" in lower_line or "summary" in lower_line:
+            # The next meaningful line might be the role
+             if i+1 < len(lines):
+                  return lines[i+1]
+        
+    # Heuristic 2: Just return the first meaningful line if it's short (likely name + title)
+    # Often resumes start with "NAME \n TITLE"
+    if len(lines) >= 2 and len(lines[1]) < 50:
+         return lines[1]
+         
+    return ""
+
 def _calculate_match_score(job: dict, user: dict) -> int:
     """
-    Calculate a match score (0-100) based on user profile and job description.
-    Uses simple keyword matching and randomization for demo purposes.
+    Calculate a match score (48-99) based on user profile/resume and job description.
+    Uses deterministic keyword matching + hashing to ensure consistent scores.
     """
-    import random
-    
-    # Base score (70-85%)
-    score = random.randint(70, 85)
-    
-    # Boost if user has skills that match job title or description
-    user_skills = user.get("skills", []) if user else []
-    job_text = (job.get("title", "") + " " + job.get("description", "")).lower()
-    
-    matches = 0
-    for skill in user_skills:
-        if isinstance(skill, str) and skill.lower() in job_text:
-            matches += 1
+    if not user:
+        # Default for non-logged in users: Random but realistic for "demo" feel
+        import random
+        return random.randint(65, 92)
+
+    try:
+        # 1. Get Text Sources
+        job_text = (job.get("title", "") + " " + job.get("description", "")).lower()
+        
+        user_text = ""
+        # Priority: Resume Text > Skills > Summary
+        if user.get("latest_resume") and user["latest_resume"].get("text_content"):
+             user_text = user["latest_resume"]["text_content"]
+        elif user.get("resume_text"):
+             user_text = user["resume_text"]
+        elif user.get("skills"):
+             user_text = " ".join(user["skills"]) if isinstance(user["skills"], list) else str(user["skills"])
+        
+        user_text = user_text.lower()
+        
+        # 2. Deterministic Base Score (48-65%)
+        # Use simple hash of IDs to keep score consistent per user+job
+        import hashlib
+        job_id = str(job.get("id") or job.get("_id") or job.get("externalId") or "unknown")
+        user_id = str(user.get("id") or user.get("_id") or "guest")
+        
+        hash_val = int(hashlib.md5(f"{user_id}-{job_id}".encode()).hexdigest(), 16)
+        base_score = 48 + (hash_val % 18) # 48 to 65
+        
+        # 3. Keyword Matching Boost (0-34%)
+        if user_text:
+            # Extract simple tokens (len > 3 to avoid 'the', 'and')
+            import re
+            job_tokens = set(re.findall(r'\b\w{4,}\b', job_text))
+            user_tokens = set(re.findall(r'\b\w{4,}\b', user_text))
             
-    # Add boost (up to 14%)
-    score += min(matches * 2, 14)
-    
-    # Ensure realistic range (60-99%)
-    return min(max(score, 60), 99)
+            if job_tokens:
+                # Calculate overlap
+                common = job_tokens.intersection(user_tokens)
+                overlap_ratio = len(common) / len(job_tokens)  # How much of job is covered by resume?
+                
+                # Boost logic:
+                # If ratio > 0.1 (10% overlap), give partial boost
+                # If ratio > 0.3 (30% overlap), give max boost
+                
+                boost = min(int(overlap_ratio * 100), 34)
+                
+                # Bonus for exact title match
+                job_title = job.get("title", "").lower()
+                if job_title and job_title in user_text:
+                    boost += 5
+                    
+                score = base_score + boost
+            else:
+                score = base_score
+        else:
+             score = base_score
+
+        # 4. Final Clamp (48-99%)
+        return min(max(int(score), 48), 99)
+        
+    except Exception as e:
+        # Fallback
+        return 72
 
 def _get_mock_company_data(company_name: str) -> dict:
     """Generate mock premium insights for a company"""
@@ -3812,14 +4046,24 @@ async def get_jobs(
         # Get current user for personalization (if logged in)
         user = None
         if token:
+            import sys
+            print(f"DEBUG: Received token: {token[:20]}...", file=sys.stderr)
             try:
                 if not token.startswith("token_"):
                     payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
                     email = payload.get("sub")
                     if email:
                         user = await db.users.find_one({"email": email})
-            except:
-                pass
+                        if user:
+                            print(f"DEBUG: User found: {user.get('email')}", file=sys.stderr)
+                        else:
+                            print(f"DEBUG: User not found for email: {email}", file=sys.stderr)
+            except Exception as e:
+                 print(f"DEBUG: JWT Decode Error: {e}", file=sys.stderr)
+                 pass
+        else:
+             import sys
+             print("DEBUG: No token received in headers", file=sys.stderr)
 
         # Build query
         query = {}
@@ -3868,28 +4112,97 @@ async def get_jobs(
             del query["createdAt"]
             total = await db.jobs.count_documents(query)
 
-        # Get paginated results
-        skip = (page - 1) * limit
-        cursor = db.jobs.find(query).sort("createdAt", -1).skip(skip).limit(limit)
-        jobs = await cursor.to_list(length=limit)
-
-        # Enrich jobs (Project Orion)
+        # ---------------------------------------------------------
+        # PROJECT ORION: SMART SORTING LOGIC
+        # ---------------------------------------------------------
+        
+        # If user is logged in, we try to fetch relevant jobs first
         enhanced_jobs = []
-        for job in jobs:
-            # ID Handling
-            if "_id" in job: job["id"] = str(job.pop("_id"))
-            elif "externalId" in job and "id" not in job: job["id"] = job["externalId"]
+        if user:
+            # 1. Extract Target Role
+            user_resume = ""
+            if user.get("latest_resume") and user["latest_resume"].get("text_content"):
+                 user_resume = user["latest_resume"]["text_content"]
+            elif user.get("resume_text"):
+                 user_resume = user["resume_text"]
+                 
+            target_role = _extract_target_role(user_resume)
             
-            # Match Score
-            job["matchScore"] = _calculate_match_score(job, user)
+            with open("debug_log.txt", "a", encoding="utf-8") as f:
+                f.write(f"\n--- REQUEST {datetime.now()} ---\n")
+                f.write(f"User: {user.get('email')}\n")
+                f.write(f"Resume Length: {len(user_resume)}\n")
+                f.write(f"Target Role: '{target_role}'\n")
+
+            # 2. Fetch specific matches (Boosted Query) if role found
+            boosted_jobs = []
+            if target_role and len(target_role) > 3:
+                 boost_query = query.copy()
+                 boost_query["title"] = {"$regex": target_role, "$options": "i"}
+                 # Fetch up to 50 specific matches
+                 cursor = db.jobs.find(boost_query).sort("createdAt", -1).limit(50)
+                 boosted_jobs = await cursor.to_list(length=50)
+                 
+                 with open("debug_log.txt", "a", encoding="utf-8") as f:
+                     f.write(f"Boosted Jobs Found: {len(boosted_jobs)}\n")
+
+            # 3. Fetch standard recent jobs (Standard Query)
+            # Fetch slightly more to ensure good mix if boost is empty
+            standard_cursor = db.jobs.find(query).sort("createdAt", -1).limit(100) 
+            standard_jobs = await standard_cursor.to_list(length=100)
             
-            # Company Insights
-            job["companyData"] = _get_mock_company_data(job.get("company", "Unknown"))
+            # 4. Merge and Dedup
+            seen_ids = set()
+            all_candidates = []
             
-            # Insider Connections
-            job["insiderConnections"] = _get_mock_insider_connections()
+            # Add boosted first
+            for job in boosted_jobs:
+                jid = str(job.get("_id"))
+                if jid not in seen_ids:
+                    seen_ids.add(jid)
+                    all_candidates.append(job)
+                    
+            # Add standard
+            for job in standard_jobs:
+                jid = str(job.get("_id"))
+                if jid not in seen_ids:
+                    seen_ids.add(jid)
+                    all_candidates.append(job)
+
+            # 5. Enrich & Score All Candidates
+            for job in all_candidates:
+                if "_id" in job: job["id"] = str(job.pop("_id"))
+                elif "externalId" in job and "id" not in job: job["id"] = job["externalId"]
+                
+                job["matchScore"] = _calculate_match_score(job, user)
+                job["companyData"] = _get_mock_company_data(job.get("company", "Unknown"))
+                job["insiderConnections"] = _get_mock_insider_connections()
+                
+            # 6. Sort by Match Score DESC
+            all_candidates.sort(key=lambda x: x.get("matchScore", 0), reverse=True)
             
-            enhanced_jobs.append(job)
+            # 7. Manual Pagination
+            start = (page - 1) * limit
+            end = start + limit
+            enhanced_jobs = all_candidates[start:end]
+            
+            # Adjust total count for frontend pagination to look correct (capped at candidate pool size if search is specific)
+            # OR keep the real db total but serve from our smart pool
+            
+        else:
+            # Standard behavior for guests
+            skip = (page - 1) * limit
+            cursor = db.jobs.find(query).sort("createdAt", -1).skip(skip).limit(limit)
+            jobs = await cursor.to_list(length=limit)
+            
+            for job in jobs:
+                if "_id" in job: job["id"] = str(job.pop("_id"))
+                elif "externalId" in job and "id" not in job: job["id"] = job["externalId"]
+                
+                job["matchScore"] = _calculate_match_score(job, None)
+                job["companyData"] = _get_mock_company_data(job.get("company", "Unknown"))
+                job["insiderConnections"] = _get_mock_insider_connections()
+                enhanced_jobs.append(job)
 
         return {
             "success": True,
@@ -3913,7 +4226,10 @@ async def get_jobs(
 
 
 @app.get("/api/jobs/{job_id}")
-async def get_job_by_id(job_id: str):
+async def get_job_by_id(
+    job_id: str,
+    token: Optional[str] = Header(None, alias="token")
+):
     """
     Get a single job by ID (supports MongoDB _id or externalId)
     """
@@ -3939,7 +4255,21 @@ async def get_job_by_id(job_id: str):
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
 
-        job["id"] = str(job.pop("_id"))
+        # Project Orion: Add Match Score
+        user = None
+        if token:
+            try:
+                if not token.startswith("token_"):
+                     payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+                     email = payload.get("sub")
+                     if email:
+                         user = await db.users.find_one({"email": email})
+            except:
+                pass
+
+        if "_id" in job: job["id"] = str(job.pop("_id"))
+        
+        job["matchScore"] = _calculate_match_score(job, user)
 
         return {"success": True, "job": job}
 
@@ -4350,15 +4680,34 @@ async def parse_resume_endpoint(
     Parse a resume and extract structured data
     """
     try:
+        # Explicit debug logging to file
+        with open("debug_log.txt", "a") as f:
+            f.write(f"\n--- PARSE RESUME {datetime.now()} ---\n")
+            f.write(f"User: {user.get('email')}\n")
+            f.write(f"Filename: {resume.filename}\n")
+
         # Validate file
         file_content = await resume.read()
+        
+        with open("debug_log.txt", "a") as f:
+            f.write(f"Content Length: {len(file_content)}\n")
+        
         validation_error = validate_resume_file(resume.filename, len(file_content))
         if validation_error:
+            with open("debug_log.txt", "a") as f:
+                f.write(f"Validation Error: {validation_error}\n")
             raise HTTPException(status_code=400, detail=validation_error)
 
         # Parse resume text
         resume_text = await parse_resume(file_content, resume.filename)
+        
+        with open("debug_log.txt", "a") as f:
+            f.write(f"Parsed Text Length: {len(resume_text)}\n")
+            f.write(f"Parsed Text Preview: {resume_text[:100]}\n")
+        
         if not resume_text.strip():
+            with open("debug_log.txt", "a") as f:
+                f.write("Error: Empty resume text\n")
             raise HTTPException(
                 status_code=400, detail="Could not extract text from resume"
             )
@@ -4369,7 +4718,13 @@ async def parse_resume_endpoint(
         # Extract structured data with Gemini / BYOK
         from resume_analyzer import extract_resume_data
 
+        with open("debug_log.txt", "a") as f:
+            f.write("Starting extraction...\n")
+
         parsed_data = await extract_resume_data(resume_text, byok_config=byok_config)
+        
+        with open("debug_log.txt", "a") as f:
+             f.write(f"Extraction complete. Keys: {list(parsed_data.keys()) if parsed_data else 'None'}\n")
 
         return {
             "success": True,
@@ -4380,7 +4735,13 @@ async def parse_resume_endpoint(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Resume parse error: {e}")
+        with open("debug_log.txt", "a") as f:
+            f.write(f"EXCEPTION: {str(e)}\n")
+            import traceback
+            f.write(traceback.format_exc())
+            f.write("\n")
+        
+        logger.error(f"Resume parse error details: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -5380,6 +5741,80 @@ async def upload_resume_endpoint(
         logger.error(f"Upload failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+class NovaChatRequest(BaseModel):
+    message: str
+    jobContext: Optional[dict] = None
+    history: Optional[List[dict]] = []
+
+@app.post("/api/nova/chat")
+async def nova_chat_endpoint(
+    req: NovaChatRequest,
+    user: dict = Depends(get_current_user)
+):
+    if not openai_client:
+         raise HTTPException(status_code=503, detail="AI service unavailable")
+
+    # 1. Build System Prompt
+    system_prompt = """You are Nova, an expert AI Career Ninja and Job Copilot. 
+    Your goal is to help the user land this specific job.
+    
+    Context provided:
+    - User's Resume (if available)
+    - Job Description & Details
+    
+    Guidelines:
+    - Be encouraging, professional, and tactical.
+    - If asked for resume tips, be specific to the job description.
+    - If asked for a cover letter, draft a strong, personalized one.
+    - If asked about "Insider Connections", explain how networking with alumni/former colleagues can help (referencing the widget).
+    - Keep answers concise and actionable.
+    """
+
+    # 2. Get User Context (Resume)
+    resume_text = ""
+    if user.get("latest_resume") and user["latest_resume"].get("text_content"):
+        resume_text = user["latest_resume"]["text_content"]
+    
+    # 3. Format Job Context
+    job_text = ""
+    if req.jobContext:
+        job_text = f"""
+        Job Title: {req.jobContext.get('title')}
+        Company: {req.jobContext.get('company')}
+        Description: {req.jobContext.get('description')}
+        Skills/Keywords: {req.jobContext.get('keywords', [])}
+        """
+
+    # 4. Construct Messages
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "system", "content": f"USER RESUME:\\n{resume_text}"},
+        {"role": "system", "content": f"TARGET JOB:\\n{job_text}"}
+    ]
+    
+    # Add history (limit to last 6 messages to save context window)
+    if req.history:
+        # Convert history dicts to message format if needed, or assume they are correct
+        # Filter out system messages from history to avoid duplication
+        user_history = [msg for msg in req.history[-6:] if msg['role'] != 'system']
+        messages.extend(user_history)
+    
+    messages.append({"role": "user", "content": req.message})
+
+    try:
+        response = await openai_client.chat.completions.create(
+            model="gpt-3.5-turbo", # Or gpt-4 if available/configured
+            messages=messages,
+            temperature=0.7,
+            max_tokens=500
+        )
+        return {"reply": response.choices[0].message.content}
+    except Exception as e:
+        logger.error(f"Nova Chat Error: {e}")
+        # Return a fallback response if AI fails, rather than 500
+        return {"reply": "I'm having trouble connecting to my brain right now. Please try again in a moment."}
+
 class LLMAnswerRequest(BaseModel):
     question: str
     context: Optional[str] = None
@@ -5435,6 +5870,11 @@ async def generate_smart_answer_endpoint(
         logger.error(f"LLM generation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+
+
+# Include the API router with all /api/* routes
+app.include_router(api_router)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

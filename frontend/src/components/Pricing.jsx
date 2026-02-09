@@ -173,21 +173,45 @@ const Pricing = () => {
                     <h3 className="xl:text-3xl md:text-2xl text-2xl font-semibold text-gray-900 mb-2">
                       {plan.name}
                     </h3>
-                    {plan.popular && (
-                      <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
-                        Popular
-                      </span>
-                    )}
-                    {plan.isBeta && (
-                      <span className="bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wider">
-                        Beta
-                      </span>
-                    )}
+                    <div className="flex gap-2">
+                      {plan.popular && (
+                        <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                          Popular
+                        </span>
+                      )}
+                      {plan.discountPercent && (
+                        <span className="bg-green-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                          {plan.discountPercent}% OFF
+                        </span>
+                      )}
+                      {plan.isBeta && (
+                        <span className="bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wider">
+                          Beta
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p className="xl:text-sm md:text-xs text-sm text-gray-600 mb-4">
                     {plan.description}
                   </p>
-                  <div className="flex items-baseline">
+
+                  {/* Free Trial Badge - Only for AI Ninja */}
+                  {planType === 'ai' && (
+                    <div className="mb-3">
+                      <span className="inline-block bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                        ✨ 1 Week Free Trial
+                      </span>
+                    </div>
+                  )}
+
+                  {plan.originalPrice && (
+                    <div className="mb-2">
+                      <span className="text-lg text-gray-400 line-through">
+                        ${plan.originalPrice}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-semibold text-gray-900">
                       {plan.price !== null ? (
                         <>
@@ -203,9 +227,16 @@ const Pricing = () => {
                       )}
                     </span>
                     {plan.price !== null && (
-                      <span className="text-gray-600 ml-1">
-                        /{plan.period ? plan.period.replace('/', '') : (planType === 'human' ? 'package' : 'total')}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-gray-600">
+                          {planType === 'ai' ? 'USD ' : ''}/{plan.period ? plan.period.replace('/', '') : (planType === 'human' ? 'package' : 'total')}
+                        </span>
+                        {planType === 'ai' && (
+                          <span className="text-xs text-gray-400 line-through italic">
+                            not /month
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                 </CardHeader>

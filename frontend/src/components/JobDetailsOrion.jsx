@@ -46,7 +46,7 @@ const JobDetailsOrion = () => {
         const fetchJob = async () => {
             setIsLoading(true);
             try {
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('auth_token');
                 const headers = token ? { 'token': token } : {};
 
                 const response = await fetch(`${API_URL}/api/jobs/${id}`, { headers });
@@ -86,6 +86,46 @@ const JobDetailsOrion = () => {
         if (id) fetchJob();
     }, [id]);
 
+    const getMatchLevel = (score) => {
+        if (score >= 85) return { label: 'Strong Match', color: '#10b981', textColor: 'text-emerald-600' };
+        if (score >= 70) return { label: 'Good Match', color: '#eab308', textColor: 'text-yellow-600' };
+        if (score >= 50) return { label: 'Fair Match', color: '#f97316', textColor: 'text-orange-600' };
+        return { label: 'Poor Match', color: '#ef4444', textColor: 'text-red-600' };
+    };
+
+    const formatJobDescription = (text) => {
+        if (!text) return '';
+
+        // Improve formatting for "wall of text" descriptions
+        let formatted = text;
+
+        // 1. Detect and format common headers if they are stuck in the text
+        // Looks for "Header:" or specific keywords followed by text
+        const headers = [
+            "About the Role", "About the Job", "About Us", "About [A-Za-z]+",
+            "Summary", "What You Will Do", "Responsibilities", "Key Responsibilities",
+            "Requirements", "Qualifications", "Minimum Qualifications", "Preferred Qualifications",
+            "Benefits", "Compensation", "What We Offer", "How You Will Contribute", "Who You Are"
+        ];
+
+        headers.forEach(header => {
+            const regex = new RegExp(`(${header}[:\\?]?)`, 'gi');
+            // Add double break before and bold the header
+            formatted = formatted.replace(regex, '<br/><br/><strong class="text-gray-900 block mb-2">$1</strong>');
+        });
+
+        // 2. Handle bullet points that might be copy-pasted as "•" or "-" without newlines
+        formatted = formatted.replace(/([•\-])\s/g, '<br/>$1 ');
+
+        // 3. Ensure newlines from source are respected (if any exist)
+        formatted = formatted.replace(/\n/g, '<br/>');
+
+        // 4. Cleanup excessive breaks
+        formatted = formatted.replace(/(<br\/>){3,}/g, '<br/><br/>');
+
+        return formatted;
+    };
+
     if (isLoading) return (
         <div className="flex items-center justify-center min-h-screen">
             <Loader2 className="w-12 h-12 animate-spin text-primary" />
@@ -98,6 +138,8 @@ const JobDetailsOrion = () => {
             <Button onClick={() => navigate('/jobs')} className="mt-4">Back to Jobs</Button>
         </div>
     );
+
+    const matchLevel = getMatchLevel(job.matchScore);
 
     return (
         <div className="job-detail-page bg-gray-50 min-h-screen">
@@ -144,14 +186,14 @@ const JobDetailsOrion = () => {
                                     <div className="relative w-20 h-20 flex items-center justify-center">
                                         <svg className="w-full h-full transform -rotate-90">
                                             <circle cx="40" cy="40" r="36" stroke="#e5e7eb" strokeWidth="6" fill="transparent" />
-                                            <circle cx="40" cy="40" r="36" stroke="#10b981" strokeWidth="6" fill="transparent"
+                                            <circle cx="40" cy="40" r="36" stroke={matchLevel.color} strokeWidth="6" fill="transparent"
                                                 strokeDasharray={2 * Math.PI * 36}
                                                 strokeDashoffset={2 * Math.PI * 36 * (1 - (job.matchScore / 100))}
                                                 strokeLinecap="round" />
                                         </svg>
-                                        <span className="absolute text-xl font-bold text-emerald-600">{job.matchScore}%</span>
+                                        <span className={`absolute text-xl font-bold ${matchLevel.textColor}`}>{job.matchScore}%</span>
                                     </div>
-                                    <div className="text-xs font-bold text-emerald-600 uppercase tracking-wide mt-1">Strong Match</div>
+                                    <div className={`text-xs font-bold ${matchLevel.textColor} uppercase tracking-wide mt-1`}>{matchLevel.label}</div>
                                 </div>
                             </div>
 
@@ -181,7 +223,9 @@ const JobDetailsOrion = () => {
                         {/* Job Description */}
                         <Card className="p-6">
                             <h2 className="text-xl font-bold mb-4">About the Role</h2>
-                            <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: job.fullDescription.replace(/\n/g, '<br/>') }} />
+                            <div className="prose max-w-none text-gray-700 leading-relaxed"
+                                dangerouslySetInnerHTML={{ __html: formatJobDescription(job.fullDescription) }}
+                            />
                         </Card>
                     </div>
 

@@ -33,12 +33,17 @@ import { API_URL } from '../config/api';
 import SideMenu from './SideMenu';
 import Header from './Header';
 import JobCardOrion from './JobCardOrion';
+import NovaChatPanel from './NovaChatPanel';
 import './SideMenu.css';
 
 const Jobs = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, token } = useAuth();
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
+
+  // Nova Chat State
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [activeJob, setActiveJob] = useState(null);
 
   // Jobs data state
   const [jobs, setJobs] = useState([]);
@@ -50,7 +55,7 @@ const Jobs = () => {
   // Filter states
   const [searchKeyword, setSearchKeyword] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
-  const [countryFilter, setCountryFilter] = useState('usa');
+  const [countryFilter, setCountryFilter] = useState('us');
   const [sponsorshipFilter, setSponsorshipFilter] = useState('all');
   const [workTypeFilter, setWorkTypeFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -80,7 +85,17 @@ const Jobs = () => {
       }
 
       console.log('Fetching jobs from:', url);
-      const response = await fetch(url);
+
+      const headers = {};
+      // Add token for personalized match scores
+      if (token) {
+        headers['token'] = token;
+      } else {
+        const storedToken = localStorage.getItem('auth_token');
+        if (storedToken) headers['token'] = storedToken;
+      }
+
+      const response = await fetch(url, { headers });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -103,6 +118,7 @@ const Jobs = () => {
           visaTags: job.visaTags || [],
           categoryTags: job.categoryTags || [],
           highPay: job.highPay || false,
+          matchScore: job.matchScore || 0,
           sourceUrl: job.sourceUrl || job.url
         }));
         setJobs(mappedJobs);
@@ -196,10 +212,22 @@ const Jobs = () => {
 
   const hasActiveFilters = searchKeyword || locationFilter || countryFilter !== 'usa' || sponsorshipFilter !== 'all' || workTypeFilter !== 'all';
 
+  const handleAskNova = (job) => {
+    setActiveJob(job);
+    setIsChatOpen(true);
+  };
+
   return (
     <div className="jobs-page">
       {/* Side Menu */}
       <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
+
+      {/* Nova Chat Panel */}
+      <NovaChatPanel
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        jobContext={activeJob}
+      />
 
       {/* Navigation Header */}
       <Header onMenuClick={() => setSideMenuOpen(true)} />
@@ -331,7 +359,7 @@ const Jobs = () => {
             <>
               <div className="job-list space-y-4">
                 {displayJobs.map(job => (
-                  <JobCardOrion key={job.id} job={job} />
+                  <JobCardOrion key={job.id} job={job} onAskNova={handleAskNova} />
                 ))}
               </div>
 

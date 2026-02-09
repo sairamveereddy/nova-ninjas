@@ -1,0 +1,57 @@
+
+--- REQUEST 2026-02-09 08:38:20.666512 ---
+User: srkreddy452@gmail.com
+Resume Length: 0
+Target Role: ''
+
+--- REQUEST 2026-02-09 08:38:21.050828 ---
+User: srkreddy452@gmail.com
+Resume Length: 0
+Target Role: ''
+
+--- REQUEST 2026-02-09 08:38:22.583299 ---
+User: srkreddy452@gmail.com
+Resume Length: 0
+Target Role: ''
+
+--- PARSE RESUME 2026-02-09 09:17:08.933035 ---
+User: srkreddy452@gmail.com
+Filename: Optimized_Resume_Booz_Allen_Hamilton.docx
+Content Length: 38646
+Parsed Text Length: 3873
+Parsed Text Preview: SAIRAM KUMAR
+(217)-862-4693 | vsairamkumarreddy@gmail.com | Linkedin
+PROFESSIONAL SUMMARY
+AI Solutio
+Starting extraction...
+Extraction complete. Keys: ['person', 'address', 'education', 'employment_history', 'skills', 'work_authorization', 'preferences']
+
+--- REQUEST 2026-02-09 09:30:55.584405 ---
+User: srkreddy452@gmail.com
+Resume Length: 0
+Target Role: ''
+
+--- REQUEST 2026-02-09 09:30:56.008462 ---
+User: srkreddy452@gmail.com
+Resume Length: 0
+Target Role: ''
+
+--- REQUEST 2026-02-09 09:30:56.368134 ---
+User: srkreddy452@gmail.com
+Resume Length: 0
+Target Role: ''
+
+--- REQUEST 2026-02-09 09:31:01.749663 ---
+User: srkreddy452@gmail.com
+Resume Length: 0
+Target Role: ''
+
+--- REQUEST 2026-02-09 09:31:02.125183 ---
+User: srkreddy452@gmail.com
+Resume Length: 0
+Target Role: ''
+
+--- REQUEST 2026-02-09 09:31:02.493177 ---
+User: srkreddy452@gmail.com
+Resume Length: 0
+Target Role: ''
