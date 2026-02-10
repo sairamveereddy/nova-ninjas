@@ -119,121 +119,123 @@ When generating a cover letter:
     };
 
     return (
-        <div className="coverletter-chat-page">
-            <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
-            <Header onMenuClick={() => setSideMenuOpen(true)} />
+        <SubscriptionWall>
+            <div className="coverletter-chat-page">
+                <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
+                <Header onMenuClick={() => setSideMenuOpen(true)} />
 
-            <div className="coverletter-container">
-                <div className="coverletter-hero">
-                    <div className="hero-badge coverletter-badge">
-                        <Mail className="w-5 h-5" />
-                        <span>ChatGPT Cover Letter</span>
+                <div className="coverletter-container">
+                    <div className="coverletter-hero">
+                        <div className="hero-badge coverletter-badge">
+                            <Mail className="w-5 h-5" />
+                            <span>ChatGPT Cover Letter</span>
+                        </div>
+                        <h1>Write Your Cover Letter with <span className="text-gradient-cover">AI Assistance</span></h1>
+                        <p>Have a conversation with AI to craft the perfect cover letter for your dream job</p>
                     </div>
-                    <h1>Write Your Cover Letter with <span className="text-gradient-cover">AI Assistance</span></h1>
-                    <p>Have a conversation with AI to craft the perfect cover letter for your dream job</p>
-                </div>
 
-                <div className="chat-layout">
-                    <Card className="chat-card">
-                        <div className="chat-messages">
-                            {messages.map((message, index) => (
-                                <div key={index} className={`message ${message.role}`}>
-                                    <div className="message-avatar">
-                                        {message.role === 'assistant' ? (
+                    <div className="chat-layout">
+                        <Card className="chat-card">
+                            <div className="chat-messages">
+                                {messages.map((message, index) => (
+                                    <div key={index} className={`message ${message.role}`}>
+                                        <div className="message-avatar">
+                                            {message.role === 'assistant' ? (
+                                                <Sparkles className="w-5 h-5" />
+                                            ) : (
+                                                <span>You</span>
+                                            )}
+                                        </div>
+                                        <div className="message-content">
+                                            <pre>{message.content}</pre>
+                                        </div>
+                                    </div>
+                                ))}
+                                {isLoading && (
+                                    <div className="message assistant">
+                                        <div className="message-avatar">
                                             <Sparkles className="w-5 h-5" />
-                                        ) : (
-                                            <span>You</span>
-                                        )}
+                                        </div>
+                                        <div className="message-content typing">
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <span>Writing...</span>
+                                        </div>
                                     </div>
-                                    <div className="message-content">
-                                        <pre>{message.content}</pre>
-                                    </div>
-                                </div>
-                            ))}
-                            {isLoading && (
-                                <div className="message assistant">
-                                    <div className="message-avatar">
-                                        <Sparkles className="w-5 h-5" />
-                                    </div>
-                                    <div className="message-content typing">
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        <span>Writing...</span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                                )}
+                            </div>
 
-                        <div className="chat-input-area">
-                            <textarea
-                                placeholder="Tell me about the job and why you're a great fit..."
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyPress={handleKeyPress}
-                                rows={2}
-                            />
-                            <Button
-                                className="send-btn"
-                                onClick={sendMessage}
-                                disabled={!input.trim() || isLoading}
-                            >
-                                <Send className="w-5 h-5" />
-                            </Button>
-                        </div>
-
-                        <div className="chat-actions">
-                            <Button variant="ghost" size="sm" onClick={startOver}>
-                                <RefreshCw className="w-4 h-4" />
-                                Start Over
-                            </Button>
-                        </div>
-                    </Card>
-
-                    {generatedLetter && (
-                        <Card className="letter-preview-card">
-                            <div className="preview-header">
-                                <h3><FileText className="w-5 h-5" /> Generated Cover Letter</h3>
-                                <Button variant="outline" size="sm" onClick={copyLetter}>
-                                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                                    {copied ? 'Copied!' : 'Copy'}
+                            <div className="chat-input-area">
+                                <textarea
+                                    placeholder="Tell me about the job and why you're a great fit..."
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyPress={handleKeyPress}
+                                    rows={2}
+                                />
+                                <Button
+                                    className="send-btn"
+                                    onClick={sendMessage}
+                                    disabled={!input.trim() || isLoading}
+                                >
+                                    <Send className="w-5 h-5" />
                                 </Button>
                             </div>
-                            <div className="preview-content">
-                                <pre>{generatedLetter}</pre>
-                            </div>
-                            <Button className="download-btn">
-                                <Download className="w-4 h-4" />
-                                Download as DOCX
-                            </Button>
-                        </Card>
-                    )}
-                </div>
 
-                {/* Sample Prompts */}
-                <div className="prompts-section">
-                    <h3>Try These Prompts</h3>
-                    <div className="prompts-grid">
-                        <button
-                            className="prompt-chip"
-                            onClick={() => setInput("I'm applying for a Software Engineer position at Google. I have 3 years of experience with Python and machine learning.")}
-                        >
-                            "I'm applying for Software Engineer at Google..."
-                        </button>
-                        <button
-                            className="prompt-chip"
-                            onClick={() => setInput("Help me write a cover letter for a Product Manager role at a startup. I have MBA and 5 years of product experience.")}
-                        >
-                            "Product Manager at a startup..."
-                        </button>
-                        <button
-                            className="prompt-chip"
-                            onClick={() => setInput("I'm a recent graduate applying for my first Data Analyst job. I studied statistics and know SQL and Python.")}
-                        >
-                            "Recent graduate for Data Analyst..."
-                        </button>
+                            <div className="chat-actions">
+                                <Button variant="ghost" size="sm" onClick={startOver}>
+                                    <RefreshCw className="w-4 h-4" />
+                                    Start Over
+                                </Button>
+                            </div>
+                        </Card>
+
+                        {generatedLetter && (
+                            <Card className="letter-preview-card">
+                                <div className="preview-header">
+                                    <h3><FileText className="w-5 h-5" /> Generated Cover Letter</h3>
+                                    <Button variant="outline" size="sm" onClick={copyLetter}>
+                                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                        {copied ? 'Copied!' : 'Copy'}
+                                    </Button>
+                                </div>
+                                <div className="preview-content">
+                                    <pre>{generatedLetter}</pre>
+                                </div>
+                                <Button className="download-btn">
+                                    <Download className="w-4 h-4" />
+                                    Download as DOCX
+                                </Button>
+                            </Card>
+                        )}
+                    </div>
+
+                    {/* Sample Prompts */}
+                    <div className="prompts-section">
+                        <h3>Try These Prompts</h3>
+                        <div className="prompts-grid">
+                            <button
+                                className="prompt-chip"
+                                onClick={() => setInput("I'm applying for a Software Engineer position at Google. I have 3 years of experience with Python and machine learning.")}
+                            >
+                                "I'm applying for Software Engineer at Google..."
+                            </button>
+                            <button
+                                className="prompt-chip"
+                                onClick={() => setInput("Help me write a cover letter for a Product Manager role at a startup. I have MBA and 5 years of product experience.")}
+                            >
+                                "Product Manager at a startup..."
+                            </button>
+                            <button
+                                className="prompt-chip"
+                                onClick={() => setInput("I'm a recent graduate applying for my first Data Analyst job. I studied statistics and know SQL and Python.")}
+                            >
+                                "Recent graduate for Data Analyst..."
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </SubscriptionWall>
     );
 };
 
