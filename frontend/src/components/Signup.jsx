@@ -88,11 +88,10 @@ const Signup = () => {
         </CardHeader>
         <CardContent className="space-y-6">
 
-          {/* Google Sign-In Button */}
-          <div className="space-y-4">
+          {/* Google Sign-Up Button - Temporarily disabled until backend endpoint is configured */}
+          {/* <div className="space-y-4">
             <GoogleAuthButton mode="signup" />
 
-            {/* OR Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-gray-200" />
@@ -101,7 +100,7 @@ const Signup = () => {
                 <span className="bg-[#f9fafb] px-2 text-gray-500">OR</span>
               </div>
             </div>
-          </div>
+          </div> */}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
