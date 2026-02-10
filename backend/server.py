@@ -6206,6 +6206,83 @@ async def generate_smart_answer_endpoint(
 
 
 
+# Jobs API Endpoints
+@app.get("/api/jobs")
+async def get_jobs(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    search: str = Query(None),
+    country: str = Query(None),
+    type: str = Query(None),
+    visa: bool = Query(None),
+    token: str = Header(None)
+):
+    """
+    Get jobs from database with filtering and pagination
+    Only returns jobs from last 72 hours, USA-only
+    """
+    try:
+        if not db:
+            raise HTTPException(status_code=503, detail="Database not available")
+        
+        # Build query - only jobs from last 72 hours
+        query = {
+            "created_at": {"$gte": datetime.utcnow() - timedelta(hours=72)}
+        }
+        
+        # USA-only filter (jobs are already filtered during sync, but double-check)
+        # This is implicit since our sync service only adds USA jobs
+        
+        # Search filter
+        if search:
+            query["$or"] = [
+                {"title": {"$regex": search, "$options": "i"}},
+                {"company": {"$regex": search, "$options": "i"}},
+                {"description": {"$regex": search, "$options": "i"}}
+            ]
+        
+        # Visa sponsorship filter
+        if visa:
+            query["categories"] = "sponsoring"
+        
+        # Work type filter (remote, full-time, etc.)
+        if type and type != "all":
+            query["contract_type"] = {"$regex": type, "$options": "i"}
+        
+        # Get total count
+        total = await db.jobs.count_documents(query)
+        
+        # Calculate pagination
+        skip = (page - 1) * limit
+        total_pages = (total + limit - 1) // limit
+        
+        # Fetch jobs
+        cursor = db.jobs.find(query).sort("created_at", -1).skip(skip).limit(limit)
+        jobs_list = await cursor.to_list(length=limit)
+        
+        # Convert ObjectId to string for JSON serialization
+        for job in jobs_list:
+            if "_id" in job:
+                job["_id"] = str(job["_id"])
+            
+            # Add match_score if user is authenticated (for future enhancement)
+            if token:
+                job["match_score"] = 0  # Placeholder for now
+        
+        return {
+            "jobs": jobs_list,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total,
+                "pages": total_pages
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching jobs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Job Sync Endpoints
 @app.get("/api/jobs/sync-status")
 async def get_job_sync_status(user: dict = Depends(get_current_user)):
