@@ -199,7 +199,7 @@ const Pricing = () => {
                   {planType === 'ai' && (
                     <div className="mb-3">
                       <span className="inline-block bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
-                        ✨ 1 Week Free Trial
+                        ✨ 2 Weeks Free Trial
                       </span>
                     </div>
                   )}

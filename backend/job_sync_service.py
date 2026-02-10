@@ -181,30 +181,77 @@ class JobSyncService:
         }
     
     async def _is_usa_job(self, job: Dict) -> bool:
-        """Check if job is in USA"""
+        """Strict USA-only filtering - reject any non-USA jobs"""
         location = job.get("location", "").lower()
-        usa_keywords = ["united states", "usa", "us", "america"]
         
-        # Check for USA state abbreviations
-        usa_states = [
+        # Explicit rejection of non-USA countries
+        non_usa_indicators = [
+            "uk", "gb", "united kingdom", "england", "scotland", "wales",
+            "canada", "ca", "toronto", "vancouver", "montreal",
+            "india", "in", "bangalore", "mumbai", "delhi", "hyderabad",
+            "australia", "au", "sydney", "melbourne",
+            "germany", "de", "berlin", "munich",
+            "france", "fr", "paris",
+            "china", "cn", "beijing", "shanghai",
+            "japan", "jp", "tokyo",
+            "singapore", "sg",
+            "ireland", "ie", "dublin",
+            "netherlands", "nl", "amsterdam",
+            "remote - worldwide", "remote worldwide", "anywhere"
+        ]
+        
+        # REJECT if contains any non-USA indicator
+        for indicator in non_usa_indicators:
+            if indicator in location:
+                return False
+        
+        # Positive USA indicators
+        usa_keywords = ["united states", "usa", "u.s.", "us,", ", us"]
+        if any(keyword in location for keyword in usa_keywords):
+            return True
+        
+        # USA state names and abbreviations (comprehensive list)
+        usa_states = {
+            # Full names
+            "alabama", "alaska", "arizona", "arkansas", "california", "colorado",
+            "connecticut", "delaware", "florida", "georgia", "hawaii", "idaho",
+            "illinois", "indiana", "iowa", "kansas", "kentucky", "louisiana",
+            "maine", "maryland", "massachusetts", "michigan", "minnesota",
+            "mississippi", "missouri", "montana", "nebraska", "nevada",
+            "new hampshire", "new jersey", "new mexico", "new york",
+            "north carolina", "north dakota", "ohio", "oklahoma", "oregon",
+            "pennsylvania", "rhode island", "south carolina", "south dakota",
+            "tennessee", "texas", "utah", "vermont", "virginia", "washington",
+            "west virginia", "wisconsin", "wyoming",
+            # Abbreviations
             "al", "ak", "az", "ar", "ca", "co", "ct", "de", "fl", "ga",
             "hi", "id", "il", "in", "ia", "ks", "ky", "la", "me", "md",
             "ma", "mi", "mn", "ms", "mo", "mt", "ne", "nv", "nh", "nj",
             "nm", "ny", "nc", "nd", "oh", "ok", "or", "pa", "ri", "sc",
-            "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy"
-        ]
+            "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy",
+            # Major cities (helps catch USA jobs)
+            "new york", "los angeles", "chicago", "houston", "phoenix",
+            "philadelphia", "san antonio", "san diego", "dallas", "san jose",
+            "austin", "jacksonville", "fort worth", "columbus", "charlotte",
+            "san francisco", "indianapolis", "seattle", "denver", "washington",
+            "boston", "nashville", "detroit", "portland", "las vegas",
+            "memphis", "louisville", "baltimore", "milwaukee", "albuquerque",
+            "tucson", "fresno", "sacramento", "atlanta", "kansas city",
+            "colorado springs", "miami", "raleigh", "omaha", "long beach",
+            "virginia beach", "oakland", "minneapolis", "tulsa", "tampa"
+        }
         
-        # Check if location contains USA keywords or state codes
-        if any(keyword in location for keyword in usa_keywords):
-            return True
-        
-        # Check for state abbreviations
-        location_parts = location.split(",")
+        # Check for state names/abbreviations in location
+        location_parts = [part.strip().lower() for part in location.split(",")]
         for part in location_parts:
-            part = part.strip().lower()
             if part in usa_states:
                 return True
+            # Check if part contains a state name
+            for state in usa_states:
+                if state in part:
+                    return True
         
+        # Default to REJECT if we can't confirm it's USA
         return False
     
     async def _categorize_job(self, job: Dict) -> Dict:
@@ -332,6 +379,65 @@ class JobSyncService:
             logger.error(f"Cleanup failed: {str(e)}")
             await self.db.job_sync_status.update_one(
                 {"source": "cleanup"},
+                {
+                    "$set": {
+                        "last_cleanup": datetime.utcnow(),
+                        "status": "failed",
+                        "error": str(e)
+                    }
+                },
+                upsert=True
+            )
+            return 0
+    
+    async def cleanup_non_usa_jobs(self) -> int:
+        """Remove all non-USA jobs from database"""
+        try:
+            # List of non-USA country indicators to search for
+            non_usa_patterns = [
+                "uk", "gb", "united kingdom", "england", "scotland", "wales",
+                "canada", "toronto", "vancouver", "montreal",
+                "india", "bangalore", "mumbai", "delhi", "hyderabad",
+                "australia", "sydney", "melbourne",
+                "germany", "berlin", "munich",
+                "france", "paris",
+                "china", "beijing", "shanghai",
+                "japan", "tokyo",
+                "singapore",
+                "ireland", "dublin",
+                "netherlands", "amsterdam"
+            ]
+            
+            # Build regex pattern for all non-USA indicators
+            pattern = "|".join(non_usa_patterns)
+            
+            # Delete jobs with non-USA locations
+            result = await self.db.jobs.delete_many({
+                "location": {"$regex": pattern, "$options": "i"}
+            })
+            
+            deleted_count = result.deleted_count
+            logger.info(f"Non-USA cleanup completed: {deleted_count} non-USA jobs removed")
+            
+            # Update cleanup status
+            await self.db.job_sync_status.update_one(
+                {"source": "non_usa_cleanup"},
+                {
+                    "$set": {
+                        "last_cleanup": datetime.utcnow(),
+                        "jobs_deleted": deleted_count,
+                        "status": "success"
+                    }
+                },
+                upsert=True
+            )
+            
+            return deleted_count
+            
+        except Exception as e:
+            logger.error(f"Non-USA cleanup failed: {str(e)}")
+            await self.db.job_sync_status.update_one(
+                {"source": "non_usa_cleanup"},
                 {
                     "$set": {
                         "last_cleanup": datetime.utcnow(),

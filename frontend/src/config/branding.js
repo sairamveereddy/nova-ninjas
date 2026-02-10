@@ -85,7 +85,7 @@ export const PRICING = {
     period: '/month',
     applications: 'Unlimited',
     popular: false,
-    description: 'Full access to all tools. 1 week free trial.',
+    description: 'Full access to all tools. 2 weeks free trial.',
     features: [
       'Unlimited AI-powered job applications',
       'Full access to Auto Fill',
@@ -108,7 +108,7 @@ export const PRICING = {
     period: '/year',
     applications: 'Unlimited',
     popular: true,
-    description: 'Full access to all tools. 1 week free trial.',
+    description: 'Full access to all tools. 2 weeks free trial.',
     features: [
       'Unlimited AI-powered job applications',
       'Full access to Auto Fill',
