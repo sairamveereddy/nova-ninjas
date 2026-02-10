@@ -81,6 +81,21 @@ const Login = () => {
         </CardHeader>
         <CardContent className="space-y-6">
 
+          {/* Google Sign-In Button */}
+          <div className="space-y-4">
+            <GoogleAuthButton mode="login" />
+
+            {/* OR Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-[#f9fafb] px-2 text-gray-500">OR</span>
+              </div>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="p-4 text-sm font-medium text-red-800 bg-red-50 border border-red-100 rounded-xl">
