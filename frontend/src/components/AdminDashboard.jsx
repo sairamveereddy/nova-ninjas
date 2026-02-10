@@ -5,7 +5,7 @@ import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { API_URL, apiCall } from '../config/api';
 import {
-    Users, UserPlus, FileText, Send, Search, CheckCircle, XCircle, Edit, Save, Loader2
+    Users, UserPlus, FileText, Send, Search, CheckCircle, XCircle, Edit, Save, Loader2, Phone, MessageSquare
 } from 'lucide-react';
 import {
     Dialog,
@@ -24,6 +24,9 @@ import {
 } from "./ui/select";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import CallBookingsTable from './CallBookingsTable';
+import ContactMessagesTable from './ContactMessagesTable';
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -69,6 +72,7 @@ const AdminDashboardContent = () => {
     const [loading, setLoading] = useState(true);
     const [editingUser, setEditingUser] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState('users');
 
     const fetchData = async () => {
         try {

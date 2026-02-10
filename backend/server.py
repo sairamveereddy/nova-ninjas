@@ -6312,6 +6312,80 @@ async def trigger_manual_sync(user: dict = Depends(get_current_user)):
         "jsearch_jobs_added": jsearch_count
     }
 
+# Admin Dashboard Endpoints
+@app.get("/api/admin/call-bookings")
+async def get_call_bookings(user: dict = Depends(get_current_user)):
+    """Get all Human Ninja call bookings for admin dashboard"""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        # Fetch all call bookings from database
+        bookings = await db.call_bookings.find().sort("created_at", -1).limit(100).to_list(100)
+        
+        # Convert ObjectId to string
+        for booking in bookings:
+            if "_id" in booking:
+                booking["_id"] = str(booking["_id"])
+        
+        return {"bookings": bookings, "total": len(bookings)}
+    except Exception as e:
+        logger.error(f"Error fetching call bookings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/admin/contact-messages")
+async def get_contact_messages(user: dict = Depends(get_current_user)):
+    """Get all contact form messages for admin dashboard"""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        # Fetch all contact messages from database
+        messages = await db.contact_messages.find().sort("created_at", -1).limit(100).to_list(100)
+        
+        # Convert ObjectId to string
+        for message in messages:
+            if "_id" in message:
+                message["_id"] = str(message["_id"])
+        
+        return {"messages": messages, "total": len(messages)}
+    except Exception as e:
+        logger.error(f"Error fetching contact messages: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Contact Form Endpoint
+class ContactMessage(BaseModel):
+    firstName: str
+    lastName: str
+    email: str
+    subject: str
+    message: str
+
+@app.post("/api/contact")
+async def submit_contact_message(data: ContactMessage):
+    """Submit contact form message"""
+    try:
+        # Save message to database
+        message_doc = {
+            "firstName": data.firstName,
+            "lastName": data.lastName,
+            "email": data.email,
+            "subject": data.subject,
+            "message": data.message,
+            "status": "unread",
+            "created_at": datetime.utcnow()
+        }
+        
+        await db.contact_messages.insert_one(message_doc)
+        
+        return {
+            "success": True,
+            "message": "Message sent to team successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error saving contact message: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Include the API router with all /api/* routes
 app.include_router(api_router)
 
