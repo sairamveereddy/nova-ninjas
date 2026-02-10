@@ -128,29 +128,27 @@ db = None
 
 if mongo_url:
     try:
-        import certifi
-        # Add TLS/SSL configuration for MongoDB Atlas compatibility
+        # Use simple connection - let MongoDB driver handle SSL automatically
+        # Railway and MongoDB Atlas work best with minimal TLS configuration
         client = AsyncIOMotorClient(
             mongo_url,
-            serverSelectionTimeoutMS=15000,
-            tls=True,
-            tlsCAFile=certifi.where(),
-            tlsAllowInvalidCertificates=True,
-            tlsAllowInvalidHostnames=True,
+            serverSelectionTimeoutMS=30000,  # Increased timeout for Railway
+            connectTimeoutMS=30000,
+            socketTimeoutMS=30000,
         )
         db = client[db_name]
         logger.info("MongoDB client initialized successfully")
+        
+        # Test the connection
+        try:
+            await client.admin.command('ping')
+            logger.info("✅ MongoDB connection verified successfully")
+        except Exception as ping_error:
+            logger.error(f"MongoDB ping failed: {ping_error}")
+            db = None
     except Exception as e:
         logger.error(f"Failed to initialize MongoDB client: {e}")
-        # Try without TLS options as fallback
-        try:
-            logger.info("Trying fallback connection without explicit TLS options...")
-            client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=15000)
-            db = client[db_name]
-            logger.info("MongoDB client initialized with fallback settings")
-        except Exception as e2:
-            logger.error(f"Fallback connection also failed: {e2}")
-            # we still don't crash the whole app here
+        db = None
 else:
     logger.warning("MongoDB will be unavailable because MONGO_URL is not set.")
 
