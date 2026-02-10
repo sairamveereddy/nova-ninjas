@@ -2435,6 +2435,14 @@ async def calculate_job_match_score(
 async def google_auth(request: dict, background_tasks: BackgroundTasks):
     """Handle Google OAuth authentication"""
     try:
+        # Check if database is connected
+        if db is None:
+            logger.error("Database connection is None - MONGO_URL may be invalid")
+            raise HTTPException(
+                status_code=500,
+                detail="Database connection failed. Please contact support."
+            )
+        
         # Try to import google-auth libraries
         try:
             from google.oauth2 import id_token
