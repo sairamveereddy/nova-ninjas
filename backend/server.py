@@ -138,14 +138,6 @@ if mongo_url:
         )
         db = client[db_name]
         logger.info("MongoDB client initialized successfully")
-        
-        # Test the connection
-        try:
-            await client.admin.command('ping')
-            logger.info("✅ MongoDB connection verified successfully")
-        except Exception as ping_error:
-            logger.error(f"MongoDB ping failed: {ping_error}")
-            db = None
     except Exception as e:
         logger.error(f"Failed to initialize MongoDB client: {e}")
         db = None
