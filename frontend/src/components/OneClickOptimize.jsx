@@ -21,6 +21,7 @@ import { API_URL } from '../config/api';
 import SideMenu from './SideMenu';
 import Header from './Header';
 import ResumePaper from './ResumePaper';
+import SubscriptionWall from './SubscriptionWall';
 import './OneClickOptimize.css';
 
 const OneClickOptimize = () => {
@@ -123,210 +124,212 @@ const OneClickOptimize = () => {
     };
 
     return (
-        <div className="optimize-page">
-            <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
-            <Header onMenuClick={() => setSideMenuOpen(true)} />
+        <SubscriptionWall>
+            <div className="optimize-page">
+                <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
+                <Header onMenuClick={() => setSideMenuOpen(true)} />
 
-            <div className="optimize-container">
-                <div className="optimize-hero">
-                    <div className="hero-badge">
-                        <Zap className="w-5 h-5" />
-                        <span>One-Click Optimize</span>
+                <div className="optimize-container">
+                    <div className="optimize-hero">
+                        <div className="hero-badge">
+                            <Zap className="w-5 h-5" />
+                            <span>One-Click Optimize</span>
+                        </div>
+                        <h1>Optimize Your Resume <span className="text-gradient">Instantly</span></h1>
+                        <p>Upload your resume and let AI automatically optimize it for ATS systems. Get more interviews with a perfectly tailored resume.</p>
                     </div>
-                    <h1>Optimize Your Resume <span className="text-gradient">Instantly</span></h1>
-                    <p>Upload your resume and let AI automatically optimize it for ATS systems. Get more interviews with a perfectly tailored resume.</p>
-                </div>
 
-                {!optimizedResume ? (
-                    <Card className="optimize-card">
-                        <div className="upload-section">
-                            <h2><Upload className="w-5 h-5" /> Upload Your Resume</h2>
+                    {!optimizedResume ? (
+                        <Card className="optimize-card">
+                            <div className="upload-section">
+                                <h2><Upload className="w-5 h-5" /> Upload Your Resume</h2>
 
-                            <div
-                                className={`upload-zone ${resumeFile ? 'has-file' : ''}`}
-                                onClick={() => document.getElementById('resume-upload').click()}
-                            >
-                                <input
-                                    id="resume-upload"
-                                    type="file"
-                                    accept=".pdf,.docx,.txt"
-                                    onChange={handleFileUpload}
-                                    hidden
+                                <div
+                                    className={`upload-zone ${resumeFile ? 'has-file' : ''}`}
+                                    onClick={() => document.getElementById('resume-upload').click()}
+                                >
+                                    <input
+                                        id="resume-upload"
+                                        type="file"
+                                        accept=".pdf,.docx,.txt"
+                                        onChange={handleFileUpload}
+                                        hidden
+                                    />
+                                    {resumeFile ? (
+                                        <div className="uploaded-file">
+                                            <FileText className="w-12 h-12" style={{ color: 'var(--primary)' }} />
+                                            <span className="file-name">{resumeFile.name}</span>
+                                            <button className="remove-file" onClick={(e) => { e.stopPropagation(); setResumeFile(null); }}>
+                                                <X className="w-4 h-4" /> Remove
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <Upload className="w-12 h-12" style={{ color: '#94a3b8' }} />
+                                            <p>Click to upload your resume</p>
+                                            <span className="file-types">PDF, DOCX, or TXT</span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="job-section">
+                                <h3><Sparkles className="w-5 h-5" /> Add Job Description (Optional)</h3>
+                                <p>For better optimization, paste the job description you're targeting</p>
+                                <textarea
+                                    placeholder="Paste job description here for targeted optimization..."
+                                    value={jobDescription}
+                                    onChange={(e) => setJobDescription(e.target.value)}
+                                    rows={6}
                                 />
-                                {resumeFile ? (
-                                    <div className="uploaded-file">
-                                        <FileText className="w-12 h-12" style={{ color: 'var(--primary)' }} />
-                                        <span className="file-name">{resumeFile.name}</span>
-                                        <button className="remove-file" onClick={(e) => { e.stopPropagation(); setResumeFile(null); }}>
-                                            <X className="w-4 h-4" /> Remove
+                            </div>
+
+                            <div className="score-selector-section">
+                                <h3><Zap className="w-5 h-5" /> Target ATS Score</h3>
+                                <p>Choose your desired optimization level</p>
+                                <div className="score-options">
+                                    {[90, 95, 100].map(score => (
+                                        <button
+                                            key={score}
+                                            className={`score-option-btn ${targetScore === score ? 'active' : ''}`}
+                                            onClick={() => setTargetScore(score)}
+                                        >
+                                            {score}% {score === 100 ? ' (Perfect)' : score === 95 ? ' (Recommended)' : ' (Fast)'}
                                         </button>
-                                    </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {error && (
+                                <div className="error-message">
+                                    {error}
+                                </div>
+                            )}
+
+                            <Button
+                                className="optimize-btn"
+                                onClick={handleOptimize}
+                                disabled={!resumeFile || isOptimizing}
+                            >
+                                {isOptimizing ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Optimizing...
+                                    </>
                                 ) : (
                                     <>
-                                        <Upload className="w-12 h-12" style={{ color: '#94a3b8' }} />
-                                        <p>Click to upload your resume</p>
-                                        <span className="file-types">PDF, DOCX, or TXT</span>
+                                        <Zap className="w-5 h-5" />
+                                        One-Click Optimize
                                     </>
                                 )}
-                            </div>
-                        </div>
-
-                        <div className="job-section">
-                            <h3><Sparkles className="w-5 h-5" /> Add Job Description (Optional)</h3>
-                            <p>For better optimization, paste the job description you're targeting</p>
-                            <textarea
-                                placeholder="Paste job description here for targeted optimization..."
-                                value={jobDescription}
-                                onChange={(e) => setJobDescription(e.target.value)}
-                                rows={6}
-                            />
-                        </div>
-
-                        <div className="score-selector-section">
-                            <h3><Zap className="w-5 h-5" /> Target ATS Score</h3>
-                            <p>Choose your desired optimization level</p>
-                            <div className="score-options">
-                                {[90, 95, 100].map(score => (
-                                    <button
-                                        key={score}
-                                        className={`score-option-btn ${targetScore === score ? 'active' : ''}`}
-                                        onClick={() => setTargetScore(score)}
-                                    >
-                                        {score}% {score === 100 ? ' (Perfect)' : score === 95 ? ' (Recommended)' : ' (Fast)'}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {error && (
-                            <div className="error-message">
-                                {error}
-                            </div>
-                        )}
-
-                        <Button
-                            className="optimize-btn"
-                            onClick={handleOptimize}
-                            disabled={!resumeFile || isOptimizing}
-                        >
-                            {isOptimizing ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Optimizing...
-                                </>
-                            ) : (
-                                <>
-                                    <Zap className="w-5 h-5" />
-                                    One-Click Optimize
-                                </>
-                            )}
-                        </Button>
-                    </Card>
-                ) : (
-                    <Card className="results-card">
-                        <div className="results-content-layout">
-                            <div className="analysis-sidebar">
-                                <div className="results-header">
-                                    <CheckCircle className="w-12 h-12 text-green-500" />
-                                    <h2>Resume Optimized!</h2>
-                                    <p>Your resume has been optimized for ATS systems</p>
-                                </div>
-
-                                <div className="score-display">
-                                    <div className="score-circle" style={{ '--score': optimizedResume.analysis?.matchScore || 85 }}>
-                                        <span className="score-number">{optimizedResume.analysis?.matchScore || 85}%</span>
-                                    </div>
-                                    <p>ATS Compatibility Score</p>
-                                </div>
-
-                                <div className="style-options">
-                                    <h3><Palette className="w-4 h-4" /> Export Style</h3>
-                                    <div className="style-grid">
-                                        <button
-                                            className={`style-btn ${selectedTemplate === 'standard' ? 'active' : ''}`}
-                                            onClick={() => setSelectedTemplate('standard')}
-                                        >
-                                            Standard
-                                        </button>
-                                        <button
-                                            className={`style-btn ${selectedTemplate === 'modern' ? 'active' : ''}`}
-                                            onClick={() => setSelectedTemplate('modern')}
-                                        >
-                                            Modern
-                                        </button>
+                            </Button>
+                        </Card>
+                    ) : (
+                        <Card className="results-card">
+                            <div className="results-content-layout">
+                                <div className="analysis-sidebar">
+                                    <div className="results-header">
+                                        <CheckCircle className="w-12 h-12 text-green-500" />
+                                        <h2>Resume Optimized!</h2>
+                                        <p>Your resume has been optimized for ATS systems</p>
                                     </div>
 
-                                    <h3><Type className="w-4 h-4" /> Font Family</h3>
-                                    <div className="font-list">
-                                        {['Times New Roman', 'Arial', 'Georgia'].map(font => (
+                                    <div className="score-display">
+                                        <div className="score-circle" style={{ '--score': optimizedResume.analysis?.matchScore || 85 }}>
+                                            <span className="score-number">{optimizedResume.analysis?.matchScore || 85}%</span>
+                                        </div>
+                                        <p>ATS Compatibility Score</p>
+                                    </div>
+
+                                    <div className="style-options">
+                                        <h3><Palette className="w-4 h-4" /> Export Style</h3>
+                                        <div className="style-grid">
                                             <button
-                                                key={font}
-                                                className={`font-btn ${selectedFont === font ? 'active' : ''}`}
-                                                onClick={() => setSelectedFont(font)}
-                                                style={{ fontFamily: font }}
+                                                className={`style-btn ${selectedTemplate === 'standard' ? 'active' : ''}`}
+                                                onClick={() => setSelectedTemplate('standard')}
                                             >
-                                                {font}
+                                                Standard
                                             </button>
-                                        ))}
+                                            <button
+                                                className={`style-btn ${selectedTemplate === 'modern' ? 'active' : ''}`}
+                                                onClick={() => setSelectedTemplate('modern')}
+                                            >
+                                                Modern
+                                            </button>
+                                        </div>
+
+                                        <h3><Type className="w-4 h-4" /> Font Family</h3>
+                                        <div className="font-list">
+                                            {['Times New Roman', 'Arial', 'Georgia'].map(font => (
+                                                <button
+                                                    key={font}
+                                                    className={`font-btn ${selectedFont === font ? 'active' : ''}`}
+                                                    onClick={() => setSelectedFont(font)}
+                                                    style={{ fontFamily: font }}
+                                                >
+                                                    {font}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="action-buttons">
+                                        <Button className="download-btn" onClick={downloadOptimizedResume}>
+                                            <Download className="w-5 h-5" />
+                                            Download Optimized Resume
+                                        </Button>
+                                        <Button variant="outline" onClick={() => navigate('/scanner')}>
+                                            <ArrowRight className="w-5 h-5" />
+                                            View Detailed Analysis
+                                        </Button>
+                                    </div>
+
+                                    <Button variant="ghost" className="w-full mt-4" onClick={() => { setOptimizedResume(null); setResumeFile(null); }}>
+                                        Optimize Another Resume
+                                    </Button>
+                                </div>
+
+                                <div className="resume-preview-panel">
+                                    <h3><FileText className="w-5 h-5" /> Live Preview</h3>
+                                    <div className="preview-scroll-area">
+                                        <div className="preview-scale-wrapper">
+                                            <ResumePaper
+                                                content={optimizedResume.optimizedText || optimizedResume.resumeText}
+                                                scale={0.6}
+                                                fontFamily={selectedFont}
+                                                template={selectedTemplate}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-
-                                <div className="action-buttons">
-                                    <Button className="download-btn" onClick={downloadOptimizedResume}>
-                                        <Download className="w-5 h-5" />
-                                        Download Optimized Resume
-                                    </Button>
-                                    <Button variant="outline" onClick={() => navigate('/scanner')}>
-                                        <ArrowRight className="w-5 h-5" />
-                                        View Detailed Analysis
-                                    </Button>
-                                </div>
-
-                                <Button variant="ghost" className="w-full mt-4" onClick={() => { setOptimizedResume(null); setResumeFile(null); }}>
-                                    Optimize Another Resume
-                                </Button>
                             </div>
+                        </Card>
+                    )}
 
-                            <div className="resume-preview-panel">
-                                <h3><FileText className="w-5 h-5" /> Live Preview</h3>
-                                <div className="preview-scroll-area">
-                                    <div className="preview-scale-wrapper">
-                                        <ResumePaper
-                                            content={optimizedResume.optimizedText || optimizedResume.resumeText}
-                                            scale={0.6}
-                                            fontFamily={selectedFont}
-                                            template={selectedTemplate}
-                                        />
-                                    </div>
-                                </div>
+                    {/* Features Section */}
+                    <div className="features-section">
+                        <h2>Why One-Click Optimize?</h2>
+                        <div className="features-grid">
+                            <div className="feature-card">
+                                <Zap className="w-8 h-8 text-yellow-500" />
+                                <h3>Instant Results</h3>
+                                <p>Get your optimized resume in seconds, not hours</p>
                             </div>
-                        </div>
-                    </Card>
-                )}
-
-                {/* Features Section */}
-                <div className="features-section">
-                    <h2>Why One-Click Optimize?</h2>
-                    <div className="features-grid">
-                        <div className="feature-card">
-                            <Zap className="w-8 h-8 text-yellow-500" />
-                            <h3>Instant Results</h3>
-                            <p>Get your optimized resume in seconds, not hours</p>
-                        </div>
-                        <div className="feature-card">
-                            <CheckCircle className="w-8 h-8 text-green-500" />
-                            <h3>ATS-Friendly</h3>
-                            <p>Pass through Applicant Tracking Systems with ease</p>
-                        </div>
-                        <div className="feature-card">
-                            <Sparkles className="w-8 h-8 text-purple-500" />
-                            <h3>AI-Powered</h3>
-                            <p>Advanced AI understands what recruiters want</p>
+                            <div className="feature-card">
+                                <CheckCircle className="w-8 h-8 text-green-500" />
+                                <h3>ATS-Friendly</h3>
+                                <p>Pass through Applicant Tracking Systems with ease</p>
+                            </div>
+                            <div className="feature-card">
+                                <Sparkles className="w-8 h-8 text-purple-500" />
+                                <h3>AI-Powered</h3>
+                                <p>Advanced AI understands what recruiters want</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </SubscriptionWall>
     );
 };
 
