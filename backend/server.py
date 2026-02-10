@@ -74,6 +74,7 @@ except (ImportError, ModuleNotFoundError) as e:
     RAZORPAY_PLANS_USD = {}
 from scraper_service import scrape_job_description
 from byok_crypto import validate_master_key, encrypt_api_key, decrypt_api_key
+from job_sync_service import JobSyncService
 from interview_service import (
     InterviewOrchestrator, 
     get_resumes_collection, 
@@ -169,6 +170,49 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all methods
     allow_headers=["*"],  # Allow all headers
 )
+
+# Initialize Job Sync Service and Scheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+job_sync_service = None
+scheduler = AsyncIOScheduler()
+
+if db is not None:
+    job_sync_service = JobSyncService(db)
+    
+    # Schedule Adzuna sync every 10 minutes
+    async def sync_adzuna():
+        try:
+            logger.info("Starting Adzuna job sync...")
+            await job_sync_service.sync_adzuna_jobs()
+        except Exception as e:
+            logger.error(f"Adzuna sync error: {e}")
+    
+    # Schedule JSearch sync every hour
+    async def sync_jsearch():
+        try:
+            logger.info("Starting JSearch job sync...")
+            await job_sync_service.sync_jsearch_jobs()
+        except Exception as e:
+            logger.error(f"JSearch sync error: {e}")
+    
+    # Schedule cleanup of old jobs (older than 72 hours) - runs daily
+    async def cleanup_old_jobs():
+        try:
+            logger.info("Starting cleanup of jobs older than 72 hours...")
+            deleted_count = await job_sync_service.cleanup_old_jobs()
+            logger.info(f"Cleanup completed: {deleted_count} jobs removed")
+        except Exception as e:
+            logger.error(f"Cleanup error: {e}")
+    
+    scheduler.add_job(sync_adzuna, 'interval', minutes=10, id='adzuna_sync')
+    scheduler.add_job(sync_jsearch, 'interval', hours=1, id='jsearch_sync')
+    scheduler.add_job(cleanup_old_jobs, 'interval', hours=24, id='cleanup_old_jobs')  # Run daily
+    scheduler.start()
+    logger.info("Job sync scheduler started successfully (Adzuna: 10min, JSearch: 1hr, Cleanup: daily)")
+
+else:
+    logger.warning("Job sync scheduler not started - database not available")
 
 # Note: api_router will be included at the end of the file after all routes are defined
 
@@ -575,6 +619,295 @@ async def update_user_admin(email: str, update_data: dict, admin: dict = Depends
     except Exception as e:
         logger.error(f"Error updating user {email}: {e}")
         raise HTTPException(status_code=500, detail="Failed to update user")
+
+# ============================================
+# SUBSCRIPTION & TRIAL MANAGEMENT ENDPOINTS
+# ============================================
+
+class TrialActivationRequest(BaseModel):
+    plan_id: str
+
+@api_router.post("/subscription/activate-trial")
+async def activate_trial(
+    request: TrialActivationRequest,
+    user: dict = Depends(get_current_user)
+):
+    """
+    Activate 2-week free trial for a user.
+    """
+    try:
+        email = user.get("email")
+        
+        # Check if user already has an active trial or subscription
+        if user.get("subscription_status") == "active":
+            raise HTTPException(
+                status_code=400, 
+                detail="You already have an active subscription"
+            )
+        
+        if user.get("subscription_status") == "trial":
+            # Check if trial is still active
+            trial_expires_at = user.get("trial_expires_at")
+            if trial_expires_at:
+                expires_dt = datetime.fromisoformat(trial_expires_at.replace('Z', '+00:00'))
+                if datetime.now(timezone.utc) < expires_dt:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="You already have an active trial"
+                    )
+        
+        # Activate 2-week trial
+        now = datetime.now(timezone.utc)
+        trial_expires_at = now + timedelta(days=14)  # 2 weeks
+        
+        update_data = {
+            "subscription_status": "trial",
+            "trial_activated_at": now.isoformat(),
+            "trial_expires_at": trial_expires_at.isoformat(),
+            "subscription_plan": request.plan_id,
+            "plan": "ai-yearly"  # Set plan for compatibility
+        }
+        
+        result = await db.users.update_one(
+            {"email": email},
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        logger.info(f"Trial activated for user {email}, expires at {trial_expires_at.isoformat()}")
+        
+        return {
+            "success": True,
+            "message": "Trial activated successfully",
+            "trial_expires_at": trial_expires_at.isoformat(),
+            "days_remaining": 14
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error activating trial: {e}")
+        raise HTTPException(status_code=500, detail="Failed to activate trial")
+
+@api_router.get("/subscription/status")
+async def get_subscription_status(user: dict = Depends(get_current_user)):
+    """
+    Get current subscription status for authenticated user.
+    """
+    try:
+        subscription_status = user.get("subscription_status", "none")
+        trial_expires_at = user.get("trial_expires_at")
+        subscription_expires_at = user.get("subscription_expires_at")
+        
+        # Calculate if trial is still active
+        is_trial_active = False
+        if subscription_status == "trial" and trial_expires_at:
+            try:
+                expires_dt = datetime.fromisoformat(trial_expires_at.replace('Z', '+00:00'))
+                is_trial_active = datetime.now(timezone.utc) < expires_dt
+            except:
+                pass
+        
+        # Calculate days remaining
+        days_remaining = None
+        if is_trial_active and trial_expires_at:
+            try:
+                expires_dt = datetime.fromisoformat(trial_expires_at.replace('Z', '+00:00'))
+                delta = expires_dt - datetime.now(timezone.utc)
+                days_remaining = max(0, delta.days)
+            except:
+                pass
+        
+        return {
+            "subscription_status": subscription_status,
+            "has_active_subscription": subscription_status == "active",
+            "is_trial_active": is_trial_active,
+            "trial_expires_at": trial_expires_at,
+            "subscription_expires_at": subscription_expires_at,
+            "days_remaining": days_remaining,
+            "plan": user.get("plan", "free")
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting subscription status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get subscription status")
+
+# ============================================
+# CONTACT MESSAGES & CALL BOOKINGS
+# ============================================
+
+class ContactMessageRequest(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    subject: str
+    message: str
+
+class CallBookingRequest(BaseModel):
+    name: str
+    email: str
+    phone: str
+    company: Optional[str] = None
+    message: Optional[str] = None
+    preferred_time: Optional[str] = None
+
+@api_router.post("/contact/submit")
+async def submit_contact_message(request: ContactMessageRequest):
+    """
+    Submit a contact form message (public endpoint, no auth required).
+    """
+    try:
+        message_doc = {
+            "first_name": request.first_name,
+            "last_name": request.last_name,
+            "email": request.email,
+            "subject": request.subject,
+            "message": request.message,
+            "status": "unread",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        result = await db.contact_messages.insert_one(message_doc)
+        logger.info(f"Contact message submitted from {request.email}")
+        
+        return {
+            "success": True,
+            "message": "Message sent to team successfully! We'll get back to you soon.",
+            "id": str(result.inserted_id)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error submitting contact message: {e}")
+        raise HTTPException(status_code=500, detail="Failed to submit message")
+
+@api_router.post("/call-bookings/submit")
+async def submit_call_booking(request: CallBookingRequest):
+    """
+    Submit a call booking request (public endpoint, no auth required).
+    """
+    try:
+        booking_doc = {
+            "name": request.name,
+            "email": request.email,
+            "phone": request.phone,
+            "company": request.company,
+            "message": request.message,
+            "preferred_time": request.preferred_time,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        result = await db.call_bookings.insert_one(booking_doc)
+        logger.info(f"Call booking submitted from {request.email}")
+        
+        return {
+            "success": True,
+            "message": "Call booking request submitted successfully! We'll contact you soon.",
+            "id": str(result.inserted_id)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error submitting call booking: {e}")
+        raise HTTPException(status_code=500, detail="Failed to submit booking")
+
+@api_router.get("/admin/call-bookings")
+async def get_call_bookings(admin: dict = Depends(check_admin)):
+    """
+    Get all call booking requests (admin only).
+    """
+    try:
+        bookings_cursor = db.call_bookings.find({}).sort("created_at", -1)
+        bookings = await bookings_cursor.to_list(length=1000)
+        
+        # Convert ObjectId to string
+        for booking in bookings:
+            booking["_id"] = str(booking["_id"])
+        
+        return bookings
+        
+    except Exception as e:
+        logger.error(f"Error fetching call bookings: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch call bookings")
+
+@api_router.get("/admin/contact-messages")
+async def get_contact_messages(admin: dict = Depends(check_admin)):
+    """
+    Get all contact form messages (admin only).
+    """
+    try:
+        messages_cursor = db.contact_messages.find({}).sort("created_at", -1)
+        messages = await messages_cursor.to_list(length=1000)
+        
+        # Convert ObjectId to string
+        for message in messages:
+            message["_id"] = str(message["_id"])
+        
+        return messages
+        
+    except Exception as e:
+        logger.error(f"Error fetching contact messages: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch contact messages")
+
+class StatusUpdateRequest(BaseModel):
+    status: str
+
+@api_router.patch("/admin/call-bookings/{booking_id}/status")
+async def update_call_booking_status(
+    booking_id: str,
+    request: StatusUpdateRequest,
+    admin: dict = Depends(check_admin)
+):
+    """
+    Update status of a call booking (admin only).
+    """
+    try:
+        from bson import ObjectId
+        
+        result = await db.call_bookings.update_one(
+            {"_id": ObjectId(booking_id)},
+            {"$set": {"status": request.status}}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        return {"success": True, "message": "Status updated successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating call booking status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update status")
+
+@api_router.patch("/admin/contact-messages/{message_id}/status")
+async def update_contact_message_status(
+    message_id: str,
+    request: StatusUpdateRequest,
+    admin: dict = Depends(check_admin)
+):
+    """
+    Update status of a contact message (admin only).
+    """
+    try:
+        from bson import ObjectId
+        
+        result = await db.contact_messages.update_one(
+            {"_id": ObjectId(message_id)},
+            {"$set": {"status": request.status}}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        return {"success": True, "message": "Status updated successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating contact message status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update status")
 
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
@@ -5872,6 +6205,35 @@ async def generate_smart_answer_endpoint(
 
 
 
+
+# Job Sync Endpoints
+@app.get("/api/jobs/sync-status")
+async def get_job_sync_status(user: dict = Depends(get_current_user)):
+    """Get status of job sync operations"""
+    if not job_sync_service:
+        raise HTTPException(status_code=503, detail="Job sync service not available")
+    
+    status = await job_sync_service.get_sync_status()
+    return status
+
+@app.post("/api/jobs/sync-now")
+async def trigger_manual_sync(user: dict = Depends(get_current_user)):
+    """Manually trigger job sync (admin only)"""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if not job_sync_service:
+        raise HTTPException(status_code=503, detail="Job sync service not available")
+    
+    # Trigger both syncs
+    adzuna_count = await job_sync_service.sync_adzuna_jobs()
+    jsearch_count = await job_sync_service.sync_jsearch_jobs()
+    
+    return {
+        "success": True,
+        "adzuna_jobs_added": adzuna_count,
+        "jsearch_jobs_added": jsearch_count
+    }
 
 # Include the API router with all /api/* routes
 app.include_router(api_router)
