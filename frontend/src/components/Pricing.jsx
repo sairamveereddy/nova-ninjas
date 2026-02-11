@@ -14,7 +14,6 @@ import { VerticalCutReveal } from "./ui/vertical-cut-reveal";
 import NumberFlow from "@number-flow/react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { cn } from "@/lib/utils";
 import './SideMenu.css';
 import { API_URL } from '../config/api';
 
