@@ -42,7 +42,7 @@ const AdminPortal = () => {
 
         try {
             setLoading(true);
-            const [statsData, usersData, bookingsData, messagesData, jStatsData] = await Promise.all([
+            const results = await Promise.allSettled([
                 apiCall('/api/admin/stats'),
                 apiCall('/api/admin/users?limit=200'),
                 apiCall('/api/admin/call-bookings'),
@@ -50,11 +50,23 @@ const AdminPortal = () => {
                 apiCall('/api/admin/job-stats')
             ]);
 
-            setStats(statsData);
-            setUsers(usersData);
-            setBookings(bookingsData);
-            setMessages(messagesData);
-            setJobStats(jStatsData);
+            const [statsRes, usersRes, bookingsRes, messagesRes, jStatsRes] = results;
+
+            if (statsRes.status === 'fulfilled') setStats(statsRes.value);
+            else console.error("Stats API failed:", statsRes.reason);
+
+            if (usersRes.status === 'fulfilled') setUsers(usersRes.value);
+            else console.error("Users API failed:", usersRes.reason);
+
+            if (bookingsRes.status === 'fulfilled') setBookings(bookingsRes.value);
+            else console.error("Bookings API failed:", bookingsRes.reason);
+
+            if (messagesRes.status === 'fulfilled') setMessages(messagesRes.value);
+            else console.error("Messages API failed:", messagesRes.reason);
+
+            if (jStatsRes.status === 'fulfilled') setJobStats(jStatsRes.value);
+            else console.error("Job Stats API failed:", jStatsRes.reason);
+
         } catch (error) {
             console.error("Failed to fetch admin data:", error);
         } finally {
