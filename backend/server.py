@@ -6375,6 +6375,25 @@ async def trigger_manual_sync(user: dict = Depends(get_current_user)):
         "jsearch_jobs_added": jsearch_count
     }
 
+@app.get("/api/debug/sync-jobs")
+async def debug_force_sync():
+    """Temporary debug endpoint to force sync"""
+    try:
+        if not job_sync_service:
+            return {"error": "Service not available"}
+        
+        adzuna = await job_sync_service.sync_adzuna_jobs()
+        jsearch = await job_sync_service.sync_jsearch_jobs()
+        
+        return {
+            "status": "success", 
+            "adzuna": adzuna, 
+            "jsearch": jsearch,
+            "message": "Sync triggered successfully on production"
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 # Admin Dashboard Endpoints
 @app.get("/api/admin/call-bookings")
 async def get_call_bookings(user: dict = Depends(get_current_user)):
