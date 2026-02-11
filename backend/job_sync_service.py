@@ -4,7 +4,8 @@ Implements hybrid approach with deduplication and USA filtering
 """
 
 import os
-import requests
+import aiohttp
+import asyncio
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import logging
@@ -35,9 +36,10 @@ class JobSyncService:
                 "sort_by": "date"
             }
             
-            response = requests.get(url, params=params, timeout=30)
-            response.raise_for_status()
-            data = response.json()
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=params, timeout=30) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             
             jobs_added = 0
             for job_data in data.get("results", []):
@@ -98,9 +100,10 @@ class JobSyncService:
                 "country": "us"
             }
             
-            response = requests.get(url, headers=headers, params=params, timeout=30)
-            response.raise_for_status()
-            data = response.json()
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, params=params, timeout=30) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             
             jobs_added = 0
             for job_data in data.get("data", []):
