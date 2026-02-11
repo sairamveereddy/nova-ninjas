@@ -11,6 +11,7 @@ import Pricing from "./components/Pricing";
 import Employee from "./components/Employee";
 import Admin from "./components/Admin";
 import AdminDashboard from "./components/AdminDashboard";
+import AdminPortal from "./components/AdminPortal";
 import AllUsersExport from "./components/AllUsersExport";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PaymentSuccess from "./components/PaymentSuccess";
@@ -244,6 +245,16 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <Admin />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Hidden Admin Portal */}
+            <Route
+              path="/job-ninjas-admin-portal"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminPortal />
                 </ProtectedRoute>
               }
             />

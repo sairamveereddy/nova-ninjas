@@ -528,11 +528,19 @@ async def get_admin_stats(admin: dict = Depends(check_admin)):
         total_resumes = await db.saved_resumes.count_documents({}) + await db.generated_documents.count_documents({})
         total_applications = await db.applications.count_documents({})
         
+        # Subscription breakdown
+        free_users = await db.users.count_documents({"plan": {"$in": [None, "free", ""]}})
+        pro_users = await db.users.count_documents({"plan": {"$in": ["pro", "unlimited"]}})
+        
         return {
             "total_users": total_users,
             "new_users_24h": new_users,
             "total_resumes_tailored": total_resumes,
-            "total_jobs_applied": total_applications
+            "total_jobs_applied": total_applications,
+            "subscription_stats": {
+                "free": free_users,
+                "pro": pro_users
+            }
         }
     except Exception as e:
         logger.error(f"Error fetching admin stats: {e}")
@@ -807,9 +815,34 @@ async def submit_call_booking(request: CallBookingRequest):
             "id": str(result.inserted_id)
         }
         
+@api_router.get("/admin/job-stats")
+async def get_admin_job_stats(admin: dict = Depends(check_admin)):
+    """
+    Get job posting statistics for the last 24 hours (admin only).
+    """
+    try:
+        cutoff = datetime.utcnow() - timedelta(hours=24)
+        
+        # New jobs in last 24h
+        total_new_jobs = await db.jobs.count_documents({"created_at": {"$gte": cutoff}})
+        
+        # Breakdown by source
+        sources = ["adzuna", "jsearch"]
+        source_breakdown = {}
+        for source in sources:
+            count = await db.jobs.count_documents({
+                "source": source,
+                "created_at": {"$gte": cutoff}
+            })
+            source_breakdown[source] = count
+            
+        return {
+            "total_24h": total_new_jobs,
+            "sources": source_breakdown
+        }
     except Exception as e:
-        logger.error(f"Error submitting call booking: {e}")
-        raise HTTPException(status_code=500, detail="Failed to submit booking")
+        logger.error(f"Error fetching job stats: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch job stats")
 
 @api_router.get("/admin/call-bookings")
 async def get_call_bookings(admin: dict = Depends(check_admin)):
