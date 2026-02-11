@@ -6395,9 +6395,9 @@ async def debug_force_sync():
         if not job_sync_service:
             return {"status": "error", "config": config_status, "error": "Service not available (DB connection failed?)"}
         
-        # Run syncs
-        await job_sync_service.sync_adzuna_jobs()
-        await job_sync_service.sync_jsearch_jobs()
+        # Run syncs (COMMENTED OUT TO DEBUG 500 ERROR)
+        # await job_sync_service.sync_adzuna_jobs()
+        # await job_sync_service.sync_jsearch_jobs()
         
         # Get detailed status
         status = await job_sync_service.get_sync_status()
