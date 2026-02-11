@@ -263,8 +263,8 @@ const LandingPage = () => {
               <Button className="btn-cta-primary" onClick={() => navigate(isAuthenticated ? '/scanner' : '/ai-ninja')}>
                 <Bot className="w-5 h-5" /> {isAuthenticated ? "Let's Start Applying" : "Try AI Ninja Free"}
               </Button>
-              <Button variant="outline" className="btn-cta-secondary" onClick={() => navigate('/human-ninja')}>
-                <UserCheck className="w-5 h-5" /> Let Humans Apply For Me
+              <Button variant="outline" className="btn-cta-secondary" onClick={() => navigate('/jobs')}>
+                <Search className="w-5 h-5" /> Browse Freshest Jobs Only
               </Button>
             </div>
 
