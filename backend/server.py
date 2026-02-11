@@ -4540,11 +4540,7 @@ async def get_jobs(
                  
             target_role = _extract_target_role(user_resume)
             
-            with open("debug_log.txt", "a", encoding="utf-8") as f:
-                f.write(f"\n--- REQUEST {datetime.now()} ---\n")
-                f.write(f"User: {user.get('email')}\n")
-                f.write(f"Resume Length: {len(user_resume)}\n")
-                f.write(f"Target Role: '{target_role}'\n")
+            target_role = _extract_target_role(user_resume)
 
             # 2. Fetch specific matches (Boosted Query) if role found
             boosted_jobs = []
@@ -4555,8 +4551,7 @@ async def get_jobs(
                  cursor = db.jobs.find(boost_query).sort("createdAt", -1).limit(50)
                  boosted_jobs = await cursor.to_list(length=50)
                  
-                 with open("debug_log.txt", "a", encoding="utf-8") as f:
-                     f.write(f"Boosted Jobs Found: {len(boosted_jobs)}\n")
+                 boosted_jobs = await cursor.to_list(length=50)
 
             # 3. Fetch standard recent jobs (Standard Query)
             # Fetch slightly more to ensure good mix if boost is empty

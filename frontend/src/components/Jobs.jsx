@@ -262,18 +262,12 @@ const Jobs = () => {
 
               <div className="filter-group">
                 <Label>Country/Region</Label>
-                <Select value={countryFilter} onValueChange={(val) => { setCountryFilter(val); setCurrentPage(1); }}>
+                <Select value="us" disabled>
                   <SelectTrigger>
-                    <SelectValue placeholder="USA" />
+                    <SelectValue placeholder="🇺🇸 USA Only" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Countries</SelectItem>
-                    <SelectItem value="usa">🇺🇸 USA Only</SelectItem>
-                    <SelectItem value="gb">🇬🇧 United Kingdom</SelectItem>
-                    <SelectItem value="ca">🇨🇦 Canada</SelectItem>
-                    <SelectItem value="in">🇮🇳 India</SelectItem>
-                    <SelectItem value="au">🇦🇺 Australia</SelectItem>
-                    <SelectItem value="international">🌍 International (Non-US)</SelectItem>
+                    <SelectItem value="us">🇺🇸 USA Only</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
