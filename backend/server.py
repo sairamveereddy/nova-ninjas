@@ -6432,6 +6432,7 @@ async def submit_contact_message(data: ContactMessage):
         message_doc = {
             "firstName": data.firstName,
             "lastName": data.lastName,
+            "name": f"{data.firstName} {data.lastName}".strip(),
             "email": data.email,
             "subject": data.subject,
             "message": data.message,

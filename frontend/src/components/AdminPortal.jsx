@@ -478,7 +478,7 @@ const AdminPortal = () => {
                                         <div key={m._id} className="p-6 border rounded-2xl hover:border-indigo-200 transition-colors bg-white">
                                             <div className="flex justify-between items-start mb-4">
                                                 <div>
-                                                    <h4 className="font-bold text-slate-900">{m.name || 'Anonymous'}</h4>
+                                                    <h4 className="font-bold text-slate-900">{m.name || (m.firstName ? `${m.firstName} ${m.lastName}` : 'Anonymous')}</h4>
                                                     <p className="text-sm text-slate-500">{m.email}</p>
                                                 </div>
                                                 <span className="text-xs font-medium text-slate-400 bg-slate-100 px-3 py-1 rounded-full">{new Date(m.created_at).toLocaleDateString()}</span>
