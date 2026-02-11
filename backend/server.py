@@ -2128,6 +2128,44 @@ async def save_user_consent(request: dict):
 
 # ============ FREE TOOLS AI ENDPOINTS ============
 
+@api_router.post("/admin/force-promote")
+async def force_promote_admin(request: dict):
+    """
+    Emergency endpoint to force-promote a user to admin.
+    Requires a secret key to prevent abuse.
+    """
+    email = request.get("email")
+    secret_key = request.get("secret_key")
+    
+    # Internal secret to protect this endpoint
+    if secret_key != "blue-ninja-master-key-2025":
+        raise HTTPException(status_code=403, detail="Invalid secret key")
+        
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+        
+    result = await db.users.update_one(
+        {"email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}},
+        {"$set": {"role": "admin"}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail=f"User {email} not found")
+        
+    # Verify the update
+    user = await db.users.find_one({"email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}})
+    
+    logger.info(f"Forcibly promoted {email} to admin. New role: {user.get('role')}")
+    
+    return {
+        "success": True, 
+        "message": f"User {email} promoted to admin",
+        "user_id": str(user.get("_id")),
+        "new_role": user.get("role")
+    }
+
+
+
 
 @api_router.post("/ai/salary-negotiation")
 async def generate_salary_negotiation_script(request: dict):
