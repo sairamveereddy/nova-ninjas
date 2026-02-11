@@ -253,7 +253,7 @@ function App() {
             <Route
               path="/job-ninjas-admin-portal"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <ProtectedRoute allowedRoles={['customer', 'admin']}>
                   <AdminPortal />
                 </ProtectedRoute>
               }
