@@ -53,10 +53,16 @@ const AdminPortal = () => {
             const [statsRes, usersRes, bookingsRes, messagesRes, jStatsRes] = results;
 
             if (statsRes.status === 'fulfilled') setStats(statsRes.value);
-            else console.error("Stats API failed:", statsRes.reason);
+            else {
+                console.error("Stats API failed:", statsRes.reason);
+                setError(`Stats API Error: ${statsRes.reason.message}`);
+            }
 
             if (usersRes.status === 'fulfilled') setUsers(usersRes.value);
-            else console.error("Users API failed:", usersRes.reason);
+            else {
+                console.error("Users API failed:", usersRes.reason);
+                setError(`Users API Error: ${usersRes.reason.message}`);
+            }
 
             if (bookingsRes.status === 'fulfilled') setBookings(bookingsRes.value);
             else console.error("Bookings API failed:", bookingsRes.reason);
