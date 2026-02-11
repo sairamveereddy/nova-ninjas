@@ -196,7 +196,8 @@ class JobSyncService:
             "contract_type": job_data.get("contract_type"),
             "category": job_data.get("category", {}).get("label", ""),
             "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.utcnow(),
+            "country": "us"
         }
     
     def _normalize_jsearch_job(self, job_data: Dict) -> Dict:
@@ -216,7 +217,8 @@ class JobSyncService:
             "is_remote": job_data.get("job_is_remote", False),
             "job_highlights": job_data.get("job_highlights", {}),
             "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.utcnow(),
+            "country": "us"
         }
     
     async def _is_usa_job(self, job: Dict) -> bool:

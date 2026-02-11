@@ -4472,21 +4472,29 @@ async def get_jobs(
         # Build query
         query = {}
         
-        # 1. 48-Hour Freshness Filter (Project Orion)
-        # Only show jobs from last 48 hours
-        cutoff_time = datetime.utcnow() - timedelta(hours=48)
+        # 1. 72-Hour Freshness Filter (Project Orion)
+        # Only show jobs from last 72 hours (User Requirement)
+         cutoff_time = datetime.utcnow() - timedelta(hours=72)
         query["createdAt"] = {"$gte": cutoff_time}
 
         if country:
             country_lower = country.lower()
             if country_lower == "usa" or country_lower == "us":
+                # More permissible USA check:
+                # 1. country field is "us" (newly added)
+                # 2. OR country field is "usa"
+                # 3. OR location contains USA keywords/states
                 us_pattern = r"\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming|United States|USA|US)\b"
-                international_keywords = "israel|europe|india|uk|london|canada|germany|france|australia|asia|berlin|paris|toronto|sydney|munich|hamburg|frankfurt|vienna|zurich|amsterdam|cairo|dubai|tokyo|singapore|beijing|shanghai|rio|sao paulo|mexico city|buenos aires|madrid|barcelona|rome|milan|naples|athens|istanbul|moscow|stockholm|oslo|helsinki|copenhagen|warsaw|prague|budapest|bucharest|sofia|dublin|belfast|edinburgh|glasgow|cardiff|manchester|birmingham|leeds|liverpool|bristol|newcastle|sheffield|nottingham|leicester|southampton|portsmouth|plymouth|brighton|cambridge|oxford|norwich|ipswich|exeter|switzerland|netherlands|belgium|austria|sweden|norway|denmark|finland|poland|czech|hungary|romania|bulgaria|greece|turkey|russia|egypt|uae|china|japan|korea|brazil|mexico|argentina|spain|italy|gmbh"
-                query["$and"] = [
-                    {"$or": [{"country": "us"}, {"country": "usa"}]},
-                    {"location": {"$regex": us_pattern, "$options": "i"}},
-                    {"location": {"$not": {"$regex": international_keywords, "$options": "i"}}}
+                
+                query["$or"] = [
+                    {"country": "us"}, 
+                    {"country": "usa"},
+                    {"location": {"$regex": us_pattern, "$options": "i"}}
                 ]
+                
+                # Still exclude explicit international matches to be safe
+                international_keywords = "israel|europe|india|uk|london|canada|germany|france|australia|asia|berlin|paris|toronto|sydney|munich|hamburg|frankfurt|vienna|zurich|amsterdam|cairo|dubai|tokyo|singapore|beijing|shanghai|rio|sao paulo|mexico city|buenos aires|madrid|barcelona|rome|milan|naples|athens|istanbul|moscow|stockholm|oslo|helsinki|copenhagen|warsaw|prague|budapest|bucharest|sofia|dublin|belfast|edinburgh|glasgow|cardiff|manchester|birmingham|leeds|liverpool|bristol|newcastle|sheffield|nottingham|leicester|southampton|portsmouth|plymouth|brighton|cambridge|oxford|norwich|ipswich|exeter|switzerland|netherlands|belgium|austria|sweden|norway|denmark|finland|poland|czech|hungary|romania|bulgaria|greece|turkey|russia|egypt|uae|china|japan|korea|brazil|mexico|argentina|spain|italy|gmbh"
+                query["location"] = {"$not": {"$regex": international_keywords, "$options": "i"}}
             elif country_lower == "international":
                 query["country"] = {"$ne": "us"}
             else:
