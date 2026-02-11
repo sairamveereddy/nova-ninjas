@@ -151,7 +151,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Derived state
-  const hasActiveSubscription = user?.subscription_status === 'active' || user?.plan === 'unlimited' || user?.plan === 'pro';
+  const hasActiveSubscription = user?.subscription_status === 'active' || user?.plan === 'unlimited' || user?.plan === 'pro' || user?.plan === 'ai-yearly';
   const isTrialActive = user?.subscription_status === 'trial' && new Date(user?.trial_expires_at) > new Date();
 
   const contextValue = {
