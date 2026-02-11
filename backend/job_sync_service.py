@@ -20,34 +20,70 @@ class JobSyncService:
         self.rapidapi_key = os.getenv("RAPIDAPI_KEY")
         
     async def sync_adzuna_jobs(self, query: str = "software engineer", max_days_old: int = 3) -> int:
-        """Fetch jobs from Adzuna API (unlimited free) - only jobs from last 3 days"""
+        """Fetch jobs from Adzuna API (unlimited free) - multiple high-intent queries"""
         try:
             if not self.adzuna_app_id or not self.adzuna_app_key:
                 logger.warning("Adzuna API credentials not configured")
                 return 0
             
-            url = "https://api.adzuna.com/v1/api/jobs/us/search/1"
-            params = {
-                "app_id": self.adzuna_app_id,
-                "app_key": self.adzuna_app_key,
-                "results_per_page": 50,
-                "what": query,
-                "max_days_old": max_days_old,  # Only jobs from last 3 days (72 hours)
-                "sort_by": "date"
-            }
+            # List of high-intent queries to cycle through
+            queries = [
+                "software engineer",
+                "visa sponsorship", 
+                "h1b friendly",
+                "work visa",
+                "data scientist",
+                "product manager",
+                "project manager",
+                "business analyst",
+                "devops engineer",
+                "full stack developer"
+            ]
+            
+            total_jobs_added = 0
             
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=params, timeout=30) as response:
-                    response.raise_for_status()
-                    data = await response.json()
-            
-            jobs_added = 0
-            for job_data in data.get("results", []):
-                job = self._normalize_adzuna_job(job_data)
-                if await self._is_usa_job(job):
-                    categorized_job = await self._categorize_job(job)
-                    if await self._save_job(categorized_job):
-                        jobs_added += 1
+                for q in queries:
+                    try:
+                        url = "https://api.adzuna.com/v1/api/jobs/us/search/1"
+                        params = {
+                            "app_id": self.adzuna_app_id,
+                            "app_key": self.adzuna_app_key,
+                            "results_per_page": 50,
+                            "what": q,
+                            "max_days_old": max_days_old,  # Only jobs from last 3 days (72 hours)
+                            "sort_by": "date"
+                        }
+                        
+                        async with session.get(url, params=params, timeout=30) as response:
+                            if response.status != 200:
+                                logger.error(f"Adzuna error for query '{q}': {response.status}")
+                                continue
+                                
+                            data = await response.json()
+                    
+                            jobs_added_this_query = 0
+                            for job_data in data.get("results", []):
+                                job = self._normalize_adzuna_job(job_data)
+                                if await self._is_usa_job(job):
+                                    categorized_job = await self._categorize_job(job)
+                                    # Add tag based on query for easier filtering if needed
+                                    if "visa" in q or "h1b" in q:
+                                        if "visa-sponsoring" not in categorized_job.get("categoryTags", []):
+                                             categorized_job.setdefault("categoryTags", []).append("visa-sponsoring")
+                                             
+                                    if await self._save_job(categorized_job):
+                                        jobs_added_this_query += 1
+                                        
+                            total_jobs_added += jobs_added_this_query
+                            logger.info(f"Adzuna query '{q}': {jobs_added_this_query} new jobs added")
+                            
+                            # Small delay to be nice to the API
+                            await asyncio.sleep(1)
+                            
+                    except Exception as e:
+                        logger.error(f"Error in Adzuna loop for '{q}': {e}")
+                        continue
             
             # Update sync status
             await self.db.job_sync_status.update_one(
@@ -55,15 +91,15 @@ class JobSyncService:
                 {
                     "$set": {
                         "last_sync": datetime.utcnow(),
-                        "jobs_added": jobs_added,
+                        "jobs_added": total_jobs_added,
                         "status": "success"
                     }
                 },
                 upsert=True
             )
             
-            logger.info(f"Adzuna sync completed: {jobs_added} jobs added")
-            return jobs_added
+            logger.info(f"Adzuna sync cycle completed: {total_jobs_added} total jobs added across {len(queries)} queries")
+            return total_jobs_added
             
         except Exception as e:
             logger.error(f"Adzuna sync failed: {str(e)}")
