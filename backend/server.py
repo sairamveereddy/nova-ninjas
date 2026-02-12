@@ -4803,30 +4803,12 @@ async def debug_jobs():
 async def fix_locations():
     """Emergency fix: Append ', United States' and REFRESH DATES."""
     try:
-        # 1. Location Fix (broader)
-        # 2. Date Fix (bring old jobs to NOW so they show up)
+        # V4: BRUTE FORCE UPDATE (Corrected Syntax)
+        # Target EVERYTHING. No filters.
         
         result = await db.jobs.update_many(
-            {},  # Target EVERYTHING. No filters. Brute force.
+            {},  
             [
-                {
-                    "$set": {
-                        # Append United States if missing
-                        "location": {
-                            "$cond": {
-                                "if": {"$regexMatch": {"input": "$location", "regex": "United States", "options": "i"}},
-                                "then": "$location",
-                                "else": {"$concat": ["$location", ", United States"]}
-                            }
-                        },
-                        "country": "us",
-                        # MAKE THEM FRESH (The critical fix for "0 jobs")
-                        "created_at": datetime.utcnow(), 
-                        "posted_date": datetime.utcnow()
-                    }
-                }
-            ]
-        )
                 {
                     "$set": {
                         # Append United States if missing
@@ -4848,8 +4830,10 @@ async def fix_locations():
         
         return {
             "status": "success", 
+            "version": "v4_syntax_fixed",
+            "matched": result.matched_count,
             "modified": result.modified_count, 
-            "message": f"Refreshed dates & locations for {result.modified_count} jobs"
+            "message": f"V4: Matched {result.matched_count}, Modified {result.modified_count} jobs"
         }
     except Exception as e:
         return {"error": str(e)}
