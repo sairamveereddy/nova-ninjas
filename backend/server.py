@@ -4474,7 +4474,7 @@ async def get_jobs(
         
         # 1. 72-Hour Freshness Filter (Project Orion)
         # Only show jobs from last 72 hours (User Requirement)
-         cutoff_time = datetime.utcnow() - timedelta(hours=72)
+        cutoff_time = datetime.utcnow() - timedelta(hours=72)
         query["createdAt"] = {"$gte": cutoff_time}
 
         if country:
