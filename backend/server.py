@@ -4803,14 +4803,13 @@ async def debug_jobs():
 async def fix_locations():
     """Emergency fix: Append ', United States' to all jobs without it."""
     try:
-        # Find jobs that don't satisfy the strict filter
-        # valid: "United States", "USA", "US", "NY", "CA", etc.
-        # fast fix: just append "United States" to everything that looks like a city only
+        # Broader fix: If it doesn't say "United States" (case insensitive), append it.
+        # This covers "Naperville", "New York, NY", etc.
         
         result = await db.jobs.update_many(
             {
-                "location": {"$not": {"$regex": "United States|USA", "$options": "i"}},
-                "source": "adzuna"  # Only modify Adzuna jobs which we know are US-based from the API query
+                "location": {"$not": {"$regex": "United States", "$options": "i"}},
+                "source": "adzuna"
             },
             [
                 {"$set": {"location": {"$concat": ["$location", ", United States"]}}},
