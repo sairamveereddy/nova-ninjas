@@ -4801,15 +4801,53 @@ async def debug_jobs():
 
 @app.post("/api/debug/fix-locations")
 async def fix_locations():
-    """Emergency fix: Append ', United States' and REFRESH DATES."""
+    """Emergency fix: Iterative update to be safe (no pipelines)."""
     try:
+        from pymongo import UpdateOne
+        
+        # 1. Fetch ALL jobs
+        cursor = db.jobs.find({})
+        updates = []
+        count = 0
+        
+        async for job in cursor:
+            # Fix Location
+            loc = job.get("location", "")
+            if loc and "United States" not in loc and "USA" not in loc:
+                loc = f"{loc}, United States"
+            elif not loc:
+                loc = "United States" # Default if missing
+            
+            # Create Update Operation
+            updates.append(UpdateOne(
+                {"_id": job["_id"]},
+                {
+                    "$set": {
+                        "location": loc,
+                        "country": "us",
+                        "created_at": datetime.utcnow(),
+                        "posted_date": datetime.utcnow()
+                    }
+                }
+            ))
+            count += 1
+        
+        # 2. Add 'adzuna' updates logic (if we want to be specific, but we said brute force)
+        # Actually, let's just run the bulk write
+        modified_count = 0
+        if updates:
+            result = await db.jobs.bulk_write(updates)
+            modified_count = result.modified_count
+            
         return {
             "status": "success", 
-            "version": "v5_reverted",
-            "message": "Reverted temporarily to fix server crash."
+            "version": "v6_safe_iteration",
+            "matched": count,
+            "modified": modified_count, 
+            "message": f"V6: Processed {count}, Modified {modified_count} jobs via Python loop"
         }
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": f"{type(e).__name__}: {str(e)}"}
 
 
 @app.post("/api/jobs/refresh")
