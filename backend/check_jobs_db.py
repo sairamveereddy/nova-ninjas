@@ -34,7 +34,13 @@ async def check_jobs():
     us_jobs = await db.jobs.count_documents({"country": "us"})
     print(f"Jobs with country='us': {us_jobs}")
     
-    # 4. Sample Job
+    # 4. Field Name Check
+    count_snake = await db.jobs.count_documents({"created_at": {"$exists": True}})
+    count_camel = await db.jobs.count_documents({"createdAt": {"$exists": True}})
+    print(f"Jobs with 'created_at': {count_snake}")
+    print(f"Jobs with 'createdAt': {count_camel}")
+
+    # 5. Sample Job
     if total > 0:
         sample = await db.jobs.find_one({})
         print("\nSample Job Data:")
@@ -42,7 +48,8 @@ async def check_jobs():
         print(f"Company: {sample.get('company')}")
         print(f"Location: {sample.get('location')}")
         print(f"Country Tag: {sample.get('country')}")
-        print(f"CreatedAt: {sample.get('created_at')}")
+        print(f"created_at: {sample.get('created_at')}")
+        print(f"createdAt: {sample.get('createdAt')}")
     else:
         print("\nNo jobs found. The sync might not have run yet.")
 

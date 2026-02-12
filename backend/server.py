@@ -4475,7 +4475,7 @@ async def get_jobs(
         # 1. 72-Hour Freshness Filter (Project Orion)
         # Only show jobs from last 72 hours (User Requirement)
         cutoff_time = datetime.utcnow() - timedelta(hours=72)
-        query["createdAt"] = {"$gte": cutoff_time}
+        query["created_at"] = {"$gte": cutoff_time}
 
         if country:
             country_lower = country.lower()
@@ -4521,7 +4521,8 @@ async def get_jobs(
             # FALLBACK: If no fresh jobs, fetch standard jobs but sort entirely by newness
             # This ensures the "demo" doesn't look empty if the scraper hasn't run recently.
             # Remove date filter for fallback
-            del query["createdAt"]
+            # Remove date filter for fallback
+            del query["created_at"]
             total = await db.jobs.count_documents(query)
 
         # ---------------------------------------------------------
@@ -4555,7 +4556,7 @@ async def get_jobs(
 
             # 3. Fetch standard recent jobs (Standard Query)
             # Fetch slightly more to ensure good mix if boost is empty
-            standard_cursor = db.jobs.find(query).sort("createdAt", -1).limit(100) 
+            standard_cursor = db.jobs.find(query).sort("created_at", -1).limit(100) 
             standard_jobs = await standard_cursor.to_list(length=100)
             
             # 4. Merge and Dedup
@@ -4599,7 +4600,7 @@ async def get_jobs(
         else:
             # Standard behavior for guests
             skip = (page - 1) * limit
-            cursor = db.jobs.find(query).sort("createdAt", -1).skip(skip).limit(limit)
+            cursor = db.jobs.find(query).sort("created_at", -1).skip(skip).limit(limit)
             jobs = await cursor.to_list(length=limit)
             
             for job in jobs:
