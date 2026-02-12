@@ -224,7 +224,8 @@ async def fetch_jobs_from_adzuna(
                         "createdAt": datetime.now(timezone.utc),
                         "updatedAt": datetime.now(timezone.utc),
                         "expiresAt": None,
-                        "isActive": True
+                        "isActive": True,
+                        "country": country  # Explicitly save country code
                     }
                     jobs.append(job_data)
                 
@@ -329,7 +330,8 @@ async def fetch_jobs_from_remoteok() -> List[Dict[str, Any]]:
                         "createdAt": datetime.now(timezone.utc),
                         "updatedAt": datetime.now(timezone.utc),
                         "expiresAt": None,
-                        "isActive": True
+                        "isActive": True,
+                        "country": "us" if "united states" in location.lower() or "usa" in location.lower() or "remote" in location.lower() else "us" # Default to US for remote jobs
                     }
                     jobs.append(job_data)
                 
@@ -427,7 +429,8 @@ async def fetch_jobs_from_remotive(category: str = None, limit: int = 500) -> Li
                         "createdAt": datetime.now(timezone.utc),
                         "updatedAt": datetime.now(timezone.utc),
                         "expiresAt": None,
-                        "isActive": True
+                        "isActive": True,
+                        "country": "us" if "united states" in location.lower() or "usa" in location.lower() or "remote" in location.lower() else "us"
                     }
                     jobs.append(job_data)
                 
