@@ -4799,6 +4799,33 @@ async def debug_jobs():
     except Exception as e:
         return {"error": str(e)}
 
+@app.post("/api/debug/fix-locations")
+async def fix_locations():
+    """Emergency fix: Append ', United States' to all jobs without it."""
+    try:
+        # Find jobs that don't satisfy the strict filter
+        # valid: "United States", "USA", "US", "NY", "CA", etc.
+        # fast fix: just append "United States" to everything that looks like a city only
+        
+        result = await db.jobs.update_many(
+            {
+                "location": {"$not": {"$regex": "United States|USA", "$options": "i"}},
+                "source": "adzuna"  # Only modify Adzuna jobs which we know are US-based from the API query
+            },
+            [
+                {"$set": {"location": {"$concat": ["$location", ", United States"]}}},
+                {"$set": {"country": "us"}}
+            ]
+        )
+        
+        return {
+            "status": "success", 
+            "modified": result.modified_count, 
+            "message": f"Fixed locations for {result.modified_count} jobs"
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 
 @app.post("/api/jobs/refresh")
 async def refresh_jobs():
