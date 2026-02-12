@@ -15,9 +15,10 @@ logger = logging.getLogger(__name__)
 class JobSyncService:
     def __init__(self, db):
         self.db = db
-        self.adzuna_app_id = os.getenv("ADZUNA_APP_ID")
-        self.adzuna_app_key = os.getenv("ADZUNA_APP_KEY")
-        self.rapidapi_key = os.getenv("RAPIDAPI_KEY")
+        # Strip whitespace to handle copy-paste errors in env vars
+        self.adzuna_app_id = os.getenv("ADZUNA_APP_ID", "").strip()
+        self.adzuna_app_key = os.getenv("ADZUNA_APP_KEY", "").strip()
+        self.rapidapi_key = os.getenv("RAPIDAPI_KEY", "").strip()
         
     async def sync_adzuna_jobs(self, query: str = "software engineer", max_days_old: int = 3) -> int:
         """Fetch jobs from Adzuna API (unlimited free) - multiple high-intent queries"""

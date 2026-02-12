@@ -4753,8 +4753,8 @@ async def force_sync(background_tasks: BackgroundTasks):
 async def debug_adzuna_check():
     """Directly test Adzuna API connectivity."""
     try:
-        app_id = os.getenv("ADZUNA_APP_ID")
-        app_key = os.getenv("ADZUNA_APP_KEY")
+        app_id = os.getenv("ADZUNA_APP_ID", "").strip()
+        app_key = os.getenv("ADZUNA_APP_KEY", "").strip()
         
         if not app_id or not app_key:
             return {"status": "error", "message": "Missing API Keys", "app_id": str(app_id)[:2] + "***"}
