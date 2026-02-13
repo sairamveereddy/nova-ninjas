@@ -157,7 +157,12 @@ else:
 limiter = Limiter(key_func=get_remote_address)
 
 # Create the main app
-app = FastAPI()
+# Create the main app
+# Secure Docs: Hide in production
+docs_url = "/docs" if os.environ.get("ENVIRONMENT", "development") != "production" else None
+redoc_url = "/redoc" if os.environ.get("ENVIRONMENT", "development") != "production" else None
+
+app = FastAPI(docs_url=docs_url, redoc_url=redoc_url)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -243,6 +248,15 @@ def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+
+def ensure_verified(user: dict):
+    """Ensure the user has verified their email."""
+    if not user.get("is_verified"):
+        raise HTTPException(
+            status_code=403,
+            detail="Please verify your email address to access this feature."
+        )
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -507,6 +521,10 @@ class UserSignup(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+
+class GoogleLoginRequest(BaseModel):
+    credential: str
 
 
 class UserResponse(BaseModel):
@@ -785,7 +803,9 @@ class CallBookingRequest(BaseModel):
     preferred_time: Optional[str] = None
 
 @api_router.post("/contact/submit")
-async def submit_contact_message(request: ContactMessageRequest):
+@api_router.post("/contact/submit")
+@limiter.limit("5/hour")
+async def submit_contact_message(request: ContactMessageRequest, req: Request):
     """
     Submit a contact form message (public endpoint, no auth required).
     """
@@ -814,7 +834,9 @@ async def submit_contact_message(request: ContactMessageRequest):
         raise HTTPException(status_code=500, detail="Failed to submit message")
 
 @api_router.post("/call-bookings/submit")
-async def submit_call_booking(request: CallBookingRequest):
+@api_router.post("/call-bookings/submit")
+@limiter.limit("5/hour")
+async def submit_call_booking(request: CallBookingRequest, req: Request):
     """
     Submit a call booking request (public endpoint, no auth required).
     """
@@ -1441,7 +1463,7 @@ async def send_admin_booking_notification(booking):
 # ============ AUTH ENDPOINTS ============
 
 
-@api_router.post("/auth/signup")
+@api_router.post("/api/auth/signup", response_model=UserResponse)
 @limiter.limit("5/minute")
 async def signup(user_data: UserSignup, request: Request):
     """
@@ -3575,13 +3597,6 @@ class ResumeUsage(BaseModel):
     totalResumes: int
 
 
-class AIApplyResponse(BaseModel):
-    applicationId: str
-    tailoredResume: str
-    tailoredCoverLetter: str
-    suggestedAnswers: List[dict]
-
-
 async def get_user_usage_limits(identifier: str) -> dict:
     """
     Calculate user's resume usage limits based on their plan and billing cycle.
@@ -5139,7 +5154,7 @@ async def generate_ai_content(
             if any(h in response.upper() for h in ["EXPERIENCE", "SUMMARY", "SKILLS", "EDUCATION", "PROJECTS"]):
                 import re
                 # Strip ALL double+ newlines and replace with single
-                response = re.sub(r'\n+', '\n', response.strip())
+                response = re.sub(r'\n{3,}', '\n\n', response.strip())
                 # Also strip leading/trailing spaces on each line
                 response = "\n".join([line.strip() for line in response.split("\n") if line.strip()])
 
@@ -5720,6 +5735,158 @@ async def delete_saved_resume(resume_id: str):
     except Exception as e:
         logger.error(f"Delete resume error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/auth/google-login")
+@limiter.limit("10/minute")
+async def google_login(request: GoogleLoginRequest, req: Request):
+    """
+    Handle Google OAuth authentication for login.
+    """
+    try:
+        # Check if database is connected
+        if db is None:
+            logger.error("Database connection is None - MONGO_URL may be invalid")
+            raise HTTPException(
+                status_code=500,
+                detail="Database connection failed. Please contact support."
+            )
+        
+        # Try to import google-auth libraries
+        try:
+            from google.oauth2 import id_token
+            from google.auth.transport import requests as google_requests
+        except ImportError as import_error:
+            logger.error(f"Google auth library not installed: {import_error}")
+            raise HTTPException(
+                status_code=500,
+                detail="Google authentication is not configured on this server. Please contact support or use email/password login."
+            )
+
+        credential = request.credential
+
+        if not credential:
+            raise HTTPException(status_code=400, detail="No credential provided")
+
+        # Verify the Google token
+        try:
+            GOOGLE_CLIENT_ID = os.getenv(
+                "GOOGLE_CLIENT_ID",
+                "62316419452-e4gpepiaepopnfqpd96k19r1ps6e777v.apps.googleusercontent.com",
+            )
+
+            idinfo = id_token.verify_oauth2_token(
+                credential, google_requests.Request(), GOOGLE_CLIENT_ID
+            )
+
+            email = idinfo.get("email")
+            name = idinfo.get("name") or ""
+            google_id = idinfo.get("sub")
+            picture = idinfo.get("picture")
+
+            if not email:
+                raise HTTPException(
+                    status_code=400, detail="Email not provided by Google"
+                )
+
+        except ValueError as e:
+            logger.error(f"Invalid Google token: {str(e)}")
+            raise HTTPException(
+                status_code=401, detail=f"Invalid Google token: {str(e)}"
+            )
+
+        # Check if user exists
+        existing_user = await db.users.find_one({"email": email})
+
+        if existing_user:
+            # User exists - log them in
+            update_data = {
+                "google_id": google_id,
+                "profile_picture": picture,
+                "is_verified": True,
+            }
+            await db.users.update_one(
+                {"_id": existing_user["_id"]}, {"$set": update_data}
+            )
+
+            user_id = existing_user.get("id") or str(existing_user.get("_id"))
+            token = create_access_token(data={"sub": email, "id": user_id})
+
+            return {
+                "success": True,
+                "token": token,
+                "user": {
+                    "id": user_id,
+                    "email": email,
+                    "name": existing_user.get("name") or name or "",
+                    "role": existing_user.get("role", "customer"),
+                    "plan": existing_user.get("plan"),
+                    "is_verified": True,
+                    "referral_code": existing_user.get("referral_code"),
+                    "profile_picture": picture,
+                },
+            }
+        else:
+            # New user - create account
+            new_user_obj = User(
+                email=email, name=name, password_hash="google-oauth", is_verified=True
+            )
+
+            user_dict = new_user_obj.model_dump()
+            user_dict.update(
+                {
+                    "google_id": google_id,
+                    "profile_picture": picture,
+                    "auth_method": "google",
+                    "created_at": (
+                        user_dict["created_at"].isoformat()
+                        if isinstance(user_dict["created_at"], datetime)
+                        else user_dict["created_at"]
+                    ),
+                }
+            )
+
+            await db.users.insert_one(user_dict)
+            logger.info(f"New user created via Google OAuth: {email}")
+
+            # Send welcome email in background
+            try:
+                background_tasks.add_task(
+                    send_welcome_email, name, email, None, new_user_obj.referral_code
+                )
+            except Exception as email_error:
+                logger.error(
+                    f"Error sending welcome email to Google user: {email_error}"
+                )
+
+            token = create_access_token(data={"sub": email, "id": new_user_obj.id})
+
+            return {
+                "success": True,
+                "token": token,
+                "user": {
+                    "id": new_user_obj.id,
+                    "email": email,
+                    "name": name,
+                    "role": new_user_obj.role,
+                    "plan": new_user_obj.plan,
+                    "is_verified": True,
+                    "referral_code": new_user_obj.referral_code,
+                    "profile_picture": picture,
+                },
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(
+            f"Error in Google authentication: {error_msg}\n{traceback.format_exc()}"
+        )
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Google login error: {error_msg}. Check if google-auth is installed."
+        )
 
 
 @app.post("/api/scan/save")

@@ -29,6 +29,24 @@ async def fetch_url_content(url: str) -> Tuple[Optional[str], int]:
         "Cache-Control": "max-age=0",
     }
     
+    # RemoteOK specific headers - they require Referer and pseudo-browser behavior
+    remoteok_headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "cross-site",
+        "Pragma": "no-cache",
+        "Cache-Control": "no-cache",
+        "Host": "remoteok.com",
+        "Referer": "https://remoteok.com/remote-jobs",
+        "Origin": "https://remoteok.com",
+    }
+    
     # Mobile User-Agent (often less restricted)
     mobile_headers = {
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
@@ -41,9 +59,11 @@ async def fetch_url_content(url: str) -> Tuple[Optional[str], int]:
     
     headers_list = [desktop_headers, mobile_headers]
     
-    # If it's monster.com, try mobile headers first as it often works better
+    # Domain specific routing
     if "monster.com" in url.lower():
         headers_list = [mobile_headers, desktop_headers]
+    elif "remoteok.com" in url.lower():
+        headers_list = [remoteok_headers, desktop_headers]
 
     last_status = 200
     for headers in headers_list:
