@@ -3,6 +3,7 @@ import "./App.css";
 import "./LandingPage.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import ErrorBoundary from "./components/ErrorBoundary";
 import LandingPage from "./components/LandingPage";
 import Login from "./components/Login";
 import Signup from "./components/Signup";
@@ -70,213 +71,215 @@ import LinkedInMockup from "./components/LinkedInMockup";
 function App() {
   return (
     <div className="App">
-      <AuthProvider>
-        <BrowserRouter>
-          <ScrollToTop />
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/payment/success" element={<PaymentSuccess />} />
-            <Route path="/payment/canceled" element={<PaymentCanceled />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/refund-policy" element={<RefundPolicy />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
+      <ErrorBoundary>
+        <AuthProvider>
+          <BrowserRouter>
+            <ScrollToTop />
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/payment/success" element={<PaymentSuccess />} />
+              <Route path="/payment/canceled" element={<PaymentCanceled />} />
+              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/refund-policy" element={<RefundPolicy />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
 
-            {/* AI Ninja Routes */}
-            <Route path="/ai-ninja" element={<AINinja />} />
-            <Route path="/ai-ninja/jobs/:id" element={<JobDetailsOrion />} />
-            <Route path="/ai-ninja/apply/:id" element={<AIApply />} />
-            <Route
-              path="/ai-apply"
-              element={
-                <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
-                  <AIApplyFlow />
-                </ProtectedRoute>
-              }
-            />
+              {/* AI Ninja Routes */}
+              <Route path="/ai-ninja" element={<AINinja />} />
+              <Route path="/ai-ninja/jobs/:id" element={<JobDetailsOrion />} />
+              <Route path="/ai-ninja/apply/:id" element={<AIApply />} />
+              <Route
+                path="/ai-apply"
+                element={
+                  <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
+                    <AIApplyFlow />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Human Ninja Route */}
-            <Route path="/human-ninja" element={<HumanNinja />} />
+              {/* Human Ninja Route */}
+              <Route path="/human-ninja" element={<HumanNinja />} />
 
-            {/* Jobs Route */}
-            <Route path="/jobs" element={<Jobs />} />
+              {/* Jobs Route */}
+              <Route path="/jobs" element={<Jobs />} />
 
-            {/* Free Tools Route */}
-            <Route path="/free-tools" element={<FreeTools />} />
-            <Route path="/networking-templates" element={<NetworkingTemplates />} />
-            <Route path="/interview-framework" element={<InterviewFramework />} />
-            <Route path="/reference-prep" element={<ReferenceCheckPrep />} />
-            <Route path="/salary-negotiator" element={<SalaryNegotiator />} />
-            <Route path="/linkedin-headline" element={<LinkedInHeadlineOptimizer />} />
-            <Route path="/career-gap" element={<CareerGapExplainer />} />
-            <Route path="/job-decoder" element={<JobDescriptionDecoder />} />
-            <Route path="/offer-comparator" element={<OfferComparator />} />
+              {/* Free Tools Route */}
+              <Route path="/free-tools" element={<FreeTools />} />
+              <Route path="/networking-templates" element={<NetworkingTemplates />} />
+              <Route path="/interview-framework" element={<InterviewFramework />} />
+              <Route path="/reference-prep" element={<ReferenceCheckPrep />} />
+              <Route path="/salary-negotiator" element={<SalaryNegotiator />} />
+              <Route path="/linkedin-headline" element={<LinkedInHeadlineOptimizer />} />
+              <Route path="/career-gap" element={<CareerGapExplainer />} />
+              <Route path="/job-decoder" element={<JobDescriptionDecoder />} />
+              <Route path="/offer-comparator" element={<OfferComparator />} />
 
 
-            {/* Interview Prep Route */}
-            <Route path="/interview-prep" element={<InterviewPrep />} />
-            <Route path="/interview-prep/:sessionId" element={<InterviewRoom />} />
-            <Route path="/interview-prep/:sessionId/report" element={<InterviewReport />} />
+              {/* Interview Prep Route */}
+              <Route path="/interview-prep" element={<InterviewPrep />} />
+              <Route path="/interview-prep/:sessionId" element={<InterviewRoom />} />
+              <Route path="/interview-prep/:sessionId/report" element={<InterviewReport />} />
 
-            {/* Admin Analytics Route */}
-            <Route
-              path="/admin/analytics"
-              element={
-                <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
-                  <AdminAnalytics />
-                </ProtectedRoute>
-              }
-            />
+              {/* Admin Analytics Route */}
+              <Route
+                path="/admin/analytics"
+                element={
+                  <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
+                    <AdminAnalytics />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Phase 1 Tools Routes */}
-            <Route
-              path="/one-click-optimize"
-              element={
-                <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
-                  <OneClickOptimize />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/bullet-points"
-              element={
-                <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
-                  <BulletPointsGenerator />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/summary-generator"
-              element={
-                <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
-                  <SummaryGenerator />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/linkedin-optimizer"
-              element={
-                <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
-                  <LinkedInOptimizer />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/career-change"
-              element={
-                <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
-                  <CareerChangeTool />
-                </ProtectedRoute>
-              }
-            />
+              {/* Phase 1 Tools Routes */}
+              <Route
+                path="/one-click-optimize"
+                element={
+                  <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
+                    <OneClickOptimize />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/bullet-points"
+                element={
+                  <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
+                    <BulletPointsGenerator />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/summary-generator"
+                element={
+                  <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
+                    <SummaryGenerator />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/linkedin-optimizer"
+                element={
+                  <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
+                    <LinkedInOptimizer />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/career-change"
+                element={
+                  <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
+                    <CareerChangeTool />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Phase 2 Tools Routes */}
-            <Route
-              path="/chatgpt-resume"
-              element={
-                <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
-                  <ChatGPTResume />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/chatgpt-cover-letter"
-              element={
-                <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
-                  <ChatGPTCoverLetter />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/linkedin-examples" element={<LinkedInExamples />} />
-            <Route path="/resume-examples" element={<LinkedInExamples />} />
-            <Route path="/linkedin-mockup" element={<LinkedInMockup />} />
+              {/* Phase 2 Tools Routes */}
+              <Route
+                path="/chatgpt-resume"
+                element={
+                  <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
+                    <ChatGPTResume />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/chatgpt-cover-letter"
+                element={
+                  <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
+                    <ChatGPTCoverLetter />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/linkedin-examples" element={<LinkedInExamples />} />
+              <Route path="/resume-examples" element={<LinkedInExamples />} />
+              <Route path="/linkedin-mockup" element={<LinkedInMockup />} />
 
-            {/* Phase 3 Tools Routes */}
-            <Route path="/resume-templates" element={<ResumeTemplates />} />
-            <Route path="/cover-letter-templates" element={<CoverLetterTemplates />} />
-            <Route path="/ats-guides" element={<ATSGuides />} />
+              {/* Phase 3 Tools Routes */}
+              <Route path="/resume-templates" element={<ResumeTemplates />} />
+              <Route path="/cover-letter-templates" element={<CoverLetterTemplates />} />
+              <Route path="/ats-guides" element={<ATSGuides />} />
 
-            {/* Resume Scanner Route */}
-            <Route
-              path="/scanner"
-              element={
-                <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
-                  <ResumeScanner />
-                </ProtectedRoute>
-              }
-            />
+              {/* Resume Scanner Route */}
+              <Route
+                path="/scanner"
+                element={
+                  <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
+                    <ResumeScanner />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* My Resumes - Protected */}
-            <Route
-              path="/resumes"
-              element={
-                <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
-                  <MyResumes />
-                </ProtectedRoute>
-              }
-            />
+              {/* My Resumes - Protected */}
+              <Route
+                path="/resumes"
+                element={
+                  <ProtectedRoute allowedRoles={['customer', 'admin']} requireVerification={false}>
+                    <MyResumes />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Protected Routes - Customer */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['customer', 'admin']}>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
+              {/* Protected Routes - Customer */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Protected Routes - Employee */}
-            <Route
-              path="/employee"
-              element={
-                <ProtectedRoute allowedRoles={['employee']}>
-                  <Employee />
-                </ProtectedRoute>
-              }
-            />
+              {/* Protected Routes - Employee */}
+              <Route
+                path="/employee"
+                element={
+                  <ProtectedRoute allowedRoles={['employee']}>
+                    <Employee />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Protected Routes - Admin */}
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <Admin />
-                </ProtectedRoute>
-              }
-            />
+              {/* Protected Routes - Admin */}
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <Admin />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Hidden Admin Portal - STRICT ADMIN ONLY */}
-            <Route
-              path="/job-ninjas-admin-portal"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminPortal />
-                </ProtectedRoute>
-              }
-            />
+              {/* Hidden Admin Portal - STRICT ADMIN ONLY */}
+              <Route
+                path="/job-ninjas-admin-portal"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminPortal />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Live Dashboard - STRICT ADMIN ONLY */}
-            <Route
-              path="/live-dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <LiveDashboard />
-                </ProtectedRoute>
-              }
-            />
+              {/* Live Dashboard - STRICT ADMIN ONLY */}
+              <Route
+                path="/live-dashboard"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <LiveDashboard />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Contact Route */}
-            <Route path="/contact" element={<ContactPage />} />
+              {/* Contact Route */}
+              <Route path="/contact" element={<ContactPage />} />
 
-            {/* Catch all - redirect to home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+              {/* Catch all - redirect to home */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </ErrorBoundary>
     </div>
   );
 }
