@@ -1135,7 +1135,7 @@ async def send_email_resend(to_email: str, subject: str, html_content: str):
     Send email using Resend API (HTTP-based, works on Railway).
     """
     resend_api_key = os.environ.get("RESEND_API_KEY")
-    from_email = os.environ.get("FROM_EMAIL", "jobNinjas.org <veereddy@jobninjas.org>")
+    from_email = os.environ.get("FROM_EMAIL", "jobNinjas <hello@jobninjas.org>")
 
     if not resend_api_key:
         logger.warning("RESEND_API_KEY not configured, skipping email")
@@ -1424,7 +1424,7 @@ async def send_admin_booking_notification(booking):
     """
     Send notification to admin when someone books a call.
     """
-    admin_email = os.environ.get("ADMIN_EMAIL", "veereddy@jobninjas.org")
+    admin_email = os.environ.get("ADMIN_EMAIL", "hello@jobninjas.org")
 
     html_content = f"""
 <!DOCTYPE html>
