@@ -249,27 +249,25 @@ function App() {
               }
             />
 
-            {/* Hidden Admin Portal */}
+            {/* Hidden Admin Portal - STRICT ADMIN ONLY */}
             <Route
               path="/job-ninjas-admin-portal"
               element={
-                <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                <ProtectedRoute allowedRoles={['admin']}>
                   <AdminPortal />
                 </ProtectedRoute>
               }
             />
 
-            {/* Admin User Export Route - Open Access */}
-            {/* Admin Dashboard (Formerly Users Export) - Protected */}
+            {/* Live Dashboard - STRICT ADMIN ONLY */}
             <Route
-              path="/admin/users-export"
+              path="/live-dashboard"
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminDashboard />
+                  <LiveDashboard />
                 </ProtectedRoute>
               }
             />
-            <Route path="/live-dashboard" element={<LiveDashboard />} />
 
             {/* Contact Route */}
             <Route path="/contact" element={<ContactPage />} />
