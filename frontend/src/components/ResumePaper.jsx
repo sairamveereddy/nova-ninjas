@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Maximize2, Edit3, Loader2 } from 'lucide-react';
 
-const ResumePaper = ({ content, scale = 1, onContentChange, fontFamily = '"Times New Roman", Times, serif', template = 'standard' }) => {
+const ResumePaper = ({ content, scale = 1, onContentChange, fontFamily = '"Times New Roman", Times, serif', template = 'standard', editable = true }) => {
     const [parsed, setParsed] = useState(null);
     const containerRef = useRef(null);
 
@@ -141,15 +141,17 @@ const ResumePaper = ({ content, scale = 1, onContentChange, fontFamily = '"Times
                 <Button size="sm" className="bg-[#10b981] hover:bg-[#059669] text-white font-bold h-8 text-xs gap-1 shadow-sm">
                     Fit to one page
                 </Button>
-                <Button size="sm" className="bg-[#10b981] hover:bg-[#059669] text-white font-bold h-8 text-xs gap-1 shadow-sm">
-                    <Edit3 className="w-3 h-3" /> Edit
-                </Button>
+                {editable && (
+                    <Button size="sm" className="bg-[#10b981] hover:bg-[#059669] text-white font-bold h-8 text-xs gap-1 shadow-sm">
+                        <Edit3 className="w-3 h-3" /> Edit
+                    </Button>
+                )}
             </div>
 
             {/* Render Document */}
             <div
                 className="space-y-1 outline-none"
-                contentEditable
+                contentEditable={editable}
                 suppressContentEditableWarning
                 onInput={(e) => {
                     if (onContentChange) {

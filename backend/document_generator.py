@@ -580,7 +580,7 @@ ABSOLUTE SCHEMA RULES:
 - Rewrite bullets to be strong, specific, and impact-focused.
 - Use simple ASCII bullets like "-" only.
 - SUMMARY: 3–4 lines max, include core stack + value.
-- SKILLS: Grouped categories (GenAI/LLMs, ML/DL, Cloud/DevOps, Languages/Tools, Data/DB).
+- SKILLS: MERGE existing skills with any new ones. Grouped categories (GenAI/LLMs, ML/DL, Cloud/DevOps, Languages/Tools, Data/DB). DO NOT REMOVE EXISTING SKILLS.
 - EXPERIENCE: For each role, 4–6 bullets max. Start each bullet with a strong verb.
 - PROJECTS: 3 projects max unless more are truly strong. Each: 2–4 bullets.
 - QUALITY BAR: Make it tight, readable, and high-signal. ABSOLUTELY NO BLANK LINES BETWEEN BULLETS OR SECTIONS.
@@ -985,7 +985,8 @@ def create_text_docx(text: str, title: str = "Document", font_family: str = "Tim
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 add_bottom_border(p)
             p.paragraph_format.space_after = Pt(4)
-        elif (line_stripped.isupper() and len(line_stripped) < 50) or (line_stripped.startswith('#') and len(line_stripped) < 60):
+            p.paragraph_format.space_after = Pt(4)
+        elif (line_stripped.isupper() and len(line_stripped) < 50) or (line_stripped.startswith('#') and len(line_stripped) < 60) or (line_stripped.upper() in ["EXPERIENCE", "PROFESSIONAL EXPERIENCE", "WORK EXPERIENCE", "EDUCATION", "PROJECTS", "SKILLS", "SUMMARY", "PROFESSIONAL SUMMARY", "PROFILE", "CERTIFICATIONS", "AWARDS", "LANGUAGES", "TECHNICAL SKILLS", "CORE COMPETENCIES"]):
             # Main sections like PROFESSIONAL EXPERIENCE
             clean_title = line_stripped.replace('#', '').strip().upper()
             

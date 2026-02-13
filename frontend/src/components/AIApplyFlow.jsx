@@ -81,7 +81,7 @@ const HighlightText = ({ text, keywords }) => {
   );
 };
 
-const AIApplyFlow = () => {
+const AIApplyFlow = ({ isScanner = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
@@ -1112,8 +1112,8 @@ const AIApplyFlow = () => {
               style={{ flex: '1 1 0%', minWidth: '400px' }}
             >
               <div className="absolute top-4 left-4 flex gap-2 z-20">
-                <Button variant="outline" size="sm" className="bg-white/90 backdrop-blur shadow-sm hover:shadow-md border-slate-200" onClick={() => navigate('/dashboard')}>
-                  <ArrowLeft className="w-4 h-4 mr-2" /> Dashboard
+                <Button variant="outline" size="sm" className="bg-white/90 backdrop-blur shadow-sm hover:shadow-md border-slate-200" onClick={() => window.location.href = '/scanner'}>
+                  <ArrowLeft className="w-4 h-4 mr-2" /> Start New Application
                 </Button>
               </div>
 
@@ -1126,6 +1126,7 @@ const AIApplyFlow = () => {
                         scale={1}
                         fontFamily={selectedFont}
                         template={selectedTemplate}
+                        editable={!isScanner}
                         onContentChange={(newText) => {
                           setApplicationSaved(false);
                           // Determine which state to update based on what's currently active
