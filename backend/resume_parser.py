@@ -107,13 +107,46 @@ async def parse_resume(file_content: bytes, filename: str) -> str:
         raise ValueError(f"Unsupported file type. Please upload PDF, DOCX, or TXT file")
 
 
-def validate_resume_file(filename: str, file_size: int) -> Optional[str]:
+
+def validate_magic_numbers(file_content: bytes, filename: str) -> bool:
+    """
+    Validate file content against magic numbers for its extension.
+    
+    Args:
+        file_content: Raw bytes of the file
+        filename: The filename to check extension against
+        
+    Returns:
+        True if valid, False otherwise
+    """
+    filename_lower = filename.lower()
+    
+    # PDF Magic Number: %PDF- (25 50 44 46 2D)
+    if filename_lower.endswith('.pdf'):
+        return file_content.startswith(b'%PDF-')
+        
+    # DOCX Magic Number: PK (50 4B 03 04)
+    elif filename_lower.endswith('.docx'):
+        return file_content.startswith(b'PK\x03\x04')
+        
+    # TXT has no magic number, but we can check for binary content
+    elif filename_lower.endswith('.txt'):
+        try:
+            file_content.decode('utf-8')
+            return True
+        except UnicodeDecodeError:
+            return False
+            
+    return False
+
+
+def validate_resume_file(filename: str, file_content: bytes) -> Optional[str]:
     """
     Validate resume file before processing
     
     Args:
         filename: The filename
-        file_size: Size in bytes
+        file_content: Raw bytes of the file
         
     Returns:
         Error message if invalid, None if valid
@@ -125,15 +158,21 @@ def validate_resume_file(filename: str, file_size: int) -> Optional[str]:
     if not has_valid_ext:
         return "Invalid file type. Please upload PDF, DOCX, or TXT file"
     
-    # Check file size (max 10MB)
-    max_size = 10 * 1024 * 1024  # 10MB
+    file_size = len(file_content)
+    
+    # Check file size (max 5MB - reduced from 10MB for security)
+    max_size = 5 * 1024 * 1024  # 5MB
     if file_size > max_size:
-        return "File too large. Maximum size is 10MB"
+        return "File too large. Maximum size is 5MB"
     
     # Check file size (min 10 bytes)
     min_size = 10
     if file_size < min_size:
         return f"Resume file looks empty ({file_size} bytes). Minimum required is {min_size} bytes."
+        
+    # Check magic numbers
+    if not validate_magic_numbers(file_content, filename):
+        return "Invalid file content. The file does not match its extension."
     
     return None
 

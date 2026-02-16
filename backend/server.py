@@ -1821,6 +1821,12 @@ async def save_profile(request: Request, user: dict = Depends(get_current_user))
         try:
             # Read and parse resume
             content = await resume_file.read()
+            
+            # Security: Validate file before processing
+            validation_error = validate_resume_file(filename, content)
+            if validation_error:
+                raise HTTPException(status_code=400, detail=validation_error)
+
             from resume_parser import parse_resume
             resume_text = await parse_resume(content, filename)
             
@@ -3902,34 +3908,31 @@ async def get_jobs(
 
 
 @api_router.post("/fetch-job-description")
-async def fetch_job_desc(request: JobUrlFetchRequest):
+async def fetch_job_desc(request: JobUrlFetchRequest, user: dict = Depends(get_current_user)):
     """
     Fetch and extract job description from a URL.
+    Requires authentication to prevent abuse.
     """
     try:
         url = request.url.strip()
         if not url:
             raise HTTPException(status_code=400, detail="URL is required")
 
-        # Optional usage tracking if userId provided
-        if request.userId and request.userId != "guest":
-            usage = await get_user_usage_limits(request.userId)
-            # We don't have user object here easily, but get_user_usage_limits returns enough
-            # We need user email for check_and_increment_daily_usage
-            user = await db.users.find_one({"$or": [{"email": request.userId}, {"id": request.userId}]})
-            if user:
-                can_autofill = await check_and_increment_daily_usage(
-                    user["email"], 
-                    "autofills", 
-                    usage.get("autofillsLimit", 5)
-                )
-                if not can_autofill:
-                     return {
-                         "success": False, 
-                         "error": f"Daily auto-fill limit reached ({usage.get('autofillsLimit')} per day). Please upgrade to continue or wait until tomorrow."
-                     }
+        # Usage tracking using authenticated user
+        usage = await get_user_usage_limits(user["email"])
+        
+        can_autofill = await check_and_increment_daily_usage(
+            user["email"], 
+            "autofills", 
+            usage.get("autofillsLimit", 5)
+        )
+        if not can_autofill:
+             return {
+                 "success": False, 
+                 "error": f"Daily auto-fill limit reached ({usage.get('autofillsLimit')} per day). Please upgrade to continue or wait until tomorrow."
+             }
 
-        logger.info(f"Fetching job description for URL: {url}")
+        logger.info(f"Fetching job description for URL: {url} (User: {user['email']})")
         result = await scrape_job_description(url)
         return result
     except NameError as ne:
@@ -3937,7 +3940,6 @@ async def fetch_job_desc(request: JobUrlFetchRequest):
         logger.error(f"NameError in fetch_job_desc: {ne}")
         if "user" in str(ne):
              logger.error("Caught 'user' NameError. Suppressing...")
-             # Retry or fail gracefully?
              raise HTTPException(status_code=500, detail=f"Server Configuration Error: {str(ne)}")
         raise
     except Exception as e:
@@ -3953,28 +3955,20 @@ async def get_resumes_legacy(email: str = Query(...)):
 
 
 @api_router.post("/ai-ninja/apply")
-async def ai_ninja_apply(request: Request):
+async def ai_ninja_apply(request: Request, user: dict = Depends(get_current_user)):
     """
     AI Ninja apply endpoint - generates tailored resume, cover letter, and Q&A.
     Accepts multipart form data with resume file.
     """
     try:
         form = await request.form()
-
-        userId = form.get("userId")
-        if not userId or userId == "guest":
-            raise HTTPException(
-                status_code=401, detail="Authentication required to use AI Ninja"
-            )
-
-        # Get user to verify tier and usage
-        user = await db.users.find_one({"id": userId})
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-
+        
+        # IDOR Fix: Ignore client-provided userId, use authenticated user
+        userId = user.get("id") or str(user.get("_id"))
+        
         # Enforce email verification
         ensure_verified(user)
-
+        
         # Check usage limits
         usage = await get_user_usage_limits(user["email"])
         if not usage["canGenerate"]:
@@ -4017,6 +4011,12 @@ async def ai_ninja_apply(request: Request):
             from resume_parser import parse_resume
 
             file_content = await resumeFile.read()
+            
+            # Security: Validate file before processing
+            validation_error = validate_resume_file(resumeFile.filename, file_content)
+            if validation_error:
+                raise HTTPException(status_code=400, detail=validation_error)
+
             resumeText = await parse_resume(file_content, resumeFile.filename)
         elif not resumeText and resumeFile:
             resumeText = str(resumeFile)
