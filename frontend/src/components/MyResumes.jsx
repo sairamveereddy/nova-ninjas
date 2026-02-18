@@ -186,7 +186,7 @@ const MyResumes = () => {
                   </div>
                   <div>
                     <h3 className="font-bold text-orange-900 text-sm md:text-base">
-                      {usageLimits.tier.charAt(0).toUpperCase() + usageLimits.tier.slice(1)} Tier Usage
+                      {(usageLimits.tier || 'Free').charAt(0).toUpperCase() + (usageLimits.tier || 'free').slice(1)} Tier Usage
                     </h3>
                     <p className="text-orange-700 text-xs md:text-sm">
                       {usageLimits.currentCount} / {usageLimits.limit} resumes generated {usageLimits.tier === 'beginner' ? 'this month' : 'total'}
