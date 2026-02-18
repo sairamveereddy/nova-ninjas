@@ -282,7 +282,7 @@ const JobDetailsOrion = () => {
                             <Card className="p-6">
                                 <h3 className="text-lg font-bold text-gray-900 mb-4">About the Role</h3>
                                 <div className="prose max-w-none text-gray-700 text-sm leading-relaxed whitespace-pre-line"
-                                    dangerouslySetInnerHTML={{ __html: formatJobDescription(job.fullDescription) }}
+                                    dangerouslySetInnerHTML={{ __html: formatJobDescription(job.fullDescription || job.description) }}
                                 />
                             </Card>
                         )}
