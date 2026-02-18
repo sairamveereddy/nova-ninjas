@@ -60,7 +60,7 @@ const AINinjaChat = ({ isOpen, onClose }) => {
                 <div className="flex items-center gap-2">
                     <div className="chat-avatar-container">
                         {/* Use your branding here */}
-                        <Bot className="w-5 h-5 text-white" />
+                        <img src="/ninjasface.png" alt="AI Ninja" className="w-full h-full object-cover" />
                     </div>
                     <div>
                         <h3 className="font-bold text-sm">AI Ninjas</h3>
@@ -82,7 +82,7 @@ const AINinjaChat = ({ isOpen, onClose }) => {
                     <div key={msg.id} className={`chat-message ${msg.role}`}>
                         {msg.role === 'assistant' && (
                             <div className="message-avatar">
-                                <Bot className="w-4 h-4" />
+                                <img src="/ninjasface.png" alt="AI" className="w-full h-full object-cover" />
                             </div>
                         )}
                         <div className="message-bubble">
@@ -93,7 +93,7 @@ const AINinjaChat = ({ isOpen, onClose }) => {
                 {isLoading && (
                     <div className="chat-message assistant">
                         <div className="message-avatar">
-                            <Bot className="w-4 h-4" />
+                            <img src="/ninjasface.png" alt="AI" className="w-full h-full object-cover" />
                         </div>
                         <div className="message-bubble typing-indicator">
                             <span></span><span></span><span></span>

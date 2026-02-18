@@ -22,11 +22,13 @@
 .chat-avatar-container {
     width: 32px;
     height: 32px;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    border-radius: 8px;
+    /* background: linear-gradient(135deg, #10b981 0%, #059669 100%); */
+    background: transparent;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
 }
 
 .chat-messages {
@@ -67,8 +69,9 @@
 }
 
 .chat-message.assistant .message-avatar {
-    background: #d1fae5;
+    background: transparent;
     color: #059669;
+    overflow: hidden;
 }
 
 .message-bubble {
