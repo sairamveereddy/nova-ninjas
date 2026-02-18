@@ -238,10 +238,29 @@
   border-right: 3px solid var(--primary);
 }
 
+
+/* Static Mode Overrides (for Dashboard Layout) */
+.side-menu.side-menu-static {
+  position: relative;
+  transform: none;
+  width: 100%;
+  /* Fill wrapper */
+  height: 100%;
+  box-shadow: none;
+  border-right: none;
+  /* Wrapper handles border */
+  z-index: 1;
+}
+
+.side-menu.side-menu-static .side-menu-header {
+  padding-top: 1.5rem;
+  display: none;
+  /* Hide header/logo in static sidebar as it's in top nav */
+}
+
 /* Responsive */
 @media (max-width: 400px) {
   .side-menu {
     width: 100%;
   }
 }
-

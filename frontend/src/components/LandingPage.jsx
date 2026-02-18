@@ -43,6 +43,13 @@ const LandingPage = () => {
   const [activeWord, setActiveWord] = useState(0);
   const rotatingWords = ['faster', 'smarter', 'easier', 'better'];
 
+  // Redirect to dashboard if logged in
+  useEffect(() => {
+    if (isAuthenticated && !loading) {
+      navigate('/jobs');
+    }
+  }, [isAuthenticated, loading, navigate]);
+
   // Social Media Links
   const socialLinks = [
     {

@@ -1,0 +1,154 @@
+/* Wrapper to hold Header + Grid */
+.dashboard-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.dashboard-top-nav {
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-nav-container {
+    width: 100%;
+    max-width: 1400px;
+    /* Increased max-width */
+    display: flex;
+    align-items: center;
+    /* Vertically center */
+    padding: 0 1.5rem;
+}
+
+/* Logo Styles */
+.nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin-right: 2rem;
+    text-decoration: none;
+}
+
+.logo-image {
+    height: 32px;
+    width: auto;
+}
+
+.logo-text-static {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    /* Match SideMenu text color */
+    letter-spacing: -0.025em;
+    white-space: nowrap;
+}
+
+/* BrandLogo component styles usually handle the text font, 
+   but we ensure it's visible here */
+.logo-text {
+    display: flex !important;
+    align-items: center;
+}
+
+.dashboard-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr 320px;
+    /* Left Sidebar | Main | Right Sidebar */
+    flex: 1;
+    /* Take remaining height */
+    background-color: #f8fafc;
+    align-items: start;
+    /* Ensure columns start at top */
+}
+
+/* Ensure Sidebars subtract header height */
+.dashboard-sidebar-left,
+.dashboard-sidebar-right {
+    top: 73px;
+    /* Approximate header height */
+    height: calc(100vh - 73px);
+}
+
+/* Left Sidebar Wrapper */
+.dashboard-sidebar-left {
+    background-color: #fff;
+    border-right: 1px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 20;
+}
+
+/* Force SideMenu to look static inside the wrapper */
+.static-sidemenu-wrapper .side-menu {
+    position: static !important;
+    transform: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    box-shadow: none !important;
+    transition: none !important;
+}
+
+.static-sidemenu-wrapper .side-menu-overlay,
+.static-sidemenu-wrapper .side-menu-close {
+    display: none !important;
+}
+
+/* Main Content */
+.dashboard-main {
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Right Sidebar */
+.dashboard-sidebar-right {
+    background-color: #fff;
+    border-left: 1px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    z-index: 20;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 1200px) {
+
+    /* Hide Right Sidebar on medium screens */
+    .dashboard-layout {
+        grid-template-columns: 240px 1fr;
+    }
+
+    .dashboard-sidebar-right {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+
+    /* Mobile: Single column */
+    .dashboard-layout {
+        display: block;
+    }
+
+    .dashboard-sidebar-left {
+        display: none;
+        /* Use mobile drawer trigger instead */
+    }
+
+    .dashboard-sidebar-right {
+        display: none;
+    }
+}

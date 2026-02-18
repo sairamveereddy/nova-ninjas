@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { BRAND } from '../config/branding';
 
-const SideMenu = ({ isOpen, onClose }) => {
+const SideMenu = ({ isOpen, onClose, isStatic = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, logout, user } = useAuth();
@@ -59,23 +59,28 @@ const SideMenu = ({ isOpen, onClose }) => {
   return (
     <>
       {/* Overlay */}
-      <div
-        className={`side-menu-overlay ${isOpen ? 'active' : ''}`}
-        onClick={onClose}
-      />
+      {/* Overlay - only if not static */}
+      {!isStatic && (
+        <div
+          className={`side-menu-overlay ${isOpen ? 'active' : ''}`}
+          onClick={onClose}
+        />
+      )}
 
       {/* Side Menu */}
-      <div className={`side-menu ${isOpen ? 'open' : ''}`}>
-        {/* Header */}
-        <div className="side-menu-header">
-          <button onClick={() => handleNavigation('/')} className="side-menu-logo">
-            <img src={BRAND.logoPath} alt={BRAND.logoAlt} className="side-menu-logo-img" />
-            <span className="side-menu-logo-text">{BRAND.name}</span>
-          </button>
-          <button onClick={onClose} className="side-menu-close">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+      <div className={`side-menu ${isOpen ? 'open' : ''} ${isStatic ? 'side-menu-static' : ''}`}>
+        {/* Header - Only show if NOT static (static mode has logo in top nav) */}
+        {!isStatic && (
+          <div className="side-menu-header">
+            <button onClick={() => handleNavigation('/')} className="side-menu-logo">
+              <img src={BRAND.logoPath} alt={BRAND.logoAlt} className="side-menu-logo-img" />
+              <span className="side-menu-logo-text">{BRAND.name}</span>
+            </button>
+            <button onClick={onClose} className="side-menu-close">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        )}
 
         {/* Navigation */}
         <nav className="side-menu-nav">

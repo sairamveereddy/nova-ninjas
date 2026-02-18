@@ -33,7 +33,7 @@ import { API_URL } from '../config/api';
 import SideMenu from './SideMenu';
 import Header from './Header';
 import JobCardOrion from './JobCardOrion';
-import NovaChatPanel from './NovaChatPanel';
+import DashboardLayout from './DashboardLayout';
 import './SideMenu.css';
 
 const Jobs = () => {
@@ -218,208 +218,173 @@ const Jobs = () => {
   };
 
   return (
-    <div className="jobs-page">
-      {/* Side Menu */}
-      <SideMenu isOpen={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
-
-      {/* Nova Chat Panel */}
-      <NovaChatPanel
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        jobContext={activeJob}
-      />
-
-      {/* Navigation Header */}
-      <Header onMenuClick={() => setSideMenuOpen(true)} />
-
-      {/* Hero Section */}
-      <section className="jobs-hero">
-        <div className="container">
-          <h1 className="jobs-title">Find Your Next <span className="text-gradient">Opportunity</span></h1>
-          <p className="jobs-subtitle">
-            Search through 5 Million+ active jobs scanned daily. Apply smarter with AI Ninja.
-          </p>
+    <DashboardLayout activePage="jobs">
+      <div className="jobs-page-content p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Recommended Jobs</h1>
+          <div className="text-sm text-gray-500">
+            Based on your resume profile
+          </div>
         </div>
-      </section>
 
-      {/* Filters Section */}
-      <section className="jobs-filters-section">
-        <div className="container">
-          <Card className="filters-card">
-            <div className="filters-grid">
-              <div className="filter-group">
-                <Label>Keywords</Label>
-                <div className="search-input-wrapper">
-                  <Search className="search-icon" />
+        {/* Filters Section */}
+        <section className="jobs-filters-section">
+          <div className="container">
+            <Card className="filters-card">
+              <div className="filters-grid">
+                <div className="filter-group">
+                  <Label>Keywords</Label>
+                  <div className="search-input-wrapper">
+                    <Search className="search-icon" />
+                    <Input
+                      placeholder="Job title, skills, or company..."
+                      value={searchKeyword}
+                      onChange={(e) => setSearchKeyword(e.target.value)}
+                      className="search-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="filter-group">
+                  <Label>Country/Region</Label>
+                  <Select value="us" disabled>
+                    <SelectTrigger>
+                      <SelectValue placeholder="🇺🇸 USA Only" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="us">🇺🇸 USA Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="filter-group">
+                  <Label>City/State</Label>
                   <Input
-                    placeholder="Job title, skills, or company..."
-                    value={searchKeyword}
-                    onChange={(e) => setSearchKeyword(e.target.value)}
-                    className="search-input"
+                    placeholder="City, state, or remote..."
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
                   />
+                </div>
+
+                <div className="filter-group">
+                  <Label>Visa Sponsorship</Label>
+                  <Select value={sponsorshipFilter} onValueChange={setSponsorshipFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All jobs" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Jobs</SelectItem>
+                      <SelectItem value="visa-friendly">Visa-friendly / Sponsoring</SelectItem>
+                      <SelectItem value="no-sponsorship">No Sponsorship Required</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="filter-group">
+                  <Label>Work Type</Label>
+                  <Select value={workTypeFilter} onValueChange={setWorkTypeFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="remote">Remote</SelectItem>
+                      <SelectItem value="hybrid">Hybrid</SelectItem>
+                      <SelectItem value="onsite">On-site</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
-              <div className="filter-group">
-                <Label>Country/Region</Label>
-                <Select value="us" disabled>
-                  <SelectTrigger>
-                    <SelectValue placeholder="🇺🇸 USA Only" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="us">🇺🇸 USA Only</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {hasActiveFilters && (
+                <div className="filters-actions">
+                  <span className="filter-count-text">
+                    {pagination.total.toLocaleString()} job{pagination.total !== 1 ? 's' : ''} found
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    <X className="w-4 h-4 mr-1" /> Clear filters
+                  </Button>
+                </div>
+              )}
+            </Card>
+          </div>
+        </section>
 
-              <div className="filter-group">
-                <Label>City/State</Label>
-                <Input
-                  placeholder="City, state, or remote..."
-                  value={locationFilter}
-                  onChange={(e) => setLocationFilter(e.target.value)}
-                />
+        {/* Job List Section */}
+        <section className="job-list-section">
+          <div className="container">
+            {/* Loading State */}
+            {isLoading && (
+              <div className="loading-state">
+                <Loader2 className="w-12 h-12 animate-spin" />
+                <p>Loading jobs...</p>
               </div>
+            )}
 
-              <div className="filter-group">
-                <Label>Visa Sponsorship</Label>
-                <Select value={sponsorshipFilter} onValueChange={setSponsorshipFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All jobs" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Jobs</SelectItem>
-                    <SelectItem value="visa-friendly">Visa-friendly / Sponsoring</SelectItem>
-                    <SelectItem value="no-sponsorship">No Sponsorship Required</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="filter-group">
-                <Label>Work Type</Label>
-                <Select value={workTypeFilter} onValueChange={setWorkTypeFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All types" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="remote">Remote</SelectItem>
-                    <SelectItem value="hybrid">Hybrid</SelectItem>
-                    <SelectItem value="onsite">On-site</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {hasActiveFilters && (
-              <div className="filters-actions">
-                <span className="filter-count-text">
-                  {pagination.total.toLocaleString()} job{pagination.total !== 1 ? 's' : ''} found
-                </span>
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                  <X className="w-4 h-4 mr-1" /> Clear filters
+            {/* Error State */}
+            {error && !isLoading && (
+              <div className="error-state">
+                <div className="error-icon">⚠️</div>
+                <h3>Unable to load jobs</h3>
+                <p>{error}</p>
+                <Button onClick={fetchJobs} className="btn-primary">
+                  <RefreshCw className="w-4 h-4 mr-2" /> Try Again
                 </Button>
               </div>
             )}
-          </Card>
-        </div>
-      </section>
 
-      {/* Job List Section */}
-      <section className="job-list-section">
-        <div className="container">
-          {/* Loading State */}
-          {isLoading && (
-            <div className="loading-state">
-              <Loader2 className="w-12 h-12 animate-spin" />
-              <p>Loading jobs...</p>
-            </div>
-          )}
-
-          {/* Error State */}
-          {error && !isLoading && (
-            <div className="error-state">
-              <div className="error-icon">⚠️</div>
-              <h3>Unable to load jobs</h3>
-              <p>{error}</p>
-              <Button onClick={fetchJobs} className="btn-primary">
-                <RefreshCw className="w-4 h-4 mr-2" /> Try Again
-              </Button>
-            </div>
-          )}
-
-          {/* Job List */}
-          {!isLoading && !error && (
-            <>
-              <div className="job-list space-y-4">
-                {displayJobs.map(job => (
-                  <JobCardOrion key={job.id} job={job} onAskNova={handleAskNova} />
-                ))}
-              </div>
-
-              {displayJobs.length === 0 && (
-                <div className="no-jobs-found">
-                  <Filter className="w-12 h-12" />
-                  <h3>No jobs found</h3>
-                  <p>Try adjusting your filters or search terms.</p>
-                  <Button variant="outline" onClick={clearFilters}>Clear all filters</Button>
+            {/* Job List */}
+            {!isLoading && !error && (
+              <>
+                <div className="job-list space-y-4">
+                  {displayJobs.map(job => (
+                    <JobCardOrion key={job.id} job={job} onAskNova={handleAskNova} />
+                  ))}
                 </div>
-              )}
 
-              {pagination.pages > 1 && (
-                <div className="pagination-controls flex items-center justify-center gap-4 mt-12 pb-12">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setCurrentPage(prev => Math.max(1, prev - 1));
-                      window.scrollTo({ top: 300, behavior: 'smooth' });
-                    }}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-sm font-medium">
-                    Page {currentPage} of {pagination.pages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setCurrentPage(prev => Math.min(pagination.pages, prev + 1));
-                      window.scrollTo({ top: 300, behavior: 'smooth' });
-                    }}
-                    disabled={currentPage === pagination.pages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </section>
+                {displayJobs.length === 0 && (
+                  <div className="no-jobs-found">
+                    <Filter className="w-12 h-12" />
+                    <h3>No jobs found</h3>
+                    <p>Try adjusting your filters or search terms.</p>
+                    <Button variant="outline" onClick={clearFilters}>Clear all filters</Button>
+                  </div>
+                )}
 
-      {/* Footer */}
-      <footer className="footer footer-simple">
-        <div className="container">
-          <div className="footer-content-simple">
-            <div className="footer-brand-simple">
-              <img src={BRAND.logoPath} alt={BRAND.logoAlt} className="footer-logo-image" />
-              <span className="footer-logo">{BRAND.name}</span>
-            </div>
-            <div className="footer-links-simple">
-              <button onClick={() => navigate('/ai-ninja')} className="footer-link">AI Ninja</button>
-              <button onClick={() => navigate('/human-ninja')} className="footer-link">Human Ninja</button>
-              <button onClick={() => navigate('/pricing')} className="footer-link">Pricing</button>
-              <button onClick={() => navigate('/refund-policy')} className="footer-link">Refund Policy</button>
-              <button onClick={() => navigate('/login')} className="footer-link">Login</button>
-            </div>
+                {pagination.pages > 1 && (
+                  <div className="pagination-controls flex items-center justify-center gap-4 mt-12 pb-12">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setCurrentPage(prev => Math.max(1, prev - 1));
+                        window.scrollTo({ top: 300, behavior: 'smooth' });
+                      }}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm font-medium">
+                      Page {currentPage} of {pagination.pages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setCurrentPage(prev => Math.min(pagination.pages, prev + 1));
+                        window.scrollTo({ top: 300, behavior: 'smooth' });
+                      }}
+                      disabled={currentPage === pagination.pages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-          <div className="footer-bottom">
-            <p>{BRAND.copyright}</p>
-          </div>
-        </div>
-      </footer>
-    </div>
+        </section>
+
+      </div>
+    </DashboardLayout>
   );
 };
 
