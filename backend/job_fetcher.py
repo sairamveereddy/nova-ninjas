@@ -15,6 +15,7 @@ import os
 import logging
 import feedparser
 import hashlib
+import html
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 import re
@@ -118,27 +119,152 @@ def format_salary_range(salary_min: int, salary_max: int) -> str:
     return "Competitive"
 
 
-def clean_html(text: str) -> str:
-    """Remove HTML tags but preserve structure"""
+def sanitize_description(text: str) -> str:
+    """
+    Sanitize HTML but PRESERVE rich formatting (bullets, bold, paragraphs)
+    """
     if not text:
         return ""
     
-    # 1. Replace block elements with newlines to preserve structure
-    text = re.sub(r'<br\s*/?>', '\n', str(text), flags=re.IGNORECASE)
-    text = re.sub(r'</p>', '\n\n', str(text), flags=re.IGNORECASE)
-    text = re.sub(r'</li>', '\n', str(text), flags=re.IGNORECASE)
-    text = re.sub(r'</div>', '\n', str(text), flags=re.IGNORECASE)
-    text = re.sub(r'</h1>|</h2>|</h3>|</h4>|</h5>|</h6>', '\n\n', str(text), flags=re.IGNORECASE)
+    # 0. Decode HTML entities first
+    text = html.unescape(str(text))
+
+    # 1. Remove dangerous tags
+    text = re.sub(r'<(script|style|iframe|object|embed|applet)[^>]*>.*?</\1>', '', text, flags=re.IGNORECASE|re.DOTALL)
     
-    # 2. Strip standard HTML tags
-    clean = re.sub(r'<[^>]+>', '', text)
+    # 2. Parse "Job Description" artifacts (More robust)
+    # Remove "Job" or "Job Description" if it appears at the end of the text or on a new line
+    text = re.sub(r'(\n|^)Job\s*$', '', text, flags=re.MULTILINE|re.IGNORECASE)
+    text = re.sub(r'(\n|^)Job Description\s*$', '', text, flags=re.MULTILINE|re.IGNORECASE)
     
-    # 3. Clean up whitespace but PRESERVE newlines
-    # Split by lines, strip each line, join with newline
-    lines = [line.strip() for line in clean.split('\n')]
-    clean = '\n'.join(line for line in lines if line) # Remove empty lines
+    # Also remove "Job" if it's the last word of the text (or line)
+    text = re.sub(r'\s+Job\s*$', '', text, flags=re.MULTILINE | re.IGNORECASE)
+
+    # 3. Allow-list approach: Replace allowed tags with placeholders, strip everything else, then restore
+    # Actually, simpler approach: Just strip attributes from allowed tags and strip all other tags? 
+    # Or just use a regex to strip tags that are NOT in the allow list.
     
-    return clean  # No limit on description length
+    # Strategy: 
+    # A. Replace <br>, <p>, <ul>, <li>, <b>, <strong>, <em>, <i>, <h3>, <h4> with unique tokens
+    # B. Strip all <...>
+    # C. Restore tokens
+    
+    # Simplify: matches tags that are NOT allowed
+    # Allowed: p, br, ul, ol, li, b, strong, i, em, h3, h4, span (clean span)
+    
+    allowed_tags = ['p', 'br', 'ul', 'ol', 'li', 'b', 'strong', 'i', 'em', 'h3', 'h4']
+    
+    # Heuristic: If text looks like a wall of text (no tags), we might need to add linebreaks
+    # But for now, let's just KEEP the tags we want.
+    
+    # Simple tag stripper that preserves specific tags
+    def strip_tags_preserve(html_text, preserve):
+        # Placeholder for preserved tags
+        # logic: find all tags, if tag name in preserve, keep it (maybe strip attrs), else remove
+        
+        # Regex to match a tag: </?([a-z0-9]+)[^>]*>
+        def replace_tag(match):
+            tag_name = match.group(1).lower()
+            if tag_name in preserve:
+                is_close = match.group(0).startswith('</')
+                if is_close:
+                    return f"</{tag_name}>"
+                else:
+                    return f"<{tag_name}>" # Strip attributes
+            return "" # Strip tag
+            
+        return re.sub(r'</?([a-z0-9]+)[^>]*>', replace_tag, html_text, flags=re.IGNORECASE)
+
+    clean = strip_tags_preserve(text, allowed_tags)
+    
+    # 4. Cleanup excessive whitespace
+    clean = re.sub(r'\n\s*\n', '\n', clean) # Collapse multiple newlines if any
+    clean = clean.strip()
+    
+    return clean
+
+
+def parse_job_sections(description: str) -> Dict[str, str]:
+    """
+    Parse the job description to extract Responsibilities, Qualifications, and Benefits.
+    Returns a dictionary with these keys.
+    """
+    sections = {
+        "responsibilities": "",
+        "qualifications": "",
+        "benefits": ""
+    }
+    
+    if not description:
+        return sections
+        
+    # Define regex patterns for headers
+    patterns = {
+        "responsibilities": [
+            r"Responsibilities[:\?]?", r"What You'll Do[:\?]?", r"What You Will Do[:\?]?", 
+            r"Key Responsibilities[:\?]?", r"The Role[:\?]?", r"About the Role[:\?]?"
+        ],
+        "qualifications": [
+            r"Qualifications[:\?]?", r"Requirements[:\?]?", r"What You Bring[:\?]?", 
+            r"Who You Are[:\?]?", r"Minimum Qualifications[:\?]?", r"Preferred Qualifications[:\?]?",
+            r"What We're Looking For[:\?]?"
+        ],
+        "benefits": [
+            r"Benefits[:\?]?", r"Perks[:\?]?", r"What We Offer[:\?]?", r"Compensation[:\?]?",
+            r"Why Join Us[:\?]?"
+        ]
+    }
+    
+    # Simple splitting strategy: Find the indices of these headers
+    # This is a bit complex because headers can appear in any order.
+    # We'll normalize the text to find headers, but extract from original.
+    
+    # 1. Map all found headers to their positions
+    found_headers = []
+    for section_name, regex_list in patterns.items():
+        for pattern in regex_list:
+            # Look for headers that are either at start of line or wrapped in tags like <b> or <strong>
+            # Simplified: just look for the text pattern
+            matches = list(re.finditer(pattern, description, re.IGNORECASE))
+            for m in matches:
+                # Filter out if it's in the middle of a sentence (heuristic)
+                # Check if preceded by > or \n or start of string
+                start = m.start()
+                if start == 0 or description[start-1] in ['>', '\n', ' ']:
+                    found_headers.append({
+                        "pos": start,
+                        "end": m.end(),
+                        "type": section_name,
+                        "text": m.group(0)
+                    })
+    
+    # Sort headers by position
+    found_headers.sort(key=lambda x: x["pos"])
+    
+    # If no headers found, return empty (everything stays in description)
+    if not found_headers:
+        return sections
+        
+    # Extract content between headers
+    for i, header in enumerate(found_headers):
+        section_type = header["type"]
+        start_content = header["end"]
+        
+        if i < len(found_headers) - 1:
+            end_content = found_headers[i+1]["pos"]
+        else:
+            end_content = len(description)
+            
+        content = description[start_content:end_content].strip()
+        
+        # Remove leading/trailing formatting like <br>, <ul> if it leaves empty shells
+        # Append to existing content (in case multiple headers map to same section)
+        if sections[section_type]:
+            sections[section_type] += "\n\n" + content
+        else:
+            sections[section_type] = content
+            
+    return sections
 
 
 def build_job_tags(job_data: Dict) -> List[str]:
@@ -224,7 +350,7 @@ async def fetch_jobs_from_adzuna(
                         "title": title,
                         "company": company,
                         "location": job.get("location", {}).get("display_name", "Unknown Location"),
-                        "description": clean_html(description),
+                        "description": sanitize_description(description),
                         "salaryRange": format_salary_range(salary_min, salary_max),
                         "salaryMin": salary_min,
                         "salaryMax": salary_max,
@@ -329,7 +455,7 @@ async def fetch_jobs_from_remoteok() -> List[Dict[str, Any]]:
                         "title": title,
                         "company": company,
                         "location": location,
-                        "description": clean_html(description),
+                        "description": sanitize_description(description),
                         "salaryRange": format_salary_range(salary_min, salary_max),
                         "salaryMin": salary_min,
                         "salaryMax": salary_max,
@@ -345,8 +471,14 @@ async def fetch_jobs_from_remoteok() -> List[Dict[str, Any]]:
                         "updatedAt": datetime.now(timezone.utc),
                         "expiresAt": None,
                         "isActive": True,
-                        "country": "us" if "united states" in location.lower() or "usa" in location.lower() or "remote" in location.lower() else "us" # Default to US for remote jobs
+                        "country": "us"
                     }
+                    
+                    # STRICT US FILTER: Check location text
+                    loc_lower = location.lower()
+                    if any(x in loc_lower for x in ['india', 'uk', 'united kingdom', 'london', 'canada', 'toronto', 'australia', 'germany', 'france', 'europe']):
+                        continue
+                        
                     jobs.append(job_data)
                 
                 logger.info(f"✅ RemoteOK: Fetched {len(jobs)} remote jobs")
@@ -427,7 +559,7 @@ async def fetch_jobs_from_remotive(category: str = None, limit: int = 500) -> Li
                         "title": title,
                         "company": company,
                         "location": location,
-                        "description": clean_html(description),
+                        "description": sanitize_description(description),
                         "salaryRange": format_salary_range(salary_min, salary_max),
                         "salaryMin": salary_min,
                         "salaryMax": salary_max,
@@ -444,8 +576,19 @@ async def fetch_jobs_from_remotive(category: str = None, limit: int = 500) -> Li
                         "updatedAt": datetime.now(timezone.utc),
                         "expiresAt": None,
                         "isActive": True,
-                        "country": "us" if "united states" in location.lower() or "usa" in location.lower() or "remote" in location.lower() else "us"
+                        "country": "us"
                     }
+                    
+                    # STRICT US FILTER
+                    loc_lower = location.lower()
+                    allowed_regions = ['united states', 'usa', 'us', 'north america', 'worldwide', 'anywhere']
+                    if not any(r in loc_lower for r in allowed_regions) and 'remote' not in loc_lower:
+                         continue
+                         
+                    # Explicitly exclude common non-US tech hubs if not paired with US
+                    if any(x in loc_lower for x in ['india', 'uk', 'london', 'canada', 'berlin', 'amsterdam']) and 'united states' not in loc_lower:
+                        continue
+                        
                     jobs.append(job_data)
                 
                 logger.info(f"✅ Remotive: Fetched {len(jobs)} remote tech jobs")
@@ -463,10 +606,13 @@ async def fetch_jobs_from_remotive(category: str = None, limit: int = 500) -> Li
 async def fetch_jobs_from_arbeitnow(page: int = 1) -> List[Dict[str, Any]]:
     """
     Fetch jobs from Arbeitnow API (EU + Remote jobs)
-    FREE API - No authentication required!
+    DISABLED: User requested US-only jobs.
     """
-    try:
-        params = {"page": page}
+    return [] # Disabled to ensure no EU jobs
+    
+    # OLD CODE DISABLED
+    # try:
+    #     params = {"page": page}
         
         async with aiohttp.ClientSession() as session:
             async with session.get(ARBEITNOW_API_URL, params=params, timeout=30) as response:
@@ -511,7 +657,7 @@ async def fetch_jobs_from_arbeitnow(page: int = 1) -> List[Dict[str, Any]]:
                         "title": title,
                         "company": company,
                         "location": location,
-                        "description": clean_html(description),
+                        "description": sanitize_description(description),
                         "salaryRange": "Competitive",
                         "salaryMin": 0,
                         "salaryMax": 0,
@@ -550,7 +696,7 @@ async def fetch_jobs_from_jobicy(count: int = 50, geo: str = None, industry: str
     Industry options: marketing, design, development, customer-support, etc.
     """
     try:
-        params = {"count": count, "tag": "remote"}
+        params = {"count": count, "tag": "remote", "geo": "usa"} # Forced USA geo
         if geo:
             params["geo"] = geo
         if industry:
@@ -619,7 +765,7 @@ async def fetch_jobs_from_jobicy(count: int = 50, geo: str = None, industry: str
                         "title": title,
                         "company": company,
                         "location": location,
-                        "description": clean_html(description),
+                        "description": sanitize_description(description),
                         "salaryRange": format_salary_range(salary_min, salary_max),
                         "salaryMin": salary_min,
                         "salaryMax": salary_max,
@@ -702,7 +848,7 @@ async def fetch_jobs_from_yc_rss() -> List[Dict[str, Any]]:
                 "title": title,
                 "company": company,
                 "location": "San Francisco Bay Area / Remote",
-                "description": clean_html(description),
+                "description": sanitize_description(description),
                 "salaryRange": "Competitive + Equity",
                 "salaryMin": 0,
                 "salaryMax": 0,
@@ -726,6 +872,221 @@ async def fetch_jobs_from_yc_rss() -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Error fetching jobs from YC RSS: {e}")
         return []
+
+
+# =============================================================================
+# API 7: Greenhouse (Direct ATS - High Quality!)
+# =============================================================================
+
+async def fetch_greenhouse_jobs(company_tokens: List[str] = None) -> List[Dict[str, Any]]:
+    """
+    Fetch jobs directly from Greenhouse boards
+    """
+    if not company_tokens:
+        company_tokens = [
+            'stripe', 'airbnb', 'doordash', 'figma', 'twitch', 'dropbox', 
+            'gusto', 'instacart', 'grammarly', 'discord', 'roblox', 'coinswitch',
+            'brex', 'plaid', 'scaleai', 'ramp', 'benchling', 'notion'
+        ]
+    
+    all_jobs = []
+    
+    async with aiohttp.ClientSession() as session:
+        for token in company_tokens:
+            try:
+                url = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true"
+                async with session.get(url, timeout=10) as response:
+                    if response.status != 200:
+                        continue
+                        
+                    data = await response.json()
+                    company_jobs = data.get('jobs', [])
+                    
+                    for job in company_jobs:
+                        title = job.get('title', '')
+                        location = job.get('location', {}).get('name', '')
+                        
+                        # Filter for US/Remote
+                        loc_lower = location.lower()
+                        is_us = any(x in loc_lower for x in ['united states', 'usa', 'us', 'remote', 'anywhere'])
+                        is_excluded = any(x in loc_lower for x in ['india', 'uk', 'london', 'canada', 'berlin', 'australia'])
+                        
+                        if not is_us and is_excluded:
+                            continue
+                            
+                        # Parse description
+                        content = job.get('content', '')
+                        description = html.unescape(content)
+                        
+                        # Detect attributes
+                        is_visa_friendly = detect_visa_sponsorship(description)
+                        work_type = detect_work_type(title, location)
+
+                        # ENRICHMENT: Infer Company Insights from text
+                        insights = {}
+                        if "Series A" in description: insights = {"stage": "Series A", "totalFunding": "$10M - $30M"}
+                        elif "Series B" in description: insights = {"stage": "Series B", "totalFunding": "$30M - $100M"}
+                        elif "Series C" in description: insights = {"stage": "Series C", "totalFunding": "$100M+"}
+                        elif "Seed" in description: insights = {"stage": "Seed", "totalFunding": "$1M - $5M"}
+                        elif token in ['stripe', 'airbnb', 'doordash', 'figma', 'twitch', 'dropbox', 'instacart', 'roblox', 'plaid']:
+                             insights = {"stage": "Late Stage / IPO", "totalFunding": "Unknown"}
+                        
+                        # Add YC if detected
+                        if "Y Combinator" in description or "YC" in description:
+                             insights["investors"] = ["Y Combinator"]
+
+                        # Clearbit Logo
+                        domain = f"{token}.com"
+                        logo_url = f"https://logo.clearbit.com/{domain}"
+                        
+                        sanitized_desc = sanitize_description(description)
+                        sections = parse_job_sections(sanitized_desc)
+
+                        tags = ["direct-apply", "tech"]
+                        if work_type == 'remote':
+                            tags.append("remote")
+                        if is_visa_friendly:
+                            tags.append("visa-sponsoring")
+                            
+                        job_data = {
+                            "externalId": f"gh-{job.get('id')}",
+                            "title": title,
+                            "company": token.capitalize(),
+                            "location": location,
+                            "description": sanitized_desc,
+                            "responsibilities": sections["responsibilities"],
+                            "qualifications": sections["qualifications"],
+                            "benefits": sections["benefits"],
+                            "salaryRange": "Competitive",
+                            "salaryMin": 0,
+                            "salaryMax": 0,
+                            "sourceUrl": job.get('absolute_url'),
+                            "source": "greenhouse",
+                            "type": work_type,
+                            "visaTags": ["visa-sponsoring"] if is_visa_friendly else [],
+                            "categoryTags": tags,
+                            "highPay": True,
+                            "isStartup": bool(insights),
+                            "companyData": insights,
+                            "companyLogo": logo_url,
+                            "createdAt": datetime.now(timezone.utc),
+                            "updatedAt": datetime.now(timezone.utc),
+                            "expiresAt": None,
+                            "isActive": True,
+                            "country": "us"
+                        }
+                        all_jobs.append(job_data)
+                        
+            except Exception as e:
+                logger.error(f"Error scraping Greenhouse {token}: {e}")
+                continue
+                
+    logger.info(f"✅ Greenhouse: Fetched {len(all_jobs)} jobs from {len(company_tokens)} companies")
+    return all_jobs
+
+
+# =============================================================================
+# API 8: Lever (Direct ATS - High Quality!)
+# =============================================================================
+
+async def fetch_lever_jobs(company_tokens: List[str] = None) -> List[Dict[str, Any]]:
+    """
+    Fetch jobs directly from Lever boards
+    """
+    if not company_tokens:
+        company_tokens = [
+            'netflix', 'atlassian', 'shipt', 'udemy', 'spotify', 'affirm',
+            'sproutsocial', 'palantir', 'ro'
+        ]
+        
+    all_jobs = []
+    
+    async with aiohttp.ClientSession() as session:
+        for token in company_tokens:
+            try:
+                url = f"https://api.lever.co/v0/postings/{token}?mode=json"
+                async with session.get(url, timeout=10) as response:
+                    if response.status != 200:
+                        continue
+                        
+                    data = await response.json()
+                    
+                    for job in data:
+                        title = job.get('text', '')
+                        categories = job.get('categories', {})
+                        location = categories.get('location', '')
+                        commitment = categories.get('commitment', '')
+                        
+                        # Filter for US/Remote
+                        loc_lower = location.lower()
+                        is_us = any(x in loc_lower for x in ['united states', 'usa', 'us', 'remote', 'anywhere'])
+                        is_excluded = any(x in loc_lower for x in ['india', 'uk', 'london', 'canada', 'berlin', 'australia'])
+                        
+                        if not is_us and is_excluded:
+                            continue
+                            
+                        description = job.get('descriptionPlain', '')
+                        
+                        # Detect attributes
+                        is_visa_friendly = detect_visa_sponsorship(description)
+                        work_type = detect_work_type(title, location)
+
+                        # ENRICHMENT
+                        insights = {}
+                        if "Series A" in description: insights = {"stage": "Series A", "totalFunding": "$10M - $30M"}
+                        elif "Series B" in description: insights = {"stage": "Series B", "totalFunding": "$30M - $100M"}
+                        elif "Seed" in description: insights = {"stage": "Seed", "totalFunding": "$1M - $5M"}
+                        elif token in ['netflix', 'atlassian', 'spotify', 'palantir']:
+                             insights = {"stage": "Public Company", "totalFunding": "IPO"}
+
+                        # Clearbit Logo
+                        domain = f"{token}.com"
+                        logo_url = f"https://logo.clearbit.com/{domain}"
+                        
+                        sanitized_desc = sanitize_description(description)
+                        sections = parse_job_sections(sanitized_desc)
+
+                        tags = ["direct-apply", "tech"]
+                        if work_type == 'remote':
+                            tags.append("remote")
+                        if is_visa_friendly:
+                            tags.append("visa-sponsoring")
+                            
+                        job_data = {
+                            "externalId": f"lever-{job.get('id')}",
+                            "title": title,
+                            "company": token.capitalize(),
+                            "location": location,
+                            "description": description,
+                            "responsibilities": sections["responsibilities"],
+                            "qualifications": sections["qualifications"],
+                            "benefits": sections["benefits"],
+                            "salaryRange": "Competitive",
+                            "salaryMin": 0,
+                            "salaryMax": 0,
+                            "sourceUrl": job.get('hostedUrl'),
+                            "source": "lever",
+                            "type": work_type,
+                            "visaTags": ["visa-sponsoring"] if is_visa_friendly else [],
+                            "categoryTags": tags,
+                            "highPay": True,
+                            "isStartup": bool(insights),
+                            "companyData": insights,
+                            "companyLogo": logo_url,
+                            "createdAt": datetime.now(timezone.utc),
+                            "updatedAt": datetime.now(timezone.utc),
+                            "expiresAt": None,
+                            "isActive": True,
+                            "country": "us"
+                        }
+                        all_jobs.append(job_data)
+                        
+            except Exception as e:
+                logger.error(f"Error scraping Lever {token}: {e}")
+                continue
+
+    logger.info(f"✅ Lever: Fetched {len(all_jobs)} jobs from {len(company_tokens)} companies")
+    return all_jobs
 
 
 # =============================================================================
@@ -875,17 +1236,19 @@ async def fetch_all_job_sources() -> List[Dict[str, Any]]:
     results = await asyncio.gather(
         fetch_all_adzuna_jobs(),
         fetch_jobs_from_remoteok(),
-        fetch_all_remotive_jobs(),
-        fetch_all_arbeitnow_jobs(),
-        fetch_all_jobicy_jobs(),
+        fetch_jobs_from_remotive(limit=200), # Called directly with limit
+        fetch_jobs_from_arbeitnow(),         # Returns empty list as per recent change
+        fetch_jobs_from_jobicy(),
         fetch_jobs_from_yc_rss(),
+        fetch_greenhouse_jobs(),             # NEW: Direct ATS
+        fetch_lever_jobs(),                  # NEW: Direct ATS
         return_exceptions=True
     )
     
     all_jobs = []
     source_counts = {}
     
-    source_names = ["Adzuna", "RemoteOK", "Remotive", "Arbeitnow", "Jobicy", "YC Jobs"]
+    source_names = ["Adzuna", "RemoteOK", "Remotive", "Arbeitnow", "Jobicy", "YC Jobs", "Greenhouse", "Lever"]
     
     for i, result in enumerate(results):
         source_name = source_names[i]

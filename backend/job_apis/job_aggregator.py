@@ -69,19 +69,18 @@ zuna
             "errors": []
         }
         
-        # Fetch from Adzuna
+        # Fetch from Adzuna (US Only)
         if use_adzuna:
-            countries = ['us', 'gb', 'ca', 'in', 'au']
-            for country in countries:
-                try:
-                    logger.info(f"Fetching jobs from Adzuna ({country.upper()})...")
-                    adzuna_jobs = await self.adzuna.fetch_multiple_pages(country=country, max_pages=max_adzuna_pages)
-                    all_jobs.extend(adzuna_jobs)
-                    stats["adzuna"] += len(adzuna_jobs)
-                    logger.info(f"Fetched {len(adzuna_jobs)} jobs from Adzuna ({country.upper()})")
-                except Exception as e:
-                    logger.error(f"Error fetching Adzuna jobs for {country}: {e}")
-                    stats["errors"].append(f"Adzuna ({country}): {str(e)}")
+            try:
+                logger.info("Fetching jobs from Adzuna (US)...")
+                # Increased pages to get more jobs as requested
+                adzuna_jobs = await self.adzuna.fetch_multiple_pages(country='us', max_pages=50) 
+                all_jobs.extend(adzuna_jobs)
+                stats["adzuna"] += len(adzuna_jobs)
+                logger.info(f"Fetched {len(adzuna_jobs)} jobs from Adzuna (US)")
+            except Exception as e:
+                logger.error(f"Error fetching Adzuna jobs: {e}")
+                stats["errors"].append(f"Adzuna: {str(e)}")
                 
         # Fetch from JSearch with multiple queries
         if use_jsearch:
@@ -133,6 +132,24 @@ zuna
             except Exception as e:
                 logger.error(f"Error fetching RSS jobs: {e}")
                 stats["errors"].append(f"RSS: {str(e)}")
+        
+        # Fetch from Direct ATS (Greenhouse & Lever)
+        try:
+            logger.info("Fetching jobs from Greenhouse & Lever...")
+            from job_fetcher import fetch_greenhouse_jobs, fetch_lever_jobs
+            
+            gh_jobs = await fetch_greenhouse_jobs()
+            lev_jobs = await fetch_lever_jobs()
+            
+            all_jobs.extend(gh_jobs)
+            all_jobs.extend(lev_jobs)
+            
+            stats["greenhouse"] = len(gh_jobs)
+            stats["lever"] = len(lev_jobs)
+            logger.info(f"Fetched {len(gh_jobs)} Greenhouse jobs and {len(lev_jobs)} Lever jobs")
+        except Exception as e:
+            logger.error(f"Error fetching ATS jobs: {e}")
+            stats["errors"].append(f"ATS: {str(e)}")
                 
         stats["total_fetched"] = len(all_jobs)
         logger.info(f"Total jobs fetched from all sources: {len(all_jobs)}")
