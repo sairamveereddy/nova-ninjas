@@ -609,78 +609,6 @@ async def fetch_jobs_from_arbeitnow(page: int = 1) -> List[Dict[str, Any]]:
     DISABLED: User requested US-only jobs.
     """
     return [] # Disabled to ensure no EU jobs
-    
-    # OLD CODE DISABLED
-    # try:
-    #     params = {"page": page}
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.get(ARBEITNOW_API_URL, params=params, timeout=30) as response:
-                if response.status != 200:
-                    logger.error(f"Arbeitnow API error: {response.status}")
-                    return []
-                
-                data = await response.json()
-                jobs = []
-                
-                for job in data.get("data", []):
-                    title = job.get("title", "")
-                    company = job.get("company_name", "Unknown Company")
-                    description = job.get("description", "")
-                    
-                    is_remote = job.get("remote", False)
-                    is_visa_friendly = detect_visa_sponsorship(description)
-                    is_startup = detect_startup(description, company)
-                    work_type = "remote" if is_remote else detect_work_type(title, description)
-                    
-                    tags = []
-                    if is_remote:
-                        tags.append("remote")
-                    if is_visa_friendly:
-                        tags.append("visa-sponsoring")
-                    if is_startup:
-                        tags.append("startup")
-                    
-                    # Add job tags from API
-                    api_tags = job.get("tags", [])
-                    if isinstance(api_tags, list):
-                        for tag in api_tags[:5]:
-                            if tag and tag.lower() not in [t.lower() for t in tags]:
-                                tags.append(tag.lower())
-                    
-                    location = job.get("location", "")
-                    if is_remote and not location:
-                        location = "Remote / EU"
-                    
-                    job_data = {
-                        "externalId": f"arbeitnow-{job.get('slug', generate_job_id('arbeitnow', title, company))}",
-                        "title": title,
-                        "company": company,
-                        "location": location,
-                        "description": sanitize_description(description),
-                        "salaryRange": "Competitive",
-                        "salaryMin": 0,
-                        "salaryMax": 0,
-                        "sourceUrl": job.get("url", ""),
-                        "source": "arbeitnow",
-                        "type": work_type,
-                        "visaTags": ["visa-sponsoring"] if is_visa_friendly else [],
-                        "categoryTags": tags,
-                        "highPay": False,
-                        "isStartup": is_startup,
-                        "createdAt": datetime.now(timezone.utc),
-                        "updatedAt": datetime.now(timezone.utc),
-                        "expiresAt": None,
-                        "isActive": True
-                    }
-                    jobs.append(job_data)
-                
-                logger.info(f"✅ Arbeitnow: Fetched {len(jobs)} jobs (page {page})")
-                return jobs
-                
-    except Exception as e:
-        logger.error(f"Error fetching jobs from Arbeitnow: {e}")
-        return []
 
 
 # =============================================================================
@@ -800,586 +728,189 @@ async def fetch_jobs_from_yc_rss() -> List[Dict[str, Any]]:
     """
     Fetch startup jobs from Y Combinator RSS feed
     FREE - No authentication required!
-    All jobs are from YC-backed startups
     """
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(YC_JOBS_RSS_URL, timeout=30) as response:
-                if response.status != 200:
-                    logger.error(f"YC Jobs RSS error: {response.status}")
-                    return []
-                
-                content = await response.text()
-        
-        # Parse RSS feed
-        feed = feedparser.parse(content)
+        feed = feedparser.parse(YC_JOBS_RSS_URL)
         jobs = []
         
         for entry in feed.entries:
-            title = entry.get("title", "")
+            title_parts = entry.title.split(' at ')
+            if len(title_parts) >= 2:
+                title = title_parts[0]
+                company = title_parts[1].split(' (')[0]
+            else:
+                title = entry.title
+                company = "Y Combinator Startup"
+                
+            description = entry.description if 'description' in entry else ""
             
-            # Parse company from title (usually "Company - Job Title" or "Job Title at Company")
-            company = "YC Startup"
-            if " at " in title:
-                parts = title.split(" at ")
-                if len(parts) >= 2:
-                    title = parts[0].strip()
-                    company = parts[1].strip()
-            elif " - " in title:
-                parts = title.split(" - ")
-                if len(parts) >= 2:
-                    company = parts[0].strip()
-                    title = parts[1].strip()
-            
-            description = entry.get("summary", entry.get("description", ""))
-            link = entry.get("link", "")
-            
+            # Simple detection
             is_visa_friendly = detect_visa_sponsorship(description)
-            work_type = detect_work_type(title, description)
+            is_remote = "remote" in title.lower() or "remote" in description.lower()
+            work_type = "remote" if is_remote else "hybrid"
             
-            tags = ["startup", "yc-backed"]
-            if work_type == "remote":
-                tags.append("remote")
+            tags = ["startup"]
             if is_visa_friendly:
                 tags.append("visa-sponsoring")
+            if is_remote:
+                tags.append("remote")
+            
+            # Extract ID from link
+            job_id_match = re.search(r'jobs/(\d+)', entry.link)
+            external_id = f"yc-{job_id_match.group(1)}" if job_id_match else generate_job_id('yc', title, company)
             
             job_data = {
-                "externalId": f"yc-{generate_job_id('yc', title, company)}",
+                "externalId": external_id,
                 "title": title,
                 "company": company,
-                "location": "San Francisco Bay Area / Remote",
+                "location": "Remote / US" if is_remote else "San Francisco, CA",
                 "description": sanitize_description(description),
-                "salaryRange": "Competitive + Equity",
+                "salaryRange": "Competitive",
                 "salaryMin": 0,
                 "salaryMax": 0,
-                "sourceUrl": link,
-                "source": "ycombinator",
+                "sourceUrl": entry.link,
+                "source": "yc_rss",
                 "type": work_type,
                 "visaTags": ["visa-sponsoring"] if is_visa_friendly else [],
                 "categoryTags": tags,
-                "highPay": True,  # YC startups typically pay well
+                "highPay": False,
                 "isStartup": True,
                 "createdAt": datetime.now(timezone.utc),
                 "updatedAt": datetime.now(timezone.utc),
                 "expiresAt": None,
-                "isActive": True
+                "isActive": True,
+                "country": 'us'
             }
             jobs.append(job_data)
-        
-        logger.info(f"✅ YC Jobs: Fetched {len(jobs)} startup jobs")
+            
+        logger.info(f"✅ Y Combinator: Fetched {len(jobs)} startup jobs")
         return jobs
         
     except Exception as e:
         logger.error(f"Error fetching jobs from YC RSS: {e}")
         return []
 
-
 # =============================================================================
-# API 7: Greenhouse (Direct ATS - High Quality!)
+# NEW: Greenhouse & Lever Scrapers (No API Key!)
 # =============================================================================
 
-async def fetch_greenhouse_jobs(company_tokens: List[str] = None) -> List[Dict[str, Any]]:
+async def fetch_greenhouse_jobs(company_id: str) -> List[Dict[str, Any]]:
     """
-    Fetch jobs directly from Greenhouse boards
+    Fetch jobs from public Greenhouse board
+    URL format: https://boards-api.greenhouse.io/v1/boards/{company_id}/jobs?content=true
     """
-    if not company_tokens:
-        company_tokens = [
-            'stripe', 'airbnb', 'doordash', 'figma', 'twitch', 'dropbox', 
-            'gusto', 'instacart', 'grammarly', 'discord', 'roblox', 'coinswitch',
-            'brex', 'plaid', 'scaleai', 'ramp', 'benchling', 'notion'
-        ]
+    url = f"https://boards-api.greenhouse.io/v1/boards/{company_id}/jobs?content=true"
     
-    all_jobs = []
-    
-    async with aiohttp.ClientSession() as session:
-        for token in company_tokens:
-            try:
-                url = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true"
-                async with session.get(url, timeout=10) as response:
-                    if response.status != 200:
-                        continue
-                        
-                    data = await response.json()
-                    company_jobs = data.get('jobs', [])
-                    
-                    for job in company_jobs:
-                        title = job.get('title', '')
-                        location = job.get('location', {}).get('name', '')
-                        
-                        # Filter for US/Remote
-                        loc_lower = location.lower()
-                        is_us = any(x in loc_lower for x in ['united states', 'usa', 'us', 'remote', 'anywhere'])
-                        is_excluded = any(x in loc_lower for x in ['india', 'uk', 'london', 'canada', 'berlin', 'australia'])
-                        
-                        if not is_us and is_excluded:
-                            continue
-                            
-                        # Parse description
-                        content = job.get('content', '')
-                        description = html.unescape(content)
-                        
-                        # Detect attributes
-                        is_visa_friendly = detect_visa_sponsorship(description)
-                        work_type = detect_work_type(title, location)
-
-                        # ENRICHMENT: Infer Company Insights from text
-                        insights = {}
-                        if "Series A" in description: insights = {"stage": "Series A", "totalFunding": "$10M - $30M"}
-                        elif "Series B" in description: insights = {"stage": "Series B", "totalFunding": "$30M - $100M"}
-                        elif "Series C" in description: insights = {"stage": "Series C", "totalFunding": "$100M+"}
-                        elif "Seed" in description: insights = {"stage": "Seed", "totalFunding": "$1M - $5M"}
-                        elif token in ['stripe', 'airbnb', 'doordash', 'figma', 'twitch', 'dropbox', 'instacart', 'roblox', 'plaid']:
-                             insights = {"stage": "Late Stage / IPO", "totalFunding": "Unknown"}
-                        
-                        # Add YC if detected
-                        if "Y Combinator" in description or "YC" in description:
-                             insights["investors"] = ["Y Combinator"]
-
-                        # Clearbit Logo
-                        domain = f"{token}.com"
-                        logo_url = f"https://logo.clearbit.com/{domain}"
-                        
-                        sanitized_desc = sanitize_description(description)
-                        sections = parse_job_sections(sanitized_desc)
-
-                        tags = ["direct-apply", "tech"]
-                        if work_type == 'remote':
-                            tags.append("remote")
-                        if is_visa_friendly:
-                            tags.append("visa-sponsoring")
-                            
-                        job_data = {
-                            "externalId": f"gh-{job.get('id')}",
-                            "title": title,
-                            "company": token.capitalize(),
-                            "location": location,
-                            "description": sanitized_desc,
-                            "responsibilities": sections["responsibilities"],
-                            "qualifications": sections["qualifications"],
-                            "benefits": sections["benefits"],
-                            "salaryRange": "Competitive",
-                            "salaryMin": 0,
-                            "salaryMax": 0,
-                            "sourceUrl": job.get('absolute_url'),
-                            "source": "greenhouse",
-                            "type": work_type,
-                            "visaTags": ["visa-sponsoring"] if is_visa_friendly else [],
-                            "categoryTags": tags,
-                            "highPay": True,
-                            "isStartup": bool(insights),
-                            "companyData": insights,
-                            "companyLogo": logo_url,
-                            "createdAt": datetime.now(timezone.utc),
-                            "updatedAt": datetime.now(timezone.utc),
-                            "expiresAt": None,
-                            "isActive": True,
-                            "country": "us"
-                        }
-                        all_jobs.append(job_data)
-                        
-            except Exception as e:
-                logger.error(f"Error scraping Greenhouse {token}: {e}")
-                continue
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=30) as response:
+                if response.status != 200:
+                    logger.warning(f"Greenhouse board not found for {company_id}")
+                    return []
                 
-    logger.info(f"✅ Greenhouse: Fetched {len(all_jobs)} jobs from {len(company_tokens)} companies")
-    return all_jobs
-
-
-# =============================================================================
-# API 8: Lever (Direct ATS - High Quality!)
-# =============================================================================
-
-async def fetch_lever_jobs(company_tokens: List[str] = None) -> List[Dict[str, Any]]:
-    """
-    Fetch jobs directly from Lever boards
-    """
-    if not company_tokens:
-        company_tokens = [
-            'netflix', 'atlassian', 'shipt', 'udemy', 'spotify', 'affirm',
-            'sproutsocial', 'palantir', 'ro'
-        ]
-        
-    all_jobs = []
-    
-    async with aiohttp.ClientSession() as session:
-        for token in company_tokens:
-            try:
-                url = f"https://api.lever.co/v0/postings/{token}?mode=json"
-                async with session.get(url, timeout=10) as response:
-                    if response.status != 200:
-                        continue
-                        
-                    data = await response.json()
+                data = await response.json()
+                jobs = []
+                
+                for job in data.get("jobs", []):
+                    title = job.get("title", "")
+                    location = job.get("location", {}).get("name", "Unknown")
+                    description = job.get("content", "")
                     
-                    for job in data:
-                        title = job.get('text', '')
-                        categories = job.get('categories', {})
-                        location = categories.get('location', '')
-                        commitment = categories.get('commitment', '')
-                        
-                        # Filter for US/Remote
-                        loc_lower = location.lower()
-                        is_us = any(x in loc_lower for x in ['united states', 'usa', 'us', 'remote', 'anywhere'])
-                        is_excluded = any(x in loc_lower for x in ['india', 'uk', 'london', 'canada', 'berlin', 'australia'])
-                        
-                        if not is_us and is_excluded:
-                            continue
-                            
-                        description = job.get('descriptionPlain', '')
-                        
-                        # Detect attributes
-                        is_visa_friendly = detect_visa_sponsorship(description)
-                        work_type = detect_work_type(title, location)
-
-                        # ENRICHMENT
-                        insights = {}
-                        if "Series A" in description: insights = {"stage": "Series A", "totalFunding": "$10M - $30M"}
-                        elif "Series B" in description: insights = {"stage": "Series B", "totalFunding": "$30M - $100M"}
-                        elif "Seed" in description: insights = {"stage": "Seed", "totalFunding": "$1M - $5M"}
-                        elif token in ['netflix', 'atlassian', 'spotify', 'palantir']:
-                             insights = {"stage": "Public Company", "totalFunding": "IPO"}
-
-                        # Clearbit Logo
-                        domain = f"{token}.com"
-                        logo_url = f"https://logo.clearbit.com/{domain}"
-                        
-                        sanitized_desc = sanitize_description(description)
-                        sections = parse_job_sections(sanitized_desc)
-
-                        tags = ["direct-apply", "tech"]
-                        if work_type == 'remote':
-                            tags.append("remote")
-                        if is_visa_friendly:
-                            tags.append("visa-sponsoring")
-                            
-                        job_data = {
-                            "externalId": f"lever-{job.get('id')}",
-                            "title": title,
-                            "company": token.capitalize(),
-                            "location": location,
-                            "description": description,
-                            "responsibilities": sections["responsibilities"],
-                            "qualifications": sections["qualifications"],
-                            "benefits": sections["benefits"],
-                            "salaryRange": "Competitive",
-                            "salaryMin": 0,
-                            "salaryMax": 0,
-                            "sourceUrl": job.get('hostedUrl'),
-                            "source": "lever",
-                            "type": work_type,
-                            "visaTags": ["visa-sponsoring"] if is_visa_friendly else [],
-                            "categoryTags": tags,
-                            "highPay": True,
-                            "isStartup": bool(insights),
-                            "companyData": insights,
-                            "companyLogo": logo_url,
-                            "createdAt": datetime.now(timezone.utc),
-                            "updatedAt": datetime.now(timezone.utc),
-                            "expiresAt": None,
-                            "isActive": True,
-                            "country": "us"
-                        }
-                        all_jobs.append(job_data)
-                        
-            except Exception as e:
-                logger.error(f"Error scraping Lever {token}: {e}")
-                continue
-
-    logger.info(f"✅ Lever: Fetched {len(all_jobs)} jobs from {len(company_tokens)} companies")
-    return all_jobs
-
-
-# =============================================================================
-# Aggregation Functions
-# =============================================================================
-
-async def fetch_all_adzuna_jobs() -> List[Dict[str, Any]]:
-    """Fetch jobs from Adzuna across multiple categories"""
-    categories = [
-        "software engineer",
-        "senior software engineer",
-        "data scientist", 
-        "data engineer",
-        "product manager",
-        "machine learning engineer",
-        "AI engineer",
-        "frontend developer",
-        "backend developer",
-        "full stack developer",
-        "devops engineer",
-        "cloud engineer",
-        "site reliability engineer",
-        "data analyst",
-        "business analyst",
-        "python developer",
-        "java developer",
-        "javascript developer",
-        "react developer",
-        "node.js developer",
-        "aws engineer",
-        "security engineer",
-        "QA engineer",
-        "mobile developer",
-        "iOS developer",
-        "android developer",
-        "systems engineer",
-        "technical lead",
-        "solutions architect",
-        "UX designer",
-        "startup jobs",
-        "early stage startup",
-    ]
-    
-    all_jobs = []
-    
-    for category in categories:
-        for page in range(1, 3):  # 2 pages per category
-            try:
-                jobs = await fetch_jobs_from_adzuna(
-                    what=category, 
-                    results_per_page=50,
-                    page=page,
-                    max_days_old=3
-                )
-                all_jobs.extend(jobs)
-                await asyncio.sleep(0.2)
-            except Exception as e:
-                logger.error(f"Error fetching Adzuna {category} page {page}: {e}")
-                continue
-    
-    return all_jobs
-
-
-async def fetch_all_arbeitnow_jobs() -> List[Dict[str, Any]]:
-    """Fetch multiple pages from Arbeitnow"""
-    all_jobs = []
-    
-    for page in range(1, 6):  # 5 pages
-        try:
-            jobs = await fetch_jobs_from_arbeitnow(page=page)
-            all_jobs.extend(jobs)
-            await asyncio.sleep(0.2)
-        except Exception as e:
-            logger.error(f"Error fetching Arbeitnow page {page}: {e}")
-            continue
-    
-    return all_jobs
-
-
-async def fetch_all_jobicy_jobs() -> List[Dict[str, Any]]:
-    """Fetch jobs from Jobicy with different filters"""
-    all_jobs = []
-    
-    # Different geo locations
-    geos = ["usa", "uk", "europe", "anywhere"]
-    # Different industries
-    industries = ["development", "design", "marketing", "customer-support"]
-    
-    for geo in geos:
-        try:
-            jobs = await fetch_jobs_from_jobicy(count=50, geo=geo)
-            all_jobs.extend(jobs)
-            await asyncio.sleep(0.2)
-        except Exception as e:
-            logger.error(f"Error fetching Jobicy geo={geo}: {e}")
-    
-    for industry in industries:
-        try:
-            jobs = await fetch_jobs_from_jobicy(count=50, industry=industry)
-            all_jobs.extend(jobs)
-            await asyncio.sleep(0.2)
-        except Exception as e:
-            logger.error(f"Error fetching Jobicy industry={industry}: {e}")
-    
-    return all_jobs
-
-
-async def fetch_all_remotive_jobs() -> List[Dict[str, Any]]:
-    """Fetch jobs from Remotive with different categories"""
-    categories = [
-        "software-dev",
-        "customer-support", 
-        "design",
-        "marketing",
-        "sales",
-        "product",
-        "data",
-        "devops-sysadmin",
-        "hr",
-        "finance-legal",
-    ]
-    
-    all_jobs = []
-    
-    # First fetch all jobs
-    try:
-        jobs = await fetch_jobs_from_remotive(limit=500)
-        all_jobs.extend(jobs)
+                    # Parse using new functions
+                    sections = parse_job_sections(description)
+                    is_visa = detect_visa_sponsorship(description)
+                    work_type = detect_work_type(title, location)
+                    
+                    # Construct job object
+                    job_data = {
+                        "externalId": f"gh-{job.get('id')}",
+                        "title": title,
+                        "company": company_id.capitalize(), # Best guess for name
+                        "location": location,
+                        "description": sanitize_description(description), # Legacy support
+                        "responsibilities": sanitize_description(sections["responsibilities"]),
+                        "qualifications": sanitize_description(sections["qualifications"]),
+                        "benefits": sanitize_description(sections["benefits"]),
+                        "fullDescription": sanitize_description(description), # Store full for legacy fallback
+                        "salaryRange": "Competitive",
+                        "sourceUrl": job.get("absolute_url", ""),
+                        "source": "greenhouse",
+                        "type": work_type,
+                        "visaTags": ["visa-sponsoring"] if is_visa else [],
+                        "categoryTags": build_job_tags({"visaTags": is_visa, "type": work_type}),
+                        "createdAt": datetime.now(timezone.utc),
+                        "updatedAt": datetime.now(timezone.utc),
+                        "isActive": True
+                    }
+                    jobs.append(job_data)
+                    
+                logger.info(f"✅ Greenhouse: Fetched {len(jobs)} jobs for {company_id}")
+                return jobs
+                
     except Exception as e:
-        logger.error(f"Error fetching all Remotive jobs: {e}")
-    
-    return all_jobs
+        logger.error(f"Error fetching Greenhouse jobs for {company_id}: {e}")
+        return []
 
-
-# =============================================================================
-# Main Aggregation Function
-# =============================================================================
-
-async def fetch_all_job_sources() -> List[Dict[str, Any]]:
+async def fetch_lever_jobs(company_id: str) -> List[Dict[str, Any]]:
     """
-    Fetch jobs from ALL sources in parallel
-    Target: 5000+ unique jobs
+    Fetch jobs from public Lever board
+    URL format: https://api.lever.co/v0/postings/{company_id}?mode=json
     """
-    logger.info("🚀 Starting multi-source job fetch...")
-    
-    # Fetch from all sources in parallel
-    results = await asyncio.gather(
-        fetch_all_adzuna_jobs(),
-        fetch_jobs_from_remoteok(),
-        fetch_jobs_from_remotive(limit=200), # Called directly with limit
-        fetch_jobs_from_arbeitnow(),         # Returns empty list as per recent change
-        fetch_jobs_from_jobicy(),
-        fetch_jobs_from_yc_rss(),
-        fetch_greenhouse_jobs(),             # NEW: Direct ATS
-        fetch_lever_jobs(),                  # NEW: Direct ATS
-        return_exceptions=True
-    )
-    
-    all_jobs = []
-    source_counts = {}
-    
-    source_names = ["Adzuna", "RemoteOK", "Remotive", "Arbeitnow", "Jobicy", "YC Jobs", "Greenhouse", "Lever"]
-    
-    for i, result in enumerate(results):
-        source_name = source_names[i]
-        if isinstance(result, Exception):
-            logger.error(f"❌ {source_name} failed: {result}")
-            source_counts[source_name] = 0
-        else:
-            all_jobs.extend(result)
-            source_counts[source_name] = len(result)
-            logger.info(f"📦 {source_name}: {len(result)} jobs")
-    
-    # Remove duplicates based on externalId
-    seen_ids = set()
-    unique_jobs = []
-    
-    for job in all_jobs:
-        job_id = job.get("externalId", "")
-        if job_id and job_id not in seen_ids:
-            seen_ids.add(job_id)
-            unique_jobs.append(job)
-    
-    # Also deduplicate by title+company (different sources might have same job)
-    seen_title_company = set()
-    final_jobs = []
-    
-    for job in unique_jobs:
-        key = f"{job.get('title', '').lower()}-{job.get('company', '').lower()}"
-        if key not in seen_title_company:
-            seen_title_company.add(key)
-            final_jobs.append(job)
-    
-    # Log summary
-    logger.info("=" * 50)
-    logger.info("📊 JOB FETCH SUMMARY")
-    logger.info("=" * 50)
-    for source, count in source_counts.items():
-        logger.info(f"  {source}: {count} jobs")
-    logger.info("-" * 50)
-    logger.info(f"  Total before dedup: {len(all_jobs)}")
-    logger.info(f"  Total after dedup: {len(final_jobs)}")
-    logger.info("=" * 50)
-    
-    # Count startup jobs
-    startup_count = sum(1 for j in final_jobs if j.get("isStartup"))
-    remote_count = sum(1 for j in final_jobs if j.get("type") == "remote")
-    
-    logger.info(f"🚀 Startup jobs: {startup_count}")
-    logger.info(f"🏠 Remote jobs: {remote_count}")
-    
-    return final_jobs
-
-
-# Legacy function for backward compatibility
-async def fetch_all_job_categories() -> List[Dict[str, Any]]:
-    """
-    Backward compatible function name
-    Now fetches from ALL sources
-    """
-    return await fetch_all_job_sources()
-
-
-# =============================================================================
-# Database Functions
-# =============================================================================
-
-async def update_jobs_in_database(db, jobs: List[Dict[str, Any]]) -> int:
-    """
-    Update jobs in MongoDB database
-    """
-    if not jobs:
-        logger.warning("No jobs to update")
-        return 0
+    url = f"https://api.lever.co/v0/postings/{company_id}?mode=json"
     
     try:
-        # Get all sources from jobs
-        sources = list(set(job.get("source", "unknown") for job in jobs))
-        
-        # Mark old jobs from these sources as inactive
-        await db.jobs.update_many(
-            {"source": {"$in": sources}},
-            {"$set": {"isActive": False}}
-        )
-        
-        # Insert/update new jobs
-        for job in jobs:
-            job["isActive"] = True
-            await db.jobs.update_one(
-                {"externalId": job["externalId"]},
-                {"$set": job},
-                upsert=True
-            )
-        
-        # Ensure all new jobs are active
-        external_ids = [job["externalId"] for job in jobs]
-        await db.jobs.update_many(
-            {"externalId": {"$in": external_ids}},
-            {"$set": {"isActive": True}}
-        )
-        
-        # Create indexes for better query performance
-        await db.jobs.create_index("externalId", unique=True)
-        await db.jobs.create_index("source")
-        await db.jobs.create_index("isActive")
-        await db.jobs.create_index("type")
-        await db.jobs.create_index("isStartup")
-        await db.jobs.create_index([("title", "text"), ("description", "text")])
-        
-        logger.info(f"✅ Updated {len(jobs)} jobs in database")
-        return len(jobs)
-        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=30) as response:
+                if response.status != 200:
+                    logger.warning(f"Lever board not found for {company_id}")
+                    return []
+                
+                data = await response.json()
+                jobs = []
+                
+                for job in data:
+                    title = job.get("text", "")
+                    description = job.get("descriptionPlain", "") # Use plain text description
+                    repo_html = job.get("description", "") # Or HTML if available
+                    
+                    # Prefer HTML for parsing if possible, but Levoer structure is complex
+                    # Lever returns description as HTML usually.
+                    
+                    sections = parse_job_sections(repo_html)
+                    is_visa = detect_visa_sponsorship(repo_html)
+                    
+                    # Lever categories usually contain location/commitment
+                    categories = job.get("categories", {})
+                    location = categories.get("location", "Unknown")
+                    commitment = categories.get("commitment", "Full-time")
+                    
+                    work_type = "remote" if "remote" in location.lower() else "onsite"
+                    
+                    job_data = {
+                        "externalId": f"lever-{job.get('id')}",
+                        "title": title,
+                        "company": company_id.capitalize(),
+                        "location": location,
+                        "description": sanitize_description(repo_html),
+                        "responsibilities": sanitize_description(sections["responsibilities"]),
+                        "qualifications": sanitize_description(sections["qualifications"]),
+                        "benefits": sanitize_description(sections["benefits"]),
+                        "fullDescription": sanitize_description(repo_html),
+                        "salaryRange": "Competitive",
+                        "sourceUrl": job.get("hostedUrl", ""),
+                        "source": "lever",
+                        "type": work_type,
+                        "visaTags": ["visa-sponsoring"] if is_visa else [],
+                        "categoryTags": build_job_tags({"visaTags": is_visa, "type": work_type}),
+                        "createdAt": datetime.now(timezone.utc),
+                        "updatedAt": datetime.now(timezone.utc),
+                        "isActive": True
+                    }
+                    jobs.append(job_data)
+                    
+                logger.info(f"✅ Lever: Fetched {len(jobs)} jobs for {company_id}")
+                return jobs
+                
     except Exception as e:
-        logger.error(f"Error updating jobs in database: {e}")
-        return 0
-
-
-# =============================================================================
-# Scheduler Function
-# =============================================================================
-
-async def scheduled_job_fetch(db):
-    """
-    Main function to fetch and update jobs from ALL sources
-    Called by the scheduler every few hours
-    """
-    logger.info("🔄 Starting scheduled multi-source job fetch...")
-    
-    try:
-        jobs = await fetch_all_job_sources()
-        count = await update_jobs_in_database(db, jobs)
-        logger.info(f"✅ Scheduled job fetch complete. Updated {count} jobs from 6 sources.")
-        return count
-    except Exception as e:
-        logger.error(f"❌ Scheduled job fetch failed: {e}")
-        return 0
+        logger.error(f"Error fetching Lever jobs for {company_id}: {e}")
+        return []
