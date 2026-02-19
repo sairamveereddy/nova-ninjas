@@ -33,7 +33,7 @@ class JobAggregator:
     async def aggregate_all_jobs(
         self,
         use_adzuna: bool = True,
-        use_jsearch: bool = True,
+        use_jsearch: bool = False, # DISABLED: Quota Exceeded (429)
         use_usajobs: bool = True,
         use_rss: bool = True,
         max_adzuna_pages: int = 20,

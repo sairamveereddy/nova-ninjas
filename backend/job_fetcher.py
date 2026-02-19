@@ -1071,19 +1071,102 @@ async def fetch_workday_jobs(tenant: str, site: str) -> List[Dict[str, Any]]:
 # NEW: Paylocity Scraper (Custom Wrapper)
 # =============================================================================
 
-async def fetch_paylocity_jobs(company_id: str) -> List[Dict[str, Any]]:
+async def fetch_ashby_jobs(company_id: str) -> List[Dict[str, Any]]:
     """
-    Fetch jobs from Paylocity (basic wrapper, often requires JSearch/Google)
-    URL: https://recruiting.paylocity.com/recruiting/jobs/All/{company_id}/{company_name}
+    Fetch jobs from Ashby using their public GraphQL API.
+    Endpoint: https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobBoardWithTeams
     """
-    # Paylocity is hard to scrape cleanly without a known JSON endpoint.
-    # For now, we will assume JSearch covers this best, but we'll add a placeholder 
-    # that tries to use JSearch specifically for this company domain.
+    url = "https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobBoardWithTeams"
+    payload = {
+        "operationName": "ApiJobBoardWithTeams",
+        "variables": { "organizationHostedJobsPageName": company_id },
+        "query": """
+        query ApiJobBoardWithTeams($organizationHostedJobsPageName: String!) {
+          jobBoard: jobBoardWithTeams(
+            organizationHostedJobsPageName: $organizationHostedJobsPageName
+          ) {
+            jobPostings {
+              id
+              title
+              locationName
+              employmentType
+              secondaryLocations {
+                locationName
+              }
+              compensationTierSummary
+            }
+          }
+        }
+        """
+    }
     
-    # Actually, let's try a simple HTML parse if we have a specific target URL.
-    # But given the user just said "check this", we'll rely on JSearch for the heavy lifting 
-    # and just log that we are delegating.
-    return [] 
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip, deflate", # No brotli
+        "Content-Type": "application/json"
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload, headers=headers) as response:
+                if response.status != 200:
+                    logger.warning(f"Ashby API failed for {company_id}: {response.status}")
+                    return []
+                
+                data = await response.json()
+                job_board = data.get("data", {}).get("jobBoard")
+                if not job_board:
+                    return []
+                    
+                raw_jobs = job_board.get("jobPostings", [])
+                jobs = []
+                
+                for job in raw_jobs:
+                    job_id = job.get("id")
+                    title = job.get("title")
+                    loc_name = job.get("locationName", "")
+                    
+                    # Handle secondary locations
+                    sec_locs = job.get("secondaryLocations", [])
+                    if sec_locs:
+                        loc_extras = [l["locationName"] for l in sec_locs if l.get("locationName")]
+                        if loc_extras:
+                            loc_name += f" (+ {', '.join(loc_extras)})"
+                            
+                    salary = job.get("compensationTierSummary") or "Competitive"
+                    emp_type = job.get("employmentType", "Full Time")
+                    
+                    job_url = f"https://jobs.ashbyhq.com/{company_id}/{job_id}"
+                    
+                    job_data = {
+                        "externalId": f"ashby-{company_id}-{job_id}",
+                        "title": title,
+                        "company": company_id.capitalize(),
+                        "location": loc_name,
+                        "description": title, # Description is detailed in individual job query, keep simple here
+                        "responsibilities": "See full job post",
+                        "qualifications": "See full job post",
+                        "benefits": "See full job post",
+                        "fullDescription": f"Apply at: {job_url}",
+                        "salaryRange": salary,
+                        "sourceUrl": job_url,
+                        "source": "ashby",
+                        "type": "remote" if "remote" in loc_name.lower() else "onsite",
+                        "visaTags": [],
+                        "categoryTags": ["startup", "ashby"],
+                        "createdAt": datetime.now(timezone.utc),
+                        "updatedAt": datetime.now(timezone.utc),
+                        "isActive": True
+                    }
+                    jobs.append(job_data)
+                
+                logger.info(f"✅ Ashby: Fetched {len(jobs)} jobs for {company_id}")
+                return jobs
+
+    except Exception as e:
+        logger.error(f"Error fetching Ashby jobs for {company_id}: {e}")
+        return [] 
 
 # =============================================================================
 # EXPORTED FUNCTIONS: Main Orchestration
@@ -1155,8 +1238,8 @@ async def fetch_all_job_categories(db=None) -> List[Dict[str, Any]]:
     random.shuffle(greenhouse_companies)
     
     # Simple rate limiting/batching - only fetch 10 random ones per run to avoid timeout
-    # Or fetch all if async is fast enough. Let's try 15 random ones.
-    target_greenhouse = greenhouse_companies[:15]
+    # Or fetch all if async is fast enough. Let's try 25 random ones.
+    target_greenhouse = greenhouse_companies[:25]
     
     for company in target_greenhouse:
         try:
@@ -1182,10 +1265,10 @@ async def fetch_all_job_categories(db=None) -> List[Dict[str, Any]]:
         except Exception as e:
             logger.error(f"Failed to fetch Lever jobs for {company}: {e}")
     
-    # 9. Fetch from Ashby (Direct Scraping) - High Growth Startups
+    # 9. Fetch from Ashby (GraphQL) - High Growth Startups
     ashby_companies = [
-        "deel", "ramp", "remote", "vercel", "notion", "airtable",
-        "webflow", "retell", "clay", "perplexity", "modal"
+        "deel", "ramp", "remote", "notion", "airtable",
+        "webflow", "retell", "clay", "perplexity", "modal", "linear"
     ]
     random.shuffle(ashby_companies)
     target_ashby = ashby_companies[:8]
@@ -1198,25 +1281,23 @@ async def fetch_all_job_categories(db=None) -> List[Dict[str, Any]]:
             logger.error(f"Failed to fetch Ashby jobs for {company}: {e}")
 
     # 10. Fetch from Workday (Internal API) - Enterprise Tech
+    # DISABLED: Bypassing due to 422 errors and potential blocking
     # Format: (tenant, site_path)
-    # Nvidia: nvidia.wd1.myworkdayjobs.com/NVIDIAExternalCareerSite
-    # Salesforce: salesforce.wd1.myworkdayjobs.com/External_Career_Site
-    # Workday: workday.wd1.myworkdayjobs.com/Workday
-    workday_targets = [
-        ("nvidia", "NVIDIAExternalCareerSite"),
-        ("salesforce", "External_Career_Site"), 
-        ("workday", "Workday"),
-        ("walmart", "WalmartExternal"),
-        ("vmware", "VMware_Careers"),
-        ("target", "target") # Often complex, might fail
-    ]
+    # workday_targets = [
+    #     ("nvidia", "NVIDIAExternalCareerSite"),
+    #     ("salesforce", "External_Career_Site"), 
+    #     ("workday", "Workday"),
+    #     ("walmart", "WalmartExternal"),
+    #     ("vmware", "VMware_Careers"),
+    #     ("target", "target") 
+    # ]
     
-    for tenant, site in workday_targets:
-        try:
-            wd_jobs = await fetch_workday_jobs(tenant, site)
-            all_jobs.extend(wd_jobs)
-        except Exception as e:
-            logger.error(f"Failed to fetch Workday jobs for {tenant}: {e}")
+    # for tenant, site in workday_targets:
+    #     try:
+    #         wd_jobs = await fetch_workday_jobs(tenant, site)
+    #         all_jobs.extend(wd_jobs)
+    #     except Exception as e:
+    #         logger.error(f"Failed to fetch Workday jobs for {tenant}: {e}")
 
     logger.info(f"🏁 Total jobs fetched from all sources: {len(all_jobs)}")
     return all_jobs
