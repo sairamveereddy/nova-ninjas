@@ -261,7 +261,14 @@ const JobDetailsOrion = () => {
 
                             <div className="flex flex-col sm:flex-row gap-3 mt-8">
                                 <Button className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-12 text-lg rounded-xl shadow-sm"
-                                    onClick={() => navigate('/ai-apply', { state: { jobId: job.id, jobTitle: job.title, company: job.company } })}>
+                                    onClick={() => navigate('/ai-apply', {
+                                        state: {
+                                            jobId: job.id,
+                                            jobTitle: job.title,
+                                            company: job.company,
+                                            jobDescription: job.fullDescription || job.description
+                                        }
+                                    })}>
                                     <Sparkles className="w-5 h-5 mr-2" /> Apply with Autofill
                                 </Button>
                                 <Button variant="outline" className="flex-1 h-12 text-lg border-gray-200 rounded-xl hover:bg-gray-50 text-gray-700"
