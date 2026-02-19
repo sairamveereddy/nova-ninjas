@@ -6966,6 +6966,25 @@ async def fix_descriptions(limit: int = 50):
     except Exception as e:
         return {"error": f"{type(e).__name__}: {str(e)}"}
 
+# ==================== DEBUG ENDPOINTS ====================
+@app.post("/api/admin/force-job-fetch-v2")
+async def force_job_fetch_v2(background_tasks: BackgroundTasks):
+    """
+    Force run the job fetcher (v2 debug)
+    """
+    try:
+        from job_fetcher import scheduled_job_fetch
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database not connected")
+            
+        # Run in background to avoid timeout
+        background_tasks.add_task(scheduled_job_fetch, db)
+        
+        return {"success": True, "message": "Job fetch started in background (v2)"}
+    except Exception as e:
+        logger.error(f"Force fetch failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Include the API router with all /api/* routes
 app.include_router(api_router)
 

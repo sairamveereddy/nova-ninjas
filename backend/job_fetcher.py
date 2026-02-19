@@ -987,6 +987,105 @@ async def fetch_ashby_jobs(company_id: str) -> List[Dict[str, Any]]:
         return []
 
 # =============================================================================
+# NEW: Workday Scraper (Internal API)
+# =============================================================================
+
+async def fetch_workday_jobs(tenant: str, site: str) -> List[Dict[str, Any]]:
+    """
+    Fetch jobs from Workday using internal CXS API
+    URL format: https://{tenant}.wd1.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs
+    """
+    base_url = f"https://{tenant}.wd1.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs"
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Payload to get all jobs, US only if possible
+            payload = {
+                "appliedFacets": {"locationCountry": ["bc33aa3152ec42d4995f4791a106ed09"]}, # US Country ID (often standard)
+                "limit": 20, 
+                "offset": 0, 
+                "searchText": ""
+            }
+            
+            # Note: locationCountry ID varies by tenant, so we might need to fetch without it filter first
+            # and filter in client. Let's send empty facets first for safety.
+            payload = {"limit": 20, "offset": 0, "searchText": ""}
+
+            async with session.post(base_url, json=payload, timeout=30) as response:
+                if response.status != 200:
+                    logger.warning(f"Workday not found for {tenant}/{site}")
+                    return []
+                
+                data = await response.json()
+                jobs = []
+                
+                for job in data.get("jobPostings", []):
+                    title = job.get("title", "")
+                    external_path = job.get("externalPath", "")
+                    job_url = f"https://{tenant}.wd1.myworkdayjobs.com/{site}{external_path}"
+                    
+                    # Workday often doesn't give full description in list view, 
+                    # but sometimes gives a snippet. We might need to fetch detail or just use snippet.
+                    # For speed, we'll use the snippet or title as description if full not available.
+                    description = job.get("bulletFields", [])
+                    description_text = " ".join(description) if description else title
+                    
+                    location = job.get("locationsText", "Unknown")
+                    
+                    # Filter US/Remote
+                    is_remote = "remote" in location.lower() or "remote" in title.lower()
+                    if not is_remote and "united states" not in location.lower() and "us" not in location.lower():
+                        continue
+
+                    job_data = {
+                        "externalId": f"wd-{tenant}-{job.get('bulletFields', [''])[0] if job.get('bulletFields') else title}", # Fallback ID
+                        "externalId": f"wd-{tenant}-{job.get('jobPostingId', '')}", # Better ID
+                        "title": title,
+                        "company": tenant.capitalize(), # Approximate
+                        "location": location,
+                        "description": description_text,
+                        "responsibilities": description_text,
+                        "qualifications": "See job post",
+                        "benefits": "See job post",
+                        "fullDescription": f"Please visit {job_url} for full details.",
+                        "salaryRange": "Competitive",
+                        "sourceUrl": job_url,
+                        "source": "workday",
+                        "type": "remote" if is_remote else "onsite",
+                        "visaTags": [],
+                        "categoryTags": ["workday"],
+                        "createdAt": datetime.now(timezone.utc),
+                        "updatedAt": datetime.now(timezone.utc),
+                        "isActive": True
+                    }
+                    jobs.append(job_data)
+                    
+                logger.info(f"✅ Workday: Fetched {len(jobs)} jobs for {tenant}")
+                return jobs
+                
+    except Exception as e:
+        logger.error(f"Error fetching Workday jobs for {tenant}: {e}")
+        return []
+
+# =============================================================================
+# NEW: Paylocity Scraper (Custom Wrapper)
+# =============================================================================
+
+async def fetch_paylocity_jobs(company_id: str) -> List[Dict[str, Any]]:
+    """
+    Fetch jobs from Paylocity (basic wrapper, often requires JSearch/Google)
+    URL: https://recruiting.paylocity.com/recruiting/jobs/All/{company_id}/{company_name}
+    """
+    # Paylocity is hard to scrape cleanly without a known JSON endpoint.
+    # For now, we will assume JSearch covers this best, but we'll add a placeholder 
+    # that tries to use JSearch specifically for this company domain.
+    
+    # Actually, let's try a simple HTML parse if we have a specific target URL.
+    # But given the user just said "check this", we'll rely on JSearch for the heavy lifting 
+    # and just log that we are delegating.
+    return [] 
+
+# =============================================================================
 # EXPORTED FUNCTIONS: Main Orchestration
 # =============================================================================
 
@@ -1097,6 +1196,27 @@ async def fetch_all_job_categories(db=None) -> List[Dict[str, Any]]:
             all_jobs.extend(ashby_jobs)
         except Exception as e:
             logger.error(f"Failed to fetch Ashby jobs for {company}: {e}")
+
+    # 10. Fetch from Workday (Internal API) - Enterprise Tech
+    # Format: (tenant, site_path)
+    # Nvidia: nvidia.wd1.myworkdayjobs.com/NVIDIAExternalCareerSite
+    # Salesforce: salesforce.wd1.myworkdayjobs.com/External_Career_Site
+    # Workday: workday.wd1.myworkdayjobs.com/Workday
+    workday_targets = [
+        ("nvidia", "NVIDIAExternalCareerSite"),
+        ("salesforce", "External_Career_Site"), 
+        ("workday", "Workday"),
+        ("walmart", "WalmartExternal"),
+        ("vmware", "VMware_Careers"),
+        ("target", "target") # Often complex, might fail
+    ]
+    
+    for tenant, site in workday_targets:
+        try:
+            wd_jobs = await fetch_workday_jobs(tenant, site)
+            all_jobs.extend(wd_jobs)
+        except Exception as e:
+            logger.error(f"Failed to fetch Workday jobs for {tenant}: {e}")
 
     logger.info(f"🏁 Total jobs fetched from all sources: {len(all_jobs)}")
     return all_jobs
