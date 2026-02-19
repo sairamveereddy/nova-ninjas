@@ -212,7 +212,8 @@ const JobDetailsOrion = () => {
                 </div>
             </header>
 
-            <div className="container mx-auto px-4 py-2 max-w-6xl">
+
+            <div className="container mx-auto px-4 pt-1 pb-6 max-w-6xl">
                 <Button variant="ghost" onClick={() => navigate('/jobs')} className="mb-2 text-gray-500 hover:text-gray-900 pl-0">
                     <ArrowLeft className="w-4 h-4 mr-2" /> Back to Jobs
                 </Button>
