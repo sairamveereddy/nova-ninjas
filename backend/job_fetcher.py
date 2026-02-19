@@ -916,6 +916,77 @@ async def fetch_lever_jobs(company_id: str) -> List[Dict[str, Any]]:
         return []
 
 # =============================================================================
+# NEW: Ashby Scrapers (No API Key!)
+# =============================================================================
+
+async def fetch_ashby_jobs(company_id: str) -> List[Dict[str, Any]]:
+    """
+    Fetch jobs from public Ashby board
+    URL format: https://api.ashbyhq.com/posting-api/job-board/{company_id}
+    """
+    url = f"https://api.ashbyhq.com/posting-api/job-board/{company_id}"
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json={"includeCompensation": True}, timeout=30) as response:
+                if response.status != 200:
+                    logger.warning(f"Ashby board not found for {company_id}")
+                    return []
+                
+                data = await response.json()
+                jobs = []
+                
+                for job in data.get("jobs", []):
+                    title = job.get("title", "")
+                    description = job.get("descriptionHtml", "") 
+                    
+                    # Parse using new functions
+                    sections = parse_job_sections(description)
+                    is_visa = detect_visa_sponsorship(description)
+                    
+                    location = job.get("location", "Unknown")
+                    work_type = "remote" if job.get("isRemote") else detect_work_type(title, location)
+                    
+                    # Ashby compensation
+                    comp = job.get("compensation", {})
+                    salary_min = comp.get("minValue") or 0
+                    salary_max = comp.get("maxValue") or 0
+                    salary_range = "Competitive"
+                    if salary_min and salary_max:
+                        salary_range = f"${int(salary_min):,} - ${int(salary_max):,}"
+                    
+                    job_data = {
+                        "externalId": f"ashby-{job.get('id')}",
+                        "title": title,
+                        "company": company_id.capitalize(),
+                        "location": location,
+                        "description": sanitize_description(description),
+                        "responsibilities": sanitize_description(sections["responsibilities"]),
+                        "qualifications": sanitize_description(sections["qualifications"]),
+                        "benefits": sanitize_description(sections["benefits"]),
+                        "fullDescription": sanitize_description(description),
+                        "salaryRange": salary_range,
+                        "salaryMin": salary_min,
+                        "salaryMax": salary_max,
+                        "sourceUrl": job.get("jobUrl", ""),
+                        "source": "ashby",
+                        "type": work_type,
+                        "visaTags": ["visa-sponsoring"] if is_visa else [],
+                        "categoryTags": build_job_tags({"visaTags": is_visa, "type": work_type}),
+                        "createdAt": datetime.now(timezone.utc),
+                        "updatedAt": datetime.now(timezone.utc),
+                        "isActive": True
+                    }
+                    jobs.append(job_data)
+                    
+                logger.info(f"✅ Ashby: Fetched {len(jobs)} jobs for {company_id}")
+                return jobs
+                
+    except Exception as e:
+        logger.error(f"Error fetching Ashby jobs for {company_id}: {e}")
+        return []
+
+# =============================================================================
 # EXPORTED FUNCTIONS: Main Orchestration
 # =============================================================================
 
@@ -970,8 +1041,25 @@ async def fetch_all_job_categories(db=None) -> List[Dict[str, Any]]:
         logger.error(f"Failed to fetch YC jobs: {e}")
 
     # 7. Fetch from Greenhouse (Direct Scraping) - Top Tech Companies
-    greenhouse_companies = ["stripe", "twitch", "dropbox", "airbnb", "reddit", "gusto"]
-    for company in greenhouse_companies:
+    # Expanded list for better coverage
+    greenhouse_companies = [
+        "stripe", "twitch", "dropbox", "airbnb", "reddit", "gusto",
+        "linear", "notion", "grammarly", "plaid", "brex", "doorDash",
+        "ramp", "whatnot", "retool", "vercel", "samsara", "snowflake",
+        "databricks", "openai", "anthropic", "scale", "anduril",
+        "block", "cashapp", "square", "instacart", "pinterest", 
+        "canva", "figma", "miro", "clickup", "discord", "duolingo"
+    ]
+    
+    # Shuffle to distribute load if fetching many
+    import random
+    random.shuffle(greenhouse_companies)
+    
+    # Simple rate limiting/batching - only fetch 10 random ones per run to avoid timeout
+    # Or fetch all if async is fast enough. Let's try 15 random ones.
+    target_greenhouse = greenhouse_companies[:15]
+    
+    for company in target_greenhouse:
         try:
             gh_jobs = await fetch_greenhouse_jobs(company)
             all_jobs.extend(gh_jobs)
@@ -979,14 +1067,37 @@ async def fetch_all_job_categories(db=None) -> List[Dict[str, Any]]:
             logger.error(f"Failed to fetch Greenhouse jobs for {company}: {e}")
 
     # 8. Fetch from Lever (Direct Scraping) - Top Tech Companies
-    lever_companies = ["netflix", "atlassian", "figma", "plaid", "affirm"]
-    for company in lever_companies:
+    lever_companies = [
+        "netflix", "atlassian", "affirm", "palantir", "udemy", 
+        "coursera", "lyft", "fiverr", "upwork", "kraken",
+        "consensys", "ripple", "chainlink", "dbt", "launchdarkly"
+    ]
+    
+    random.shuffle(lever_companies)
+    target_lever = lever_companies[:10]
+    
+    for company in target_lever:
         try:
             lever_jobs = await fetch_lever_jobs(company)
             all_jobs.extend(lever_jobs)
         except Exception as e:
             logger.error(f"Failed to fetch Lever jobs for {company}: {e}")
     
+    # 9. Fetch from Ashby (Direct Scraping) - High Growth Startups
+    ashby_companies = [
+        "deel", "ramp", "remote", "vercel", "notion", "airtable",
+        "webflow", "retell", "clay", "perplexity", "modal"
+    ]
+    random.shuffle(ashby_companies)
+    target_ashby = ashby_companies[:8]
+    
+    for company in target_ashby:
+        try:
+            ashby_jobs = await fetch_ashby_jobs(company)
+            all_jobs.extend(ashby_jobs)
+        except Exception as e:
+            logger.error(f"Failed to fetch Ashby jobs for {company}: {e}")
+
     logger.info(f"🏁 Total jobs fetched from all sources: {len(all_jobs)}")
     return all_jobs
 
@@ -1043,9 +1154,35 @@ async def update_jobs_in_database(db, jobs: List[Dict[str, Any]]) -> int:
 async def scheduled_job_fetch(db):
     """
     Task to be run on schedule
+    Uses JobAggregator for robust multi-source fetching
     """
     logger.info("⏰ Starting scheduled job fetch...")
-    jobs = await fetch_all_job_categories(db)
-    if jobs and db is not None:
-        await update_jobs_in_database(db, jobs)
-    logger.info("✅ Scheduled job fetch completed")
+    
+    try:
+        from job_apis.job_aggregator import JobAggregator
+        
+        aggregator = JobAggregator(db)
+        
+        # Run aggregation
+        # Enable all sources including JSearch (RapidAPI)
+        stats = await aggregator.aggregate_all_jobs(
+            use_adzuna=True,
+            use_jsearch=True,  # Enable JSearch!
+            use_usajobs=True,
+            use_rss=True,
+            max_adzuna_pages=10,
+            max_jsearch_queries=15 # Cover all our new categories
+        )
+        
+        logger.info(f"✅ Scheduled job fetch completed. Stats: {stats}")
+        
+    except Exception as e:
+        logger.error(f"❌ Scheduled job fetch failed: {e}")
+        # Fallback to legacy method if aggregator fails entirely
+        try:
+            logger.info("⚠️ Falling back to legacy fetcher...")
+            jobs = await fetch_all_job_categories(db)
+            if jobs and db is not None:
+                await update_jobs_in_database(db, jobs)
+        except Exception as fallback_error:
+            logger.error(f"❌ Fallback fetch also failed: {fallback_error}")

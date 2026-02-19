@@ -88,15 +88,22 @@ zuna
                 logger.info("Fetching jobs from JSearch...")
                 popular_queries = [
                     "software engineer",
+                    "full stack developer",
+                    "frontend developer", 
+                    "backend developer",
                     "data scientist",
                     "product manager",
+                    "devops engineer",
+                    "site reliability engineer",
+                    "machine learning engineer",
+                    "artificial intelligence engineer",
                     "marketing manager",
                     "sales representative",
-                    "accountant",
-                    "nurse",
-                    "teacher",
-                    "business analyst",
-                    "project manager"
+                    "account executive",
+                    "business analyst", 
+                    "project manager",
+                    "hr manager",
+                    "recruiter"
                 ]
                 jsearch_jobs = await self.jsearch.fetch_multiple_queries(
                     queries=popular_queries[:max_jsearch_queries],
