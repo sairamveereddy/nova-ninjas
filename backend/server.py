@@ -102,6 +102,15 @@ except (ImportError, ModuleNotFoundError):
     async def enrich_company(name, db=None): return {"name": name}
     def enrich_job_metadata(job): return job
 
+# Google Auth imports
+try:
+    from google.oauth2 import id_token
+    from google.auth.transport import requests as google_requests
+except ImportError:
+    id_token = None
+    google_requests = None
+    logger.error("google-auth libraries not found. Google login will be disabled.")
+
 # Setup logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -346,19 +355,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 
-@app.on_event("startup")
-async def startup_db_client():
-    try:
-        app.mongodb_client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
-        app.mongodb = app.mongodb_client.get_database()
-        print("Combined DB connected.")
-        # Trigger sync on startup
-        from job_sync_service import JobSyncService
-        service = JobSyncService(app.mongodb)
-        asyncio.create_task(service.sync_adzuna_jobs())
-        print("Startup job sync initiated.")
-    except Exception as e:
-        print(f"Startup sync failed: {e}")
 
 
 def create_access_token(data: dict):
@@ -2602,160 +2598,6 @@ async def calculate_job_match_score(
 # ============ GOOGLE OAUTH AUTHENTICATION ============
 
 
-@api_router.post("/auth/google")
-async def google_auth(request: dict, background_tasks: BackgroundTasks):
-    """Handle Google OAuth authentication"""
-    try:
-        # Check if database is connected
-        if db is None:
-            logger.error("Database connection is None - MONGO_URL may be invalid")
-            raise HTTPException(
-                status_code=500,
-                detail="Database connection failed. Please contact support."
-            )
-        
-        # Try to import google-auth libraries
-        try:
-            from google.oauth2 import id_token
-            from google.auth.transport import requests as google_requests
-        except ImportError as import_error:
-            logger.error(f"Google auth library not installed: {import_error}")
-            raise HTTPException(
-                status_code=500,
-                detail="Google authentication is not configured on this server. Please contact support or use email/password login."
-            )
-
-        credential = request.get("credential")
-        mode = request.get("mode", "login")
-
-        if not credential:
-            raise HTTPException(status_code=400, detail="No credential provided")
-
-        # Verify the Google token
-        try:
-            # Get Google Client ID from environment or use the one from the request
-            GOOGLE_CLIENT_ID = os.getenv(
-                "GOOGLE_CLIENT_ID",
-                "62316419452-e4gpepiaepopnfqpd96k19r1ps6e777v.apps.googleusercontent.com",
-            )
-
-            idinfo = id_token.verify_oauth2_token(
-                credential, google_requests.Request(), GOOGLE_CLIENT_ID
-            )
-
-            # Get user info from Google
-            email = idinfo.get("email")
-            name = idinfo.get("name") or ""
-            google_id = idinfo.get("sub")
-            picture = idinfo.get("picture")
-
-            if not email:
-                raise HTTPException(
-                    status_code=400, detail="Email not provided by Google"
-                )
-
-        except ValueError as e:
-            logger.error(f"Invalid Google token: {str(e)}")
-            raise HTTPException(
-                status_code=401, detail=f"Invalid Google token: {str(e)}"
-            )
-
-        # Check if user exists
-        existing_user = await db.users.find_one({"email": email})
-
-        if existing_user:
-            # User exists - log them in
-            update_data = {
-                "google_id": google_id,
-                "profile_picture": picture,
-                "is_verified": True,
-            }
-            await db.users.update_one(
-                {"_id": existing_user["_id"]}, {"$set": update_data}
-            )
-
-            # Generate standard JWT token
-            user_id = existing_user.get("id") or str(existing_user.get("_id"))
-            token = create_access_token(data={"sub": email, "id": user_id})
-
-            return {
-                "success": True,
-                "token": token,
-                "user": {
-                    "id": user_id,
-                    "email": email,
-                    "name": existing_user.get("name") or name or "",
-                    "role": existing_user.get("role", "customer"),
-                    "plan": existing_user.get("plan"),
-                    "is_verified": True,
-                    "referral_code": existing_user.get("referral_code"),
-                    "profile_picture": picture,
-                },
-            }
-        else:
-            # New user - create account using User model for consistency
-            new_user_obj = User(
-                email=email, name=name, password_hash="google-oauth", is_verified=True
-            )
-
-            user_dict = new_user_obj.model_dump()
-            user_dict.update(
-                {
-                    "google_id": google_id,
-                    "profile_picture": picture,
-                    "auth_method": "google",
-                    "created_at": (
-                        user_dict["created_at"].isoformat()
-                        if isinstance(user_dict["created_at"], datetime)
-                        else user_dict["created_at"]
-                    ),
-                }
-            )
-
-            await db.users.insert_one(user_dict)
-            logger.info(f"New user created via Google OAuth: {email}")
-
-            # Send welcome email in background
-            try:
-                # Pass None for token as Google users are auto-verified
-                background_tasks.add_task(
-                    send_welcome_email, name, email, None, new_user_obj.referral_code
-                )
-            except Exception as email_error:
-                logger.error(
-                    f"Error sending welcome email to Google user: {email_error}"
-                )
-
-            # Generate standard JWT token
-            token = create_access_token(data={"sub": email, "id": new_user_obj.id})
-
-            return {
-                "success": True,
-                "token": token,
-                "user": {
-                    "id": new_user_obj.id,
-                    "email": email,
-                    "name": name,
-                    "role": new_user_obj.role,
-                    "plan": new_user_obj.plan,
-                    "is_verified": True,
-                    "referral_code": new_user_obj.referral_code,
-                    "profile_picture": picture,
-                },
-            }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        error_msg = str(e)
-        logger.error(
-            f"Error in Google authentication: {error_msg}\n{traceback.format_exc()}"
-        )
-        # Return more detailed error for debugging
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Google login error: {error_msg}. Check if google-auth is installed."
-        )
 
 
 # ============ BYOK (Bring Your Own Key) API ============
@@ -6006,7 +5848,7 @@ async def delete_saved_resume(resume_id: str):
 
 @app.post("/api/auth/google-login")
 @limiter.limit("10/minute")
-async def google_login(request: Request, login_data: GoogleLoginRequest):
+async def google_login(request: Request, login_data: GoogleLoginRequest, background_tasks: BackgroundTasks):
     """
     Handle Google OAuth authentication for login.
     """
@@ -6019,15 +5861,12 @@ async def google_login(request: Request, login_data: GoogleLoginRequest):
                 detail="Database connection failed. Please contact support."
             )
         
-        # Try to import google-auth libraries
-        try:
-            from google.oauth2 import id_token
-            from google.auth.transport import requests as google_requests
-        except ImportError as import_error:
-            logger.error(f"Google auth library not installed: {import_error}")
+        # Verify imports
+        if id_token is None or google_requests is None:
+            logger.error("Google auth libraries missing at runtime.")
             raise HTTPException(
                 status_code=500,
-                detail="Google authentication is not configured on this server. Please contact support or use email/password login."
+                detail="Google authentication library is not installed. Please use email login."
             )
 
         credential = login_data.credential
@@ -6045,6 +5884,7 @@ async def google_login(request: Request, login_data: GoogleLoginRequest):
             idinfo = id_token.verify_oauth2_token(
                 credential, google_requests.Request(), GOOGLE_CLIENT_ID
             )
+            logger.info(f"✅ Google token verified for: {idinfo.get('email')}")
 
             email = idinfo.get("email")
             name = idinfo.get("name") or ""
@@ -6542,6 +6382,8 @@ async def health_check():
         "mongodb": "connected" if db is not None else "failed",
         "groq_api_key_set": groq_key is not None and len(groq_key) > 0,
         "env_check": groq_key is not None,
+        "google_auth_available": id_token is not None,
+        "environment": os.environ.get("ENVIRONMENT", "development")
     }
 
 
