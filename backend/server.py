@@ -587,6 +587,7 @@ class UserLogin(BaseModel):
 
 class GoogleLoginRequest(BaseModel):
     credential: str
+    mode: Optional[str] = "login"
 
 
 class UserResponse(BaseModel):

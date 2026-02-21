@@ -1,8 +1,8 @@
 // API Configuration
 // This file centralizes the API URL for the entire application
 
-// Production API URL (Railway deployed backend)
-const PRODUCTION_API_URL = 'https://nova-ninjas-production.up.railway.app';
+// Production API URL (Use relative path to leverage Vercel proxy at /api)
+const PRODUCTION_API_URL = '';
 
 // Development API URL
 const DEVELOPMENT_API_URL = 'http://localhost:8000';
