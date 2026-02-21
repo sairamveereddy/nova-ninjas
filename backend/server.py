@@ -34,6 +34,10 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 import logging
+# Setup logging early to avoid NameErrors in defensive imports
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 import asyncio
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Union
@@ -111,9 +115,6 @@ except ImportError:
     google_requests = None
     logger.error("google-auth libraries not found. Google login will be disabled.")
 
-# Setup logging
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 # MongoDB connection with error handling
 mongo_url = os.environ.get("MONGO_URL")
