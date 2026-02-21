@@ -6453,7 +6453,7 @@ async def get_admin_analytics(user: dict = Depends(get_current_user)):
     Requires authentication
     """
     try:
-        if not db:
+        if db is None:
             raise HTTPException(status_code=500, detail="Database not initialized")
         
         # Total users count
@@ -6719,7 +6719,7 @@ async def get_jobs(
     Only returns jobs from last 72 hours, USA-only
     """
     try:
-        if not db:
+        if db is None:
             raise HTTPException(status_code=503, detail="Database not available")
         
         # Build query - only jobs from last 72 hours

@@ -24,7 +24,7 @@ db = None
 
 def get_db():
     global mongo_client, db
-    if db:
+    if db is not None:
         return db
     try:
         if not mongo_url:
@@ -217,7 +217,7 @@ class InterviewOrchestrator:
     async def get_session(self) -> Optional[Dict[str, Any]]:
         """Get session with resume and turns"""
         sessions_col = get_sessions_collection()
-        if not sessions_col: return None
+        if sessions_col is None: return None
             
         session = await sessions_col.find_one({"_id": ObjectId(self.session_id)})
         if not session:
@@ -226,13 +226,13 @@ class InterviewOrchestrator:
         # Get resume
         if session.get('resumeId'):
             resumes_col = get_resumes_collection()
-            if resumes_col:
+            if resumes_col is not None:
                 resume = await resumes_col.find_one({"_id": ObjectId(session['resumeId'])})
                 session['resume'] = resume
         
         # Get turns
         turns_col = get_turns_collection()
-        if turns_col:
+        if turns_col is not None:
             cursor = turns_col.find({"sessionId": self.session_id}).sort("turnNumber", 1)
             turns = await cursor.to_list(length=100)
             session['turns'] = turns
@@ -257,7 +257,7 @@ class InterviewOrchestrator:
         
         # Save the turn
         turns_col = get_turns_collection()
-        if turns_col:
+        if turns_col is not None:
             await turns_col.insert_one({
                 "sessionId": self.session_id,
                 "turnNumber": 1,
@@ -268,7 +268,7 @@ class InterviewOrchestrator:
         
         # Update session count
         sessions_col = get_sessions_collection()
-        if sessions_col:
+        if sessions_col is not None:
             await sessions_col.update_one(
                 {"_id": ObjectId(self.session_id)},
                 {"$set": {"questionCount": 1}}
@@ -288,7 +288,7 @@ class InterviewOrchestrator:
         # Update current turn with answer
         if turns:
             turns_col = get_turns_collection()
-            if turns_col:
+            if turns_col is not None:
                 await turns_col.update_one(
                     {"_id": turns[-1]['_id']},
                     {"$set": {"answerText": answer_text}}
@@ -322,7 +322,7 @@ class InterviewOrchestrator:
         
         # Create next turn
         turns_col = get_turns_collection()
-        if turns_col:
+        if turns_col is not None:
             await turns_col.insert_one({
                 "sessionId": self.session_id,
                 "turnNumber": current_turn_number + 1,
@@ -333,7 +333,7 @@ class InterviewOrchestrator:
         
         # Update session count
         sessions_col = get_sessions_collection()
-        if sessions_col:
+        if sessions_col is not None:
             await sessions_col.update_one(
                 {"_id": ObjectId(self.session_id)},
                 {"$inc": {"questionCount": 1}}
@@ -380,13 +380,13 @@ class InterviewOrchestrator:
         
         report_id = None
         reports_col = get_reports_collection()
-        if reports_col:
+        if reports_col is not None:
             insert_result = await reports_col.insert_one(report)
             report_id = insert_result.inserted_id
         
         # Update session status
         sessions_col = get_sessions_collection()
-        if sessions_col and report_id:
+        if sessions_col is not None and report_id:
             await sessions_col.update_one(
                 {"_id": ObjectId(self.session_id)},
                 {"$set": {"status": "completed", "reportId": str(report_id)}}
