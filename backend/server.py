@@ -3874,7 +3874,44 @@ def _extract_target_role(resume_text: str) -> str:
 
     return lines[0][:50] if lines else ""
 
-def _calculate_match_score(job: dict, user: dict) -> int:
+from typing import Dict, Any, Optional
+
+def _format_supabase_job(job: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Map Supabase snake_case columns to camelCase expected by frontend.
+    Also handles category/tag mapping.
+    """
+    if not job:
+        return job
+
+    # Basic mapping
+    formatted = {
+        **job,
+        "_id": str(job.get("id")),
+        "id": str(job.get("id")),
+        "sourceUrl": job.get("source_url") or job.get("url"),
+        "url": job.get("source_url") or job.get("url"),
+        "salaryRange": job.get("salary_range") or job.get("salary") or "Competitive",
+        "jobType": job.get("job_type") or job.get("type") or "Full-time",
+        "type": job.get("job_type") or job.get("type") or "onsite",
+        "createdAt": job.get("posted_at") or job.get("created_at"),
+        "externalId": job.get("job_id"),
+        "job_id": job.get("job_id")  # Keep for backward compatibility
+    }
+
+    # Handle Categories to Tags mapping
+    categories = job.get("categories") or []
+    if isinstance(categories, list):
+        formatted["categoryTags"] = categories
+        # Add visa-sponsoring if present in categories
+        if any(c in ["sponsoring", "visa-sponsoring", "h1b"] for c in [s.lower() for s in categories]):
+            formatted["visaTags"] = ["visa-sponsoring"]
+        else:
+            formatted["visaTags"] = []
+
+    return formatted
+
+def _calculate_match_score(job: Dict[str, Any], user: Optional[Dict[str, Any]]) -> int:
     """
     Calculate a realistic match score (0-99) based on user profile/resume and job description.
     Stricter logic to prevent high scores for irrelevant roles (e.g., Dentist vs AI Engineer).
@@ -4050,8 +4087,8 @@ async def get_job_by_id(
                 pass
 
         # Ensure consistency with keys for frontend
-        if "id" not in job and "_id" in job:
-            job["id"] = str(job["_id"])
+        # This is now handled by _format_supabase_job
+        job = _format_supabase_job(job)
         
         job["matchScore"] = _calculate_match_score(job, user)
 
@@ -4079,6 +4116,9 @@ async def enrich_job_details(job_id: str):
             
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
+
+        # Map snake_case to camelCase
+        job = _format_supabase_job(job)
             
         # 2. Extract source URL
         source_url = job.get("sourceUrl") or job.get("url") or job.get("redirect_url")
@@ -6130,26 +6170,30 @@ async def get_jobs(
         # 3. SMART SORTING & BOOSTING (PROJECT ORION)
         all_candidates = supabase_jobs or []
         
-        # Apply Match Scores
+        # Apply Match Scores and Format Fields
+        formatted_results = []
         for job in all_candidates:
-            job["_id"] = str(job.get("id"))
+            # First map fields
+            job = _format_supabase_job(job)
+            
+            # Then apply match score
             job["matchScore"] = _calculate_match_score(job, user)
-            # Add match_score (snake_case) for some frontend versions
             job["match_score"] = job["matchScore"]
             
-            # Enrich with mock data for "Premium" feel (as seen in Live Site)
+            # Enrich with mock data
             job["companyData"] = _get_mock_company_data(job.get("company", "Unknown"))
             job["insiderConnections"] = _get_mock_insider_connections()
+            formatted_results.append(job)
 
         # Sort by Match Score DESC if user is present
-        if user and all_candidates:
-            all_candidates.sort(key=lambda x: x.get("matchScore", 0), reverse=True)
+        if user and formatted_results:
+            formatted_results.sort(key=lambda x: x.get("matchScore", 0), reverse=True)
 
         # Manual Pagination if we fetched a larger pool
         if target_role:
-            results = all_candidates[offset:offset + limit]
+            results = formatted_results[offset:offset + limit]
         else:
-            results = all_candidates
+            results = formatted_results
 
         # 4. RECOMMENDED FILTERS (PROJECT ORION)
         recommended_filters = []
