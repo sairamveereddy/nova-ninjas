@@ -6015,6 +6015,22 @@ async def generate_smart_answer_endpoint(
 
 
 
+def _get_mock_company_data(company_name: str) -> dict:
+    """Helper for premium job cards - generates mock metadata like logos and ratings."""
+    name_clean = company_name.lower().strip()
+    return {
+        "logo": f"https://logo.clearbit.com/{name_clean.replace(' ', '')}.com",
+        "rating": round(3.8 + (hash(name_clean) % 12) / 10, 1),
+        "reviewCount": int(50 + (hash(name_clean) % 500)),
+        "isVerified": True
+    }
+
+def _get_mock_insider_connections() -> list:
+    """Helper to simulate 1st/2nd degree insider connections on job cards."""
+    return [
+        {"name": "Verified Ninja", "role": "Employee", "type": "1st"}
+    ]
+
 
 # Jobs API Endpoints
 @app.get("/api/jobs")
