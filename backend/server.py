@@ -4239,6 +4239,35 @@ async def debug_jobs():
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/api/debug/supabase")
+async def debug_supabase():
+    """Tests Supabase network connectivity and query syntax directly."""
+    try:
+        url = os.environ.get("SUPABASE_URL")
+        key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+        if not url or not key:
+            return {"error": "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY variables"}
+            
+        client = SupabaseService.get_client()
+        if not client:
+            return {"error": "Failed to create Supabase client"}
+            
+        # Try a simple count
+        query_response = client.table("jobs").select("*", count="exact").limit(0).execute()
+        return {
+            "status": "success",
+            "count": query_response.count if query_response.count is not None else 0,
+            "url_prefix": url[:15] + "..."
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "error": str(e),
+            "type": str(type(e)),
+            "traceback": traceback.format_exc()
+        }
+
+
 @app.post("/api/debug/fix-locations")
 async def fix_locations():
     """Emergency fix: Iterative update to be safe (no pipelines)."""
