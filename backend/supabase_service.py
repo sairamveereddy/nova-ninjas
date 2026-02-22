@@ -13,8 +13,8 @@ class SupabaseService:
     def get_client(cls) -> Client:
         """Initialize and return the Supabase client (Singleton)"""
         if cls._instance is None:
-            url = os.environ.get("SUPABASE_URL")
-            key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+            url = os.environ.get("SUPABASE_URL", "").strip()
+            key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
             
             if not url or not key:
                 logger.warning("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not found in environment variables.")
