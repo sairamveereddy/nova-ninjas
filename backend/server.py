@@ -4501,9 +4501,11 @@ async def get_razorpay_plans(currency: str = "INR"):
 # Background task to fetch jobs periodically
 async def job_fetch_background_task():
     """Background task that runs every 6 hours to fetch new jobs"""
-    # Initial fetch on startup
+    # Initial fetch on startup, delayed to allow server to bind port and pass health checks
     try:
-        logger.info("🚀 Running initial job fetch on startup...")
+        logger.info("⏳ Waiting 30s before initial job fetch to pass health checks...")
+        await asyncio.sleep(30)
+        logger.info("🚀 Running initial job fetch after startup delay...")
         await scheduled_job_fetch(db)
     except Exception as e:
         logger.error(f"Initial job fetch error: {e}")
@@ -6165,64 +6167,6 @@ async def get_jobs(
         # Raise here to avoid falling through to MongoDB logic
         raise HTTPException(status_code=500, detail=f"Job fetch failed: {str(e)}")
 
-    # --- FALLBACK TO MONGODB (Original Logic - Only reached if try block is bypassed) ---
-    if db is None:
-        raise HTTPException(status_code=503, detail="Database not available")
-        
-        # Build query - only jobs from last 72 hours
-        query = {
-            "created_at": {"$gte": datetime.utcnow() - timedelta(hours=72)}
-        }
-        
-        # Search filter
-        if search:
-            query["$or"] = [
-                {"title": {"$regex": search, "$options": "i"}},
-                {"company": {"$regex": search, "$options": "i"}},
-                {"description": {"$regex": search, "$options": "i"}}
-            ]
-        
-        # Visa sponsorship filter
-        if visa:
-            query["categories"] = "sponsoring"
-        
-        # Work type filter (remote, full-time, etc.)
-        if type and type != "all":
-            query["contract_type"] = {"$regex": type, "$options": "i"}
-        
-        # Get total count
-        total = await db.jobs.count_documents(query)
-        
-        # Calculate pagination
-        skip = (page - 1) * limit
-        total_pages = (total + limit - 1) // limit
-        
-        # Fetch jobs
-        cursor = db.jobs.find(query).sort("created_at", -1).skip(skip).limit(limit)
-        jobs_list = await cursor.to_list(length=limit)
-        
-        # Convert ObjectId to string for JSON serialization
-        for job in jobs_list:
-            if "_id" in job:
-                job["_id"] = str(job["_id"])
-            
-            # Add match_score if user is authenticated
-            if token:
-                job["match_score"] = 0
-        
-        return {
-            "jobs": jobs_list,
-            "pagination": {
-                "page": page,
-                "limit": limit,
-                "total": total,
-                "pages": total_pages
-            }
-        }
-        
-    except Exception as e:
-        logger.error(f"Error fetching jobs: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 # Job Sync Endpoints
 @app.get("/api/jobs/sync-status")
