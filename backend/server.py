@@ -3165,33 +3165,7 @@ async def delete_application(application_id: str):
 # ============ ADMIN ENDPOINTS ============
 
 
-@api_router.get("/admin/stats")
-async def get_admin_stats():
-    """
-    Get system-wide statistics.
-    """
-    total_users = await db.users.count_documents({})
-    total_customers = await db.users.count_documents({"role": "customer"})
-    total_employees = await db.users.count_documents({"role": "employee"})
-    total_applications = await db.job_applications.count_documents({})
-    total_bookings = await db.call_bookings.count_documents({})
-    pending_bookings = await db.call_bookings.count_documents({"status": "pending"})
-    waitlist_count = await db.waitlist.count_documents({})
 
-    # Active subscriptions
-    active_subscriptions = await db.subscriptions.count_documents({"status": "active"})
-
-    return {
-        "users": {
-            "total": total_users,
-            "customers": total_customers,
-            "employees": total_employees,
-        },
-        "applications": {"total": total_applications},
-        "bookings": {"total": total_bookings, "pending": pending_bookings},
-        "waitlist": waitlist_count,
-        "subscriptions": {"active": active_subscriptions},
-    }
 
 
 @api_router.get("/admin/customers")
