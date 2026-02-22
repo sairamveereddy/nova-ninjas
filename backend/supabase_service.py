@@ -638,11 +638,8 @@ class SupabaseService:
         client = SupabaseService.get_client()
         if not client: return None
         try:
-            # We assume 'id' in jobs table is UUID, so we might need an 'external_id' column or use 'job_id' metadata
-            # Looking at schema.sql, 'jobs' has 'id' as UUID. 
-            # I should add 'job_id' (text) to the jobs table for external IDs if not present.
-            # Wait, let me check the jobs table columns in schema.sql again.
-            response = client.table("jobs").select("*").eq("id", job_id).execute()
+            # External ID is stored in 'job_id' column
+            response = client.table("jobs").select("*").eq("job_id", job_id).execute()
             return response.data[0] if response.data else None
         except Exception as e:
             logger.error(f"Error fetching job by ID: {e}")
@@ -660,6 +657,73 @@ class SupabaseService:
         except Exception as e:
             logger.error(f"Error upserting job: {e}")
             return None
+
+    @staticmethod
+    def upsert_jobs(jobs: List[Dict[str, Any]]) -> int:
+        """Bulk upsert jobs into Supabase"""
+        if not jobs: return 0
+        client = SupabaseService.get_client()
+        if not client: return 0
+        
+        try:
+            # Supabase upsert handles lists
+            # We use chunks to avoid payload size limits if many jobs
+            chunk_size = 100
+            count = 0
+            for i in range(0, len(jobs), chunk_size):
+                chunk = jobs[i : i + chunk_size]
+                response = client.table("jobs").upsert(chunk, on_conflict="job_id").execute()
+                count += len(response.data) if response.data else 0
+            
+            logger.info(f"💾 Successfully upserted {count} jobs to Supabase.")
+            return count
+        except Exception as e:
+            logger.error(f"Error bulk upserting jobs: {e}")
+            return 0
+
+    @staticmethod
+    def mark_jobs_inactive(sources: List[str]) -> bool:
+        """Mark jobs from specific sources as inactive in Supabase"""
+        if not sources: return False
+        client = SupabaseService.get_client()
+        if not client: return False
+        try:
+            client.table("jobs").update({"is_active": False}).in_("source", sources).execute()
+            logger.info(f"Marked jobs from {sources} as inactive.")
+            return True
+        except Exception as e:
+            logger.error(f"Error marking jobs inactive: {e}")
+            return False
+
+    @staticmethod
+    def get_job_stats_24h() -> Dict[str, Any]:
+        """Get statistics about jobs in Supabase"""
+        client = SupabaseService.get_client()
+        if not client: return {"error": "No client"}
+        try:
+            # Total active jobs
+            res = client.table("jobs").select("id", count="exact").eq("is_active", True).execute()
+            total = res.count if res.count is not None else 0
+            
+            # We'll return just total for now as grouped counts are expensive in client
+            # But let's try to get counts for common sources
+            by_source = {}
+            for source in ["Adzuna", "JSearch", "USAJobs.gov"]:
+                s_res = client.table("jobs").select("id", count="exact").eq("source", source).eq("is_active", True).execute()
+                by_source[source] = s_res.count if s_res.count is not None else 0
+                
+            return {
+                "total_jobs": total,
+                "by_source": by_source,
+                "by_work_type": {
+                    "Remote": 0, # Placeholders
+                    "Hybrid": 0,
+                    "On-site": 0
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error getting job stats: {e}")
+            return {"error": str(e)}
 
     @staticmethod
     def update_job_sync_status(source: str, status_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

@@ -13,18 +13,19 @@ from job_apis.adzuna_service import AdzunaService
 from job_apis.jsearch_service import JSearchService
 from job_apis.usajobs_service import USAJobsService
 from job_apis.rss_service import RSSJobService
+from supabase_service import SupabaseService
 
 import logging
 print("LOADED NEW JOB AGGREGATOR")
 logger = logging.getLogger(__name__)
 
 class JobAggregator:
-    def __init__(self, db):
+    def __init__(self, db=None):
         """
         Initialize job aggregator
         
         Args:
-            db: MongoDB database instance
+            db: Optional MongoDB database instance (deprecated)
         """
         self.db = db
         self.adzuna = AdzunaService()
@@ -241,14 +242,14 @@ class JobAggregator:
         stats["total_unique"] = len(unique_jobs)
         logger.info(f"Unique jobs after deduplication: {len(unique_jobs)}")
         
-        # Store in MongoDB
+        # Store in Supabase
         stored_count = await self._store_jobs(unique_jobs)
         stats["total_stored"] = stored_count
         
         elapsed_time = (datetime.now() - start_time).total_seconds()
         stats["elapsed_seconds"] = elapsed_time
         
-        logger.info(f"Job aggregation completed in {elapsed_time:.1f}s. Stored {stored_count} jobs.")
+        logger.info(f"Job aggregation completed in {elapsed_time:.1f}s. Stored {stored_count} jobs in Supabase.")
         
         return stats
         
@@ -292,7 +293,7 @@ class JobAggregator:
         
     async def _store_jobs(self, jobs: List[Dict[str, Any]]) -> int:
         """
-        Store jobs in MongoDB with smart deduplication and updates.
+        Store jobs in Supabase with smart deduplication and updates.
         Preserves rich descriptions if new fetch returns snippets.
         """
         if not jobs:
@@ -302,34 +303,33 @@ class JobAggregator:
         
         for job in jobs:
             try:
-                # Add metadata
-                job['createdAt'] = datetime.now()
-                job['updatedAt'] = datetime.now()
+                # Add metadata (ISO strings for Supabase)
+                now_iso = datetime.now().isoformat()
+                job['created_at'] = now_iso
+                job['updated_at'] = now_iso
                 
-                # Determine filter query
-                filter_query = {}
-                if job.get('sourceUrl'):
-                    filter_query = {"sourceUrl": job['sourceUrl']}
-                elif job.get('url'):
-                    filter_query = {"url": job['url']}
-                else:
-                    filter_query = {
-                        "title": job.get('title'),
-                        "company": job.get('company')
-                    }
+                # Determine external ID (job_id in Supabase)
+                ext_id = job.get('externalId') or job.get('job_id')
+                if not ext_id:
+                    # Fallback unique ID
+                    import hashlib
+                    unique_string = f"{job.get('source','gen')}-{job.get('title','')}-{job.get('company','')}".lower()
+                    ext_id = hashlib.md5(unique_string.encode()).hexdigest()[:16]
+                
+                job['job_id'] = ext_id
                 
                 # Check for existing job to perform smart update
-                existing = await self.db.jobs.find_one(filter_query)
+                existing = SupabaseService.get_job_by_external_id(ext_id)
                 
                 if existing:
                     # SMART UPDATE LOGIC
-                    old_desc = existing.get("fullDescription", "") or ""
-                    new_desc = job.get("fullDescription", "") or ""
+                    old_desc = existing.get("full_description", "") or existing.get("fullDescription", "") or ""
+                    new_desc = job.get("full_description", "") or job.get("fullDescription", "") or ""
                     
                     # If existing has HTML (>200 chars) and new is short/link (<200 chars)
                     # KEEP EXISTING description fields
                     if len(old_desc) > 200 and len(new_desc) < 200:
-                        job["fullDescription"] = old_desc
+                        job["full_description"] = old_desc
                         job["description"] = existing.get("description", job.get("description"))
                         # Preserve parsed sections if they exist in old but not new
                         if existing.get("responsibilities"):
@@ -337,19 +337,20 @@ class JobAggregator:
                             job["qualifications"] = existing.get("qualifications")
                             job["benefits"] = existing.get("benefits")
                             
-                    # Update (Upsert=True to be safe)
-                    await self.db.jobs.update_one(filter_query, {"$set": job}, upsert=True)
-                else:
-                    # New job
-                    await self.db.jobs.update_one(filter_query, {"$set": job}, upsert=True)
-                
+                # Final cleanup: Ensure no camelCase metadata leaks to Supabase
+                job.pop('createdAt', None)
+                job.pop('updatedAt', None)
+                job.pop('fullDescription', None)
+                            
+                # Upsert to Supabase
+                SupabaseService.upsert_job(job)
                 stored_count += 1
                 
             except Exception as e:
                 logger.error(f"Error processing job {job.get('title', 'Unknown')}: {e}")
                 continue
                 
-        logger.info(f"Stored {stored_count} jobs in MongoDB")
+        logger.info(f"Stored {stored_count} jobs in Supabase")
         return stored_count
         
     async def refresh_jobs_light(self) -> Dict[str, Any]:
@@ -369,37 +370,9 @@ class JobAggregator:
         
     async def get_job_stats(self) -> Dict[str, Any]:
         """
-        Get statistics about jobs in the database
+        Get statistics about jobs in the database (Supabase)
         
         Returns:
             Dictionary with job statistics
         """
-        try:
-            total_jobs = self.db.jobs.count_documents({})
-            
-            # Count by source
-            by_source = {}
-            for source in ["Adzuna", "JSearch", "USAJobs.gov"]:
-                count = self.db.jobs.count_documents({"source": source})
-                by_source[source] = count
-            
-            # Count RSS sources
-            rss_sources = await self.db.jobs.distinct('source', {"source": {"$regex": "^RSS-"}})
-            for s in rss_sources:
-                count = await self.db.jobs.count_documents({"source": s})
-                by_source[s] = count
-                
-            # Count by work type
-            by_work_type = {}
-            for work_type in ["Remote", "Hybrid", "On-site"]:
-                count = self.db.jobs.count_documents({"workType": work_type})
-                by_work_type[work_type] = count
-                
-            return {
-                "total_jobs": total_jobs,
-                "by_source": by_source,
-                "by_work_type": by_work_type
-            }
-        except Exception as e:
-            logger.error(f"Error getting job stats: {e}")
-            return {"error": str(e)}
+        return SupabaseService.get_job_stats_24h()

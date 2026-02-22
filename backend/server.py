@@ -6160,10 +6160,14 @@ async def get_jobs(
                 "pages": total_pages
             }
         }
+    except Exception as e:
+        logger.error(f"Project Orion Job Fetch Error: {str(e)}")
+        # Raise here to avoid falling through to MongoDB logic
+        raise HTTPException(status_code=500, detail=f"Job fetch failed: {str(e)}")
 
-        # --- FALLBACK TO MONGODB ---
-        if db is None:
-            raise HTTPException(status_code=503, detail="Database not available")
+    # --- FALLBACK TO MONGODB (Original Logic - Only reached if try block is bypassed) ---
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
         
         # Build query - only jobs from last 72 hours
         query = {

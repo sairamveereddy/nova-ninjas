@@ -18,6 +18,7 @@ import hashlib
 import html
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
+from supabase_service import SupabaseService
 import re
 import json
 
@@ -1410,9 +1411,9 @@ async def fetch_all_job_categories(db=None) -> List[Dict[str, Any]]:
     return all_jobs
 
 
-async def update_jobs_in_database(db, jobs: List[Dict[str, Any]]) -> int:
+async def update_jobs_in_database(jobs: List[Dict[str, Any]], db=None) -> int:
     """
-    Update jobs in MongoDB database
+    Update jobs in Supabase database
     """
     if not jobs:
         logger.warning("No jobs to update")
@@ -1423,43 +1424,32 @@ async def update_jobs_in_database(db, jobs: List[Dict[str, Any]]) -> int:
         sources = list(set(job.get("source", "unknown") for job in jobs))
         
         # Mark old jobs from these sources as inactive
-        # This is a bit aggressive if we are fetching partial lists, but acceptable for aggregator
-        await db.jobs.update_many(
-            {"source": {"$in": sources}},
-            {"$set": {"isActive": False}}
-        )
+        SupabaseService.mark_jobs_inactive(sources)
         
-        # Insert/update new jobs
-        count = 0
+        # Format jobs for Supabase (ensure job_id and ISO dates)
         for job in jobs:
-            # Ensure job is active
-            job["isActive"] = True
-            
-            # Upsert by externalId
-            result = await db.jobs.update_one(
-                {"externalId": job["externalId"]},
-                {"$set": job},
-                upsert=True
-            )
-            if result.upserted_id or result.modified_count:
-                count += 1
+            job["is_active"] = True
+            job["job_id"] = job.get("externalId") or job.get("job_id")
+            # Cleanup camelCase if present
+            job.pop("isActive", None)
+            job.pop("externalId", None)
+            if isinstance(job.get("createdAt"), datetime):
+                job["createdAt"] = job["createdAt"].isoformat()
+            if isinstance(job.get("updatedAt"), datetime):
+                job["updatedAt"] = job["updatedAt"].isoformat()
+
+        # Bulk upsert
+        count = SupabaseService.upsert_jobs(jobs)
         
-        # Ensure all formatted/inserted jobs are explicitly active
-        external_ids = [job["externalId"] for job in jobs]
-        await db.jobs.update_many(
-            {"externalId": {"$in": external_ids}},
-            {"$set": {"isActive": True}}
-        )
-        
-        logger.info(f"💾 Database update complete: {count} jobs inserted/updated")
+        logger.info(f"💾 Supabase update complete: {count} jobs inserted/updated")
         return count
         
     except Exception as e:
-        logger.error(f"❌ Database update failed: {e}")
+        logger.error(f"❌ Supabase update failed: {e}")
         return 0
 
 
-async def scheduled_job_fetch(db):
+async def scheduled_job_fetch(db=None):
     """
     Task to be run on schedule
     Uses JobAggregator for robust multi-source fetching
@@ -1469,7 +1459,8 @@ async def scheduled_job_fetch(db):
     try:
         from job_apis.job_aggregator import JobAggregator
         
-        aggregator = JobAggregator(db)
+        # Aggregator internal storage is now Supabase-native
+        aggregator = JobAggregator()
         
         # Run aggregation
         # FOCUS ON QUALITY: Disable Adzuna/JSearch as they lack full descriptions
@@ -1487,8 +1478,8 @@ async def scheduled_job_fetch(db):
         # Fallback to legacy method if aggregator fails entirely
         try:
             logger.info("⚠️ Falling back to legacy fetcher...")
-            jobs = await fetch_all_job_categories(db)
-            if jobs and db is not None:
-                await update_jobs_in_database(db, jobs)
+            jobs = await fetch_all_job_categories()
+            if jobs:
+                await update_jobs_in_database(jobs)
         except Exception as fallback_error:
             logger.error(f"❌ Fallback fetch also failed: {fallback_error}")
