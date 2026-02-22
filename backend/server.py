@@ -3816,19 +3816,21 @@ async def _get_enriched_user_context(user: dict, db=None) -> dict:
         profile = SupabaseService.get_user_by_email(user_email)
         if profile:
             if not target_role:
-                target_role = profile.get("target_role") or profile.get("jobTitle")
+                target_role = profile.get("role") or profile.get("target_role") or profile.get("jobTitle")
             if not resume_text:
                 resume_text = profile.get("resume_text") or profile.get("resumeText")
 
     # 3. Check saved_resumes table
     if not target_role or not resume_text:
         saved_resumes = SupabaseService.get_saved_resumes(user_id)
-        for res_doc in saved_resumes:
-            found_role = res_doc.get("jobTitle") or res_doc.get("target_role") or res_doc.get("role")
-            found_text = res_doc.get("resumeText") or res_doc.get("textContent") or res_doc.get("text_content") or res_doc.get("text")
+        if saved_resumes:
+            # Sort by created_at desc to get latest
+            saved_resumes.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+            res_doc = saved_resumes[0]
+            found_role = res_doc.get("job_title") or res_doc.get("jobTitle") or res_doc.get("target_role") or res_doc.get("role")
+            found_text = res_doc.get("resume_text") or res_doc.get("resumeText") or res_doc.get("textContent") or res_doc.get("text_content") or res_doc.get("text")
             if found_role and not target_role: target_role = found_role
             if found_text and not resume_text: resume_text = found_text
-            if target_role and resume_text: break
 
     # 4. Fallback Extraction from text
     if not target_role and resume_text:
@@ -3986,28 +3988,28 @@ def _calculate_match_score(job: Dict[str, Any], user: Optional[Dict[str, Any]]) 
                 keyword_score = int(overlap_ratio * 100)
         
         # ---------------------------------------------------------
-        # 4. Final Aggregation (Project Orion V3 - Boosted)
+        # 4. Final Aggregation (Project Orion V3.1 - Dynamic)
         # ---------------------------------------------------------
-        # Baseline for ANY authenticated user to avoid "dead" scores
-        # User wants 24-30% minimum for any job.
-        base_score = 26 
+        import random
+        base_score = 21 + random.randint(0, 5) # 21-26% for irrelevant roles
+        
+        # Broad detection for technical roles
+        is_tech_job = any(w in job_text for w in ["software", "engineer", "developer", "data", "ai", "tech", "it", "platform", "devops", "cloud", "backend", "frontend", "programmer", "systems"])
         
         if title_match:
-            # Direct match (e.g. AI Engineer for AI Engineer) -> floor 85%
-            # This satisfies user's request for >85% on relevant roles
-            # Scaled slightly based on keywords for variance (85-99%)
-            final_score = 85 + min(int(keyword_score * 0.15), 14)
+            # Direct/Strong match (e.g. AI Engineer for AI Engineer) -> floor 75%
+            # Variance based on keyword overlap (75-98%)
+            final_score = 75 + min(int(keyword_score * 0.23), 23)
+        elif is_tech_job:
+            # Relevant technical field but title mismatch (e.g. Frontend vs Backend)
+            # This covers the 65-89% range for technical roles
+            final_score = 65 + min(int(keyword_score * 0.24), 24)
         else:
-            # Poor role match: Scale from 26% to 45%
-            # High enough to be "useful" but low enough to prioritize role matches
-            final_score = base_score + min(keyword_score, 19)
-            
-            # Field penalty
-            if not any(word in job_text for word in ["engineer", "developer", "software", "analyst", "data", "ai", "tech", "it", "code"]):
-                 if any(word in job_text for word in ["dentist", "doctor", "nurse", "medical"]):
-                      final_score = min(final_score, 15)
+            # Non-technical or poor match (e.g. Dental, Medical)
+            # Variance 21-40% max to stay within user request
+            final_score = base_score + min(keyword_score // 5, 14)
 
-        return min(99, max(base_score if title_match else 20, final_score))
+        return min(99, max(base_score, final_score))
         
     except Exception as e:
         # Fallback
@@ -5780,7 +5782,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "v": "v2_supabase_22_02_1820",
+        "v": "v2_supabase_22_02_1900",
         "mongodb": "connected" if db is not None else "failed",
         "supabase": "connected" if supabase_client is not None else "failed",
         "groq_api_key_set": groq_key is not None and len(groq_key) > 0,
