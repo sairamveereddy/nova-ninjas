@@ -4180,8 +4180,8 @@ async def debug_adzuna_check():
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/api/debug/config-check")
-async def config_check():
+@app.get("/api/debug/diagnostic")
+async def diagnostic_check():
     """Diagnostic to check environment and code version."""
     import hashlib
     
