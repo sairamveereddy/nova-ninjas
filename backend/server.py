@@ -3885,12 +3885,26 @@ def _format_supabase_job(job: Dict[str, Any]) -> Dict[str, Any]:
         return job
 
     # Basic mapping
+    source_url = job.get("source_url") or job.get("url")
+    job_id_val = job.get("job_id") or ""
+    company_name = job.get("company") or ""
+    
+    # FALLBACK: Reconstruct URL for common ATS if missing
+    if not source_url and job_id_val:
+        company_slug = company_name.lower().replace(" ", "")
+        if job_id_val.startswith("gh-"):
+            gh_id = job_id_val.replace("gh-", "")
+            source_url = f"https://job-boards.greenhouse.io/{company_slug}/jobs/{gh_id}"
+        elif job_id_val.startswith("lever-") or "-post-" in job_id_val:
+            lev_id = job_id_val.replace("lever-", "")
+            source_url = f"https://jobs.lever.co/{company_slug}/{lev_id}"
+
     formatted = {
         **job,
         "_id": str(job.get("id")),
         "id": str(job.get("id")),
-        "sourceUrl": job.get("source_url") or job.get("url"),
-        "url": job.get("source_url") or job.get("url"),
+        "sourceUrl": source_url,
+        "url": source_url,
         "salaryRange": job.get("salary_range") or job.get("salary") or "Competitive",
         "jobType": job.get("job_type") or job.get("type") or "Full-time",
         "type": job.get("job_type") or job.get("type") or "onsite",
@@ -5766,7 +5780,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "v": "v2_supabase_22_02_1810",
+        "v": "v2_supabase_22_02_1820",
         "mongodb": "connected" if db is not None else "failed",
         "supabase": "connected" if supabase_client is not None else "failed",
         "groq_api_key_set": groq_key is not None and len(groq_key) > 0,
