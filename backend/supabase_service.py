@@ -96,7 +96,7 @@ class SupabaseService:
             
             # Type filter
             if job_type and job_type != "all":
-                query = query.ilike("contract_type", f"%{job_type}%")
+                query = query.ilike("job_type", f"%{job_type}%")
 
             response = query\
                 .order("created_at", desc=True)\
@@ -129,7 +129,7 @@ class SupabaseService:
             if visa:
                 query = query.contains("categories", ["sponsoring"])
             if job_type and job_type != "all":
-                query = query.ilike("contract_type", f"%{job_type}%")
+                query = query.ilike("job_type", f"%{job_type}%")
 
             response = query.limit(0).execute()
             return response.count if response.count is not None else 0
@@ -646,13 +646,33 @@ class SupabaseService:
             return None
 
     @staticmethod
+    def _sanitize_job_data(job_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Remove fields that don't exist in Supabase jobs table"""
+        allowed_columns = {
+            'id', 'job_id', 'title', 'company', 'description', 'location', 
+            'source', 'job_type', 'salary', 'is_active', 'keywords', 
+            'source_url', 'posted_at', 'created_at', 'categories'
+        }
+        
+        # Map datePosted to posted_at if needed
+        if 'datePosted' in job_data and 'posted_at' not in job_data:
+            job_data['posted_at'] = job_data.pop('datePosted')
+            
+        # Map contract_type to job_type if needed
+        if 'contract_type' in job_data and 'job_type' not in job_data:
+            job_data['job_type'] = job_data.pop('contract_type')
+            
+        return {k: v for k, v in job_data.items() if k in allowed_columns}
+
+    @staticmethod
     def upsert_job(job_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Upsert job data into Supabase using job_id for deduplication"""
         client = SupabaseService.get_client()
         if not client: return None
         try:
+            sanitized_data = SupabaseService._sanitize_job_data(job_data)
             # We use 'job_id' (the external ID like adzuna_123) for conflict resolution
-            response = client.table("jobs").upsert(job_data, on_conflict="job_id").execute()
+            response = client.table("jobs").upsert(sanitized_data, on_conflict="job_id").execute()
             return response.data[0] if response.data else None
         except Exception as e:
             logger.error(f"Error upserting job: {e}")
@@ -672,7 +692,8 @@ class SupabaseService:
             count = 0
             for i in range(0, len(jobs), chunk_size):
                 chunk = jobs[i : i + chunk_size]
-                response = client.table("jobs").upsert(chunk, on_conflict="job_id").execute()
+                sanitized_chunk = [SupabaseService._sanitize_job_data(j) for j in chunk]
+                response = client.table("jobs").upsert(sanitized_chunk, on_conflict="job_id").execute()
                 count += len(response.data) if response.data else 0
             
             logger.info(f"💾 Successfully upserted {count} jobs to Supabase.")
