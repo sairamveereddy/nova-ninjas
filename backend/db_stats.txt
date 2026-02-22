@@ -1,23 +1,23 @@
 📊 Collection Sizes for novaninjas:
 - job_sync_status          :        3 docs |   0.00 MB (data) |   0.04 MB (storage)
-- resumes                  :      157 docs |   0.39 MB (data) |   0.19 MB (storage)
-- jobs                     :        6 docs |   0.01 MB (data) | 133.68 MB (storage)
+- resumes                  :      162 docs |   0.40 MB (data) |   0.23 MB (storage)
+- jobs                     :    22673 docs | 135.35 MB (data) |  44.41 MB (storage)
 - users                    :       52 docs |   0.02 MB (data) |   0.05 MB (storage)
 - interview_turns          :       23 docs |   0.01 MB (data) |   0.04 MB (storage)
 - daily_usage              :       12 docs |   0.00 MB (data) |   0.04 MB (storage)
 - profiles                 :       15 docs |   0.02 MB (data) |   0.06 MB (storage)
-- saved_resumes            :      134 docs |   0.51 MB (data) |   0.27 MB (storage)
+- saved_resumes            :      139 docs |   0.53 MB (data) |   0.25 MB (storage)
 - interview_resumes        :        9 docs |   0.00 MB (data) |   0.04 MB (storage)
-- scans                    :       62 docs |   0.41 MB (data) |   0.24 MB (storage)
+- scans                    :       62 docs |   0.41 MB (data) |   0.22 MB (storage)
 - evaluation_reports       :        3 docs |   0.01 MB (data) |   0.04 MB (storage)
-- applications             :      480 docs |   2.96 MB (data) |   0.79 MB (storage)
+- applications             :      485 docs |   2.99 MB (data) |   0.79 MB (storage)
 - call_bookings            :        3 docs |   0.00 MB (data) |   0.04 MB (storage)
 - interview_sessions       :        9 docs |   0.01 MB (data) |   0.04 MB (storage)
 - user_consents            :        5 docs |   0.00 MB (data) |   0.04 MB (storage)
 
-Total Storage Size: 135.58 MB
+Total Storage Size: 46.30 MB
 
 🕵️ Sampling one job document:
-ID: 698ab8b3943b324947273e3e
-Created At: 2026-02-10 04:48:50.659000 (Type: <class 'datetime.datetime'>)
+ID: 699538dfe929224e7752d55e
+Created At: 2026-02-18 03:58:23.229000 (Type: <class 'datetime.datetime'>)
 Source: adzuna

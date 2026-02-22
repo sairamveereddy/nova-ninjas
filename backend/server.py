@@ -119,16 +119,27 @@ else:
     openai_client = None
     logger.warning("OPENAI_API_KEY not set. OpenAI features will be disabled.")
 
-client = None
-db = None # Kept as None for defensive edge cases
+from motor.motor_asyncio import AsyncIOMotorClient
+
+try:
+    db_name = os.environ.get("DB_NAME", "novaninjas")
+    mongo_url = os.environ.get("MONGO_URL")
+
+    client = AsyncIOMotorClient(
+        mongo_url,
+        tlsAllowInvalidCertificates=True
+    )
+    db = client[db_name]
+    logger.info(f"✅ MongoDB client initialized for database: {db_name}")
+except Exception as e:
+    logger.error(f"❌ Failed to initialize MongoDB client: {str(e)}")
+    client = None
+    db = None
 
 # Initialize Rate Limiter
 limiter = Limiter(key_func=get_remote_address)
 
 # Create the main app
-# Create the main app
-# Secure Docs: Hide in production
-# Secure Docs: Hide in production
 is_prod = os.environ.get("ENVIRONMENT") == "production"
 docs_url = None if is_prod else "/docs"
 redoc_url = None if is_prod else "/redoc"
