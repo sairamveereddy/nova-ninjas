@@ -5,7 +5,7 @@
 const PRODUCTION_API_URL = '';
 
 // Development API URL
-const DEVELOPMENT_API_URL = 'http://localhost:8001';
+const DEVELOPMENT_API_URL = 'http://localhost:8000';
 
 // Determine environment
 const isProduction = window.location.hostname !== 'localhost' &&

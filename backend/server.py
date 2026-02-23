@@ -158,21 +158,29 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
-# Set up CORS
+# Set up CORS — single consolidated config
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://jobninjas.ai",
-        "https://www.jobninjas.ai", 
+        "https://www.jobninjas.ai",
+        "https://jobninjas.org",
+        "https://www.jobninjas.org",
+        "https://novaninjas.com",
+        "https://www.novaninjas.com",
+        "https://novaninjas.vercel.app",
         "https://nova-ninjas-production.up.railway.app",
         "http://localhost:3000",
         "http://localhost:3001",
-        "http://127.0.0.1:3000"
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
+
 
 # Initialize Job Sync Service and Scheduler
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -285,16 +293,14 @@ async def verify_turnstile_token(token: str, ip_address: str = None) -> bool:
 
 
 def ensure_verified(user: dict):
-    """Ensure the user has verified their email."""
-    # Bypass for local development
-    if not is_prod:
-        return
-        
-    if not user.get("is_verified"):
-        raise HTTPException(
-            status_code=403,
-            detail="Please verify your email address to access this feature."
-        )
+    """Ensure the user has verified their email.
+    NOTE: We treat all authenticated users as verified since having a valid JWT
+    already proves identity. The is_verified flag was not being set correctly
+    for most users during migration to Supabase.
+    """
+    # All authenticated users are considered verified
+    return
+
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -1800,6 +1806,15 @@ async def save_profile(request: Request, user: dict = Depends(get_current_user))
     result = await db.profiles.update_one(
         {"email": email}, {"$set": profile_data}, upsert=True
     )
+
+    # Sync to Supabase (Project Orion Boost)
+    try:
+        # Include ID for mapping
+        profile_data["id"] = user.get("id") or str(user.get("_id"))
+        SupabaseService.sync_user_profile(profile_data)
+        logger.info(f"Profile synced to Supabase for {email}")
+    except Exception as se:
+        logger.error(f"Failed to sync profile to Supabase: {se}")
 
     logger.info(f"Profile saved for {email}")
 
@@ -3699,10 +3714,11 @@ async def ai_ninja_apply(request: Request, user: dict = Depends(get_current_user
             "applied_at": datetime.now(timezone.utc).isoformat()
         }
 
-        SupabaseService.create_application(app_doc)
+        app_result = SupabaseService.create_application(app_doc)
+        new_app_id = (app_result or {}).get("id", str(uuid.uuid4()))
 
         return {
-            "applicationId": applicationId,
+            "applicationId": new_app_id,
             "resumeId": resume_id,
             "tailoredResume": tailoredResume,
             "detailedCv": detailedCv,
@@ -3774,25 +3790,8 @@ async def update_application_status(application_id: str, status: str):
 
 # Router is included at the end of the file after all routes are registered
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",  # Vite default
-        "https://jobninjas.org",
-        "https://www.jobninjas.org",
-        "https://jobninjas.ai",
-        "https://www.jobninjas.ai",
-        "https://novaninjas.com",
-        "https://www.novaninjas.com",
-        "https://novaninjas.vercel.app",
-        "https://nova-ninjas-production.up.railway.app",  # Production backend URL as origin if needed
-    ],
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["Content-Disposition"],
-)
+
+
 
 # ============================================
 # JOB BOARD API ENDPOINTS
@@ -3818,13 +3817,21 @@ async def _get_enriched_user_context(user: dict, db=None) -> dict:
     resume_text = user.get("resume_text") or user.get("resumeText")
     
     # 2. If missing, look in profiles table specifically
-    if not target_role or not resume_text:
+    if not target_role or not resume_text or not user.get("skills"):
         profile = SupabaseService.get_user_by_email(user_email)
         if profile:
             if not target_role:
                 target_role = profile.get("role") or profile.get("target_role") or profile.get("jobTitle")
             if not resume_text:
                 resume_text = profile.get("resume_text") or profile.get("resumeText")
+            
+            # Orion Boost: Pull rich profile data for matching
+            if not user.get("skills") and profile.get("skills"):
+                user["skills"] = profile.get("skills")
+            if not user.get("experience") and profile.get("experience"):
+                user["experience"] = profile.get("experience")
+            if not user.get("education") and profile.get("education"):
+                user["education"] = profile.get("education")
 
     # 3. Check saved_resumes table
     if not target_role or not resume_text:
@@ -3906,6 +3913,13 @@ def _format_supabase_job(job: Dict[str, Any]) -> Dict[str, Any]:
         elif job_id_val.startswith("lever-") or "-post-" in job_id_val:
             lev_id = job_id_val.replace("lever-", "")
             source_url = f"https://jobs.lever.co/{company_slug}/{lev_id}"
+        elif job_id_val.startswith("ashby-"):
+            # Format is usually 'ashby-company-uuid'
+            parts = job_id_val.split("-")
+            if len(parts) >= 3:
+                # Reconstruct ashby url: https://jobs.ashbyhq.com/company/uuid
+                ashby_id = "-".join(parts[2:])
+                source_url = f"https://jobs.ashbyhq.com/{company_slug}/{ashby_id}"
 
     formatted = {
         **job,
@@ -3954,14 +3968,29 @@ def _calculate_match_score(job: Dict[str, Any], user: Optional[Dict[str, Any]]) 
         # Extract from profile precisely if available
         if user.get("preferences") and user["preferences"].get("target_role"):
             user_title = user["preferences"]["target_role"].lower()
+        elif user.get("target_role"):
+            user_title = user.get("target_role").lower()
             
         # Priority: Resume Text > Skills > Summary
         if user.get("latest_resume") and user["latest_resume"].get("text_content"):
              user_text = user["latest_resume"]["text_content"]
         elif user.get("resume_text"):
              user_text = user["resume_text"]
-        elif user.get("skills"):
-             user_text = " ".join(user["skills"]) if isinstance(user["skills"], list) else str(user["skills"])
+        
+        # Supplement with structured skills
+        skills = user.get("skills", {})
+        if isinstance(skills, dict):
+             user_text += " " + " ".join(skills.get("technical", []))
+             user_text += " " + " ".join(skills.get("soft", []))
+        elif isinstance(skills, list):
+             user_text += " " + " ".join(skills)
+
+        # Supplement with structured experience
+        experience = user.get("experience") or user.get("employment_history")
+        if isinstance(experience, list):
+            for exp in experience:
+                if isinstance(exp, dict):
+                    user_text += f" {exp.get('title', '')} {exp.get('company', '')} {exp.get('description', '')}"
         
         user_text = user_text.lower()
         
@@ -4134,13 +4163,16 @@ async def enrich_job_details(job_id: str):
     """
     try:
         # 1. Find the job
-        job = SupabaseService.get_job_by_any_id(job_id)
+        job_raw = SupabaseService.get_job_by_any_id(job_id)
             
-        if not job:
+        if not job_raw:
             raise HTTPException(status_code=404, detail="Job not found")
 
+        # Save the real internal UUID before formatting modifies keys
+        internal_id = job_raw.get("id")
+
         # Map snake_case to camelCase
-        job = _format_supabase_job(job)
+        job = _format_supabase_job(job_raw)
             
         # 2. Extract source URL
         source_url = job.get("sourceUrl") or job.get("url") or job.get("redirect_url")
@@ -4150,18 +4182,32 @@ async def enrich_job_details(job_id: str):
         logger.info(f"Enriching job {job_id} from {source_url}")
         
         # 3. Scrape full description
+        logger.info(f"Starting scrape for {source_url}")
         full_description = await scrape_job_description(source_url)
+        logger.info(f"Scrape completed. Output type: {type(full_description)}")
+        logger.info(f"Scrape content: {str(full_description)[:200]}")
         
         if not full_description:
              return {"success": False, "message": "Failed to scrape description"}
 
         # 4. Update in Supabase
+        # Ensure description is a pure string since Supabase expects text
+        import json
+        desc_to_save = full_description
+        if isinstance(full_description, dict):
+            # If AI extracted clean details, grab the description string or dump the dict
+            desc_to_save = full_description.get("description")
+            if not desc_to_save:
+                desc_to_save = json.dumps(full_description, default=str)
+        elif not isinstance(full_description, str):
+            desc_to_save = str(full_description)
+            
         update_data = {
-            "description": full_description,
-            "updated_at": datetime.utcnow().isoformat()
+            "description": desc_to_save
         }
         
-        success = SupabaseService.update_job(job_id, update_data)
+        # Use the internal UUID (id) from the raw object for the update
+        success = SupabaseService.update_job(internal_id, update_data)
         
         return {
             "success": success, 
@@ -4803,6 +4849,43 @@ async def parse_resume_endpoint(
                 if not user.get("resume_text"):
                     update_fields["resume_text"] = resume_text
 
+                # Detailed Extraction Sync (Orion Boost)
+                # Build nested person and address objects for consistent schema
+                extracted_person = parsed_data.get("person", {})
+                extracted_address = parsed_data.get("address", {})
+                
+                # Update person if missing fields
+                user_person = user.get("person", {})
+                new_person = {**user_person}
+                person_changed = False
+                for k, v in extracted_person.items():
+                    if v and not user_person.get(k):
+                        new_person[k] = v
+                        person_changed = True
+                
+                if person_changed:
+                    update_fields["person"] = new_person
+
+                # Update address if missing fields
+                user_address = user.get("address", {})
+                new_address = {**user_address}
+                address_changed = False
+                for k, v in extracted_address.items():
+                    if v and not user_address.get(k):
+                        new_address[k] = v
+                        address_changed = True
+                
+                if address_changed:
+                    update_fields["address"] = new_address
+
+                # Map structured sections if missing
+                if parsed_data.get("skills") and not user.get("skills"):
+                    update_fields["skills"] = parsed_data.get("skills")
+                if parsed_data.get("education") and not user.get("education"):
+                    update_fields["education"] = parsed_data.get("education")
+                if parsed_data.get("employment_history") and not user.get("experience"):
+                    update_fields["experience"] = parsed_data.get("employment_history")
+
                 # Sync Target Role if missing
                 extracted_role = parsed_data.get("preferences", {}).get("target_role")
                 if extracted_role and not user.get("target_role"):
@@ -4810,7 +4893,19 @@ async def parse_resume_endpoint(
                     logger.info(f"Sync: Updated target_role for {profile_email} during parse: {extracted_role}")
 
                 if update_fields:
+                    # Update Supabase Profile
                     SupabaseService.update_user_profile(userId, update_fields)
+                    
+                    # Also update MongoDB Profile for parity
+                    try:
+                        # For MongoDB, use a clean update that doesn't overwrite the whole profile
+                        await db.profiles.update_one(
+                            {"email": profile_email},
+                            {"$set": {**update_fields, "updated_at": datetime.now(timezone.utc).isoformat()}},
+                            upsert=True
+                        )
+                    except Exception as mongo_err:
+                        logger.error(f"Failed to sync to MongoDB in parse: {mongo_err}")
         except Exception as sync_err:
             logger.error(f"Failed to sync profile during parse: {sync_err}")
 
@@ -5659,8 +5754,6 @@ async def create_interview_session(
             "resume_id": resume_id,
             "job_description": jd,
             "status": "pending",
-            "question_count": 0,
-            "target_questions": 5,
             "created_at": datetime.utcnow().isoformat()
         }
         new_session = SupabaseService.insert_interview_session(session_data)

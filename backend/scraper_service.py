@@ -228,6 +228,40 @@ async def scrape_job_description(url: str) -> Dict[str, Any]:
             # No ID found, just fetch the URL as is
             html, status = await fetch_url_content(processed_url)
     
+    # Specific handling for Greenhouse URLs - use their public JSON API directly
+    elif "greenhouse.io" in processed_url.lower():
+        # Patterns: job-boards.greenhouse.io/{company}/jobs/{id} OR boards.greenhouse.io/{company}/jobs/{id}
+        gh_match = re.search(r'greenhouse\.io/([^/]+)/jobs/(\d+)', processed_url, re.IGNORECASE)
+        if gh_match:
+            company_slug = gh_match.group(1)
+            job_id = gh_match.group(2)
+            api_url = f"https://boards-api.greenhouse.io/v1/boards/{company_slug}/jobs/{job_id}"
+            logger.info(f"Targeting Greenhouse API directly: {api_url}")
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                        if resp.status == 200:
+                            job_data = await resp.json()
+                            title = job_data.get("title", "")
+                            company = job_data.get("departments", [{}])[0].get("name", company_slug) if job_data.get("departments") else company_slug
+                            location = job_data.get("location", {}).get("name", "") if isinstance(job_data.get("location"), dict) else str(job_data.get("location", ""))
+                            # content is HTML - parse it
+                            raw_desc_html = job_data.get("content", "")
+                            raw_desc = BeautifulSoup(raw_desc_html, "html.parser").get_text(separator="\n") if raw_desc_html else ""
+                            if raw_desc:
+                                return {
+                                    "success": True,
+                                    "description": raw_desc.strip(),
+                                    "jobTitle": title,
+                                    "company": company,
+                                    "location": location
+                                }
+                        logger.warning(f"Greenhouse API returned status {resp.status} for {api_url}")
+            except Exception as e:
+                logger.error(f"Greenhouse API call failed: {e}")
+        # Fallback to HTML scraping if API didn't work
+        html, status = await fetch_url_content(processed_url)
+
     # Specific handling for Workday URLs - they are almost always JS-heavy and block simple scraping
     elif "myworkdayjobs.com" in processed_url.lower():
         return {
