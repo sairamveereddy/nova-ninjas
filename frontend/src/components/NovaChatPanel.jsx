@@ -169,11 +169,16 @@ const NovaChatPanel = ({ isOpen, onClose, jobContext }) => {
                             ? 'bg-blue-600 text-white rounded-br-none'
                             : 'bg-gray-100 text-gray-800 rounded-tl-none'
                             }`}>
-                            <div className="text-sm leading-relaxed whitespace-pre-wrap"
-                                dangerouslySetInnerHTML={{
-                                    __html: msg.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')
-                                }}
-                            />
+                            {(() => {
+                                const content = typeof msg.content === 'string' ? msg.content : String(msg.content || '');
+                                return (
+                                    <div className="text-sm leading-relaxed whitespace-pre-wrap"
+                                        dangerouslySetInnerHTML={{
+                                            __html: content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')
+                                        }}
+                                    />
+                                );
+                            })()}
                         </div>
                     </div>
                 ))}

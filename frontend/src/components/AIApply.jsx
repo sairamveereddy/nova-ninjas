@@ -286,7 +286,7 @@ const AIApply = () => {
   };
 
   const sanitizeFileName = (base, company, extension) => {
-    const safeCompany = (company || 'Company').trim().replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_');
+    const safeCompany = String(company || 'Company').trim().replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_');
     return `${base}_${safeCompany}.${extension}`;
   };
 

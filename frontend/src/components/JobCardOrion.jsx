@@ -100,7 +100,7 @@ const JobCardOrion = ({ job, onAskNova }) => {
                         <img src={job.companyLogo} alt={job.company}
                             className="w-full h-full object-contain rounded-lg" />
                     ) : (
-                        <span>{job.company.charAt(0)}</span>
+                        <span>{String(job.company || '?').charAt(0)}</span>
                     )}
                 </div>
 

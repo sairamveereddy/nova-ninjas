@@ -62,7 +62,7 @@ const HighlightText = ({ text, keywords }) => {
   if (!keywords || keywords.length === 0) return <>{text}</>;
 
   // Escape special regex characters
-  const escapedKeywords = keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const escapedKeywords = keywords.map(k => (typeof k === 'string' ? k : String(k || '')).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   const regex = new RegExp(`(${escapedKeywords.join('|')})`, 'gi');
   const parts = text.split(regex);
 

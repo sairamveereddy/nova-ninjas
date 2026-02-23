@@ -1,0 +1,14 @@
+{
+  "adzuna": 0,
+  "jsearch": 0,
+  "usajobs": 500,
+  "rss": 584,
+  "total_fetched": 4775,
+  "total_unique": 4081,
+  "total_stored": 4081,
+  "errors": [],
+  "greenhouse": 2988,
+  "lever": 139,
+  "ashby": 564,
+  "elapsed_seconds": 462.694774
+}

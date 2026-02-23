@@ -292,14 +292,9 @@ const OneClickOptimize = () => {
                                 <div className="resume-preview-panel">
                                     <h3><FileText className="w-5 h-5" /> Live Preview</h3>
                                     <div className="preview-scroll-area">
-                                        <div className="preview-scale-wrapper">
-                                            <ResumePaper
-                                                content={optimizedResume.optimizedText || optimizedResume.resumeText}
-                                                scale={0.6}
-                                                fontFamily={selectedFont}
-                                                template={selectedTemplate}
-                                            />
-                                        </div>
+                                        <pre className="resume-text-view">
+                                            {optimizedResume.optimizedText || optimizedResume.resumeText || 'No resume content available.'}
+                                        </pre>
                                     </div>
                                 </div>
                             </div>

@@ -144,19 +144,37 @@ class SupabaseService:
         if not client: return None
         
         try:
+            # Extract nested Orion data if present
+            person = user_dict.get("person", {})
+            address = user_dict.get("address", {})
+            
             # Map MongoDB fields to SQL columns
             # This handles both db.users and db.profiles documents
             profile_data = {
                 "id": str(user_dict.get("id") or user_dict.get("_id")),
-                "email": user_dict.get("email"),
-                "name": user_dict.get("name") or user_dict.get("fullName"),
+                "email": user_dict.get("email") or person.get("email"),
+                "name": user_dict.get("name") or user_dict.get("fullName") or person.get("fullName"),
                 "role": user_dict.get("role", "customer"),
                 "plan": user_dict.get("plan", "free"),
                 "is_verified": user_dict.get("is_verified", False),
-                "summary": user_dict.get("summary"),
+                "summary": user_dict.get("summary") or user_dict.get("resume_summary"),
                 "resume_text": user_dict.get("resume_text") or user_dict.get("resumeText"),
                 "latest_resume": user_dict.get("latest_resume"),
-                "profile_picture": user_dict.get("profile_picture") or user_dict.get("picture")
+                "profile_picture": user_dict.get("profile_picture") or user_dict.get("picture"),
+                
+                # Orion Boost: Detailed structured data
+                "target_role": user_dict.get("target_role") or user_dict.get("targetRole") or user_dict.get("preferences", {}).get("target_role"),
+                "phone": user_dict.get("phone") or person.get("phone"),
+                "location": user_dict.get("location") or person.get("location") or f"{address.get('city', '')}, {address.get('state', '')}".strip(", "),
+                "linkedin_url": user_dict.get("linkedin_url") or user_dict.get("linkedinUrl") or person.get("linkedinUrl"),
+                "github_url": user_dict.get("github_url") or user_dict.get("githubUrl") or person.get("githubUrl"),
+                "portfolio_url": user_dict.get("portfolio_url") or user_dict.get("portfolioUrl") or person.get("portfolioUrl"),
+                
+                "skills": user_dict.get("skills"),
+                "education": user_dict.get("education"),
+                "experience": user_dict.get("experience") or user_dict.get("employment_history"),
+                "work_authorization": user_dict.get("work_authorization"),
+                "preferences": user_dict.get("preferences")
             }
             
             # Clean up None values to avoid overwriting with null if unwanted

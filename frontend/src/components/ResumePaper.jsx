@@ -177,7 +177,7 @@ const ResumePaper = ({ content, scale = 1, onContentChange, fontFamily = '"Times
                         {parsed.summary && (
                             <div style={{ margin: '8px 0 0 0', padding: 0 }}>
                                 <h2 style={{ fontSize: '11pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: isModern ? 'none' : '1px solid black', margin: 0, padding: 0, color: isModern ? '#3b82f6' : '#000' }}>Professional Summary</h2>
-                                <p style={{ fontSize: '10pt', lineHeight: '1.2', textAlign: 'justify', margin: '2px 0 0 0', padding: 0 }}>{parsed.summary.trim()}</p>
+                                <p style={{ fontSize: '10pt', lineHeight: '1.2', textAlign: 'justify', margin: '2px 0 0 0', padding: 0 }}>{String(parsed.summary || '').trim()}</p>
                             </div>
                         )}
 
@@ -185,8 +185,8 @@ const ResumePaper = ({ content, scale = 1, onContentChange, fontFamily = '"Times
                             <div style={{ margin: '8px 0 0 0', padding: 0 }}>
                                 <h2 style={{ fontSize: '11pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: isModern ? 'none' : '1px solid black', margin: 0, padding: 0, color: isModern ? '#3b82f6' : '#000' }}>Skills</h2>
                                 <div style={{ fontSize: '10pt', lineHeight: '1.2', margin: '2px 0 0 0', padding: 0 }}>
-                                    {parsed.skills.split('\n').filter(l => l.trim()).map((skillLine, i) => (
-                                        <div key={i} style={{ margin: 0, padding: 0 }}>• {skillLine.replace(/^([•\-\*]|#+)\s*/, '')}</div>
+                                    {String(parsed.skills || '').split('\n').filter(l => l.trim()).map((skillLine, i) => (
+                                        <div key={i} style={{ margin: 0, padding: 0 }}>• {String(skillLine || '').replace(/^([•\-\*]|#+)\s*/, '')}</div>
                                     ))}
                                 </div>
                             </div>
@@ -196,8 +196,8 @@ const ResumePaper = ({ content, scale = 1, onContentChange, fontFamily = '"Times
                             <div style={{ margin: '8px 0 0 0', padding: 0 }}>
                                 <h2 style={{ fontSize: '11pt', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: isModern ? 'none' : '1px solid black', margin: 0, padding: 0, color: isModern ? '#3b82f6' : '#000' }}>Experience</h2>
                                 <div style={{ fontSize: '10pt', lineHeight: '1.2', margin: '2px 0 0 0', padding: 0 }}>
-                                    {parsed.experience.split('\n').map((line, i) => {
-                                        const trimmed = line.trim();
+                                    {String(parsed.experience || '').split('\n').map((line, i) => {
+                                        const trimmed = String(line || '').trim();
                                         if (!trimmed) return null;
                                         const isBullet = trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*');
                                         if (isBullet) {

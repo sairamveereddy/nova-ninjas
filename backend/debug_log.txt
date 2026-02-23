@@ -55,3 +55,27 @@ Target Role: ''
 User: srkreddy452@gmail.com
 Resume Length: 0
 Target Role: ''
+
+--- PARSE RESUME 2026-02-22 16:50:17.275049 ---
+User: srkreddy452@gmail.com
+Filename: Optimized_Resume_Voya_Financial (1).docx
+Content Length: 38956
+Parsed Text Length: 4245
+Parsed Text Preview: SAIRAM KUMAR
+(217)-862-4693 | vsairamkumarreddy@gmail.com | Linkedin
+PROFESSIONAL SUMMARY
+AI Archite
+Starting extraction...
+Extraction complete. Keys: ['person', 'address', 'education', 'employment_history', 'skills', 'work_authorization', 'preferences']
+
+--- PARSE RESUME 2026-02-22 23:59:25.154184 ---
+User: srkreddy452@gmail.com
+Filename: Optimized_Resume_Voya_Financial (1).docx
+Content Length: 38956
+Parsed Text Length: 4245
+Parsed Text Preview: SAIRAM KUMAR
+(217)-862-4693 | vsairamkumarreddy@gmail.com | Linkedin
+PROFESSIONAL SUMMARY
+AI Archite
+Starting extraction...
+Extraction complete. Keys: ['person', 'address', 'education', 'employment_history', 'skills', 'work_authorization', 'preferences']

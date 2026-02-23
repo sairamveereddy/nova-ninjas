@@ -1,0 +1,15 @@
+﻿--- DUMPING DATA FOR srkreddy452@gmail.com (UID: 40a061cd-8036-4733-b5ff-dc9094d83384) ---
+
+SAVED RESUMES (5 found):
+- None (uploaded: None)
+- Optimized_Resume_Company.docx (uploaded: None)
+- Optimized_Resume_Company.docx (uploaded: None)
+- Optimized_Resume_Company.docx (uploaded: None)
+- Optimized_Resume_Company.docx (uploaded: None)
+
+RESUMES COLLECTION (5 found):
+- 6988a1ca60b32fdf9ab3c4a2 (created: 2026-02-08 14:46:34.015000)
+- 6980e02553d3e3fc10f22fef (created: 2026-02-02 17:34:29.004000)
+- 6980ded853d3e3fc10f22fec (created: 2026-02-02 17:28:56.028000)
+- 6980a3e87685c7ef67bd312d (created: 2026-02-02 13:17:28.186000)
+- 6980a32c9d22052424a3d251 (created: 2026-02-02 13:14:20.345000)

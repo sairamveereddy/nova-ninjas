@@ -88,9 +88,10 @@ Return ONLY a JSON array of strings like: ["bullet 1", "bullet 2", ...]`;
                 }
             } catch {
                 // Extract bullets from text response
-                const lines = data.response.split('\n').filter(line => line.trim().startsWith('-') || line.trim().startsWith('•'));
+                const responseText = typeof data.response === 'string' ? data.response : String(data.response || '');
+                const lines = responseText.split('\n').filter(line => line.trim().startsWith('-') || line.trim().startsWith('•'));
                 if (lines.length > 0) {
-                    setBulletPoints(lines.map(l => l.replace(/^[-•]\s*/, '').trim()));
+                    setBulletPoints(lines.map(l => (typeof l === 'string' ? l : String(l)).replace(/^[-•]\s*/, '').trim()));
                 } else {
                     // Fallback
                     setBulletPoints([

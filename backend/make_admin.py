@@ -1,51 +1,30 @@
 import asyncio
-import os
-import sys
-from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
+load_dotenv('.env')
+from supabase_service import SupabaseService
+from motor.motor_asyncio import AsyncIOMotorClient
+import os
 
-# Load env vars
-load_dotenv()
-
-MONGO_URL = os.environ.get("MONGO_URL")
-DB_NAME = os.environ.get("DB_NAME", "novaninjas")
-
-if not MONGO_URL:
-    print("Error: MONGO_URL not set in environment or .env file")
-    sys.exit(1)
-
-async def make_admin(email):
-    print(f"Connecting to {DB_NAME}...")
+async def make_admin():
+    email = "srkreddy452@gmail.com"
+    # Update Supabase
+    client = SupabaseService.get_client()
     try:
-        client = AsyncIOMotorClient(MONGO_URL)
-        db = client[DB_NAME]
-        
-        user = await db.users.find_one({"email": email})
-        if not user:
-            print(f"User not found: {email}")
-            return
-
-        print(f"Found user: {user.get('name')} ({user.get('role', 'customer')})")
-        
-        result = await db.users.update_one(
-            {"email": email},
-            {"$set": {"role": "admin"}}
-        )
-        
-        if result.modified_count > 0:
-            print(f"Successfully updated {email} to ADMIN role.")
-        else:
-            print(f"User {email} was already an admin or update failed.")
-            
+        res = client.table("profiles").update({"role": "admin"}).eq("email", email).execute()
+        print(f"Supabase update: {res.data}")
     except Exception as e:
-        print(f"Error: {e}")
-    finally:
-        client.close()
-
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python make_admin.py <email>")
-        sys.exit(1)
+        print(f"Supabase update error: {e}")
+    
+    # Update MongoDB
+    try:
+        mongo_url = os.environ.get("MONGO_URL")
+        db_name = os.environ.get("DB_NAME", "novaninjas")
+        m_client = AsyncIOMotorClient(mongo_url, tlsAllowInvalidCertificates=True)
+        db = m_client[db_name]
         
-    email = sys.argv[1]
-    asyncio.run(make_admin(email))
+        result = await db.users.update_one({"email": email}, {"$set": {"role": "admin"}})
+        print(f"MongoDB update: modified {result.modified_count} documents")
+    except Exception as e:
+        print(f"MongoDB update error: {e}")
+
+asyncio.run(make_admin())

@@ -74,7 +74,8 @@ Return ONLY the summary text, no explanations.`;
             }
 
             const data = await response.json();
-            setSummary(data.response.trim());
+            const responseText = typeof data.response === 'string' ? data.response : String(data.response || '');
+            setSummary(responseText.trim());
 
         } catch (err) {
             setError(err.message);

@@ -1,0 +1,44 @@
+L34: from motor.motor_asyncio import AsyncIOMotorClient
+L106: # Initialize OpenAI client conditionally
+L109: openai_client = AsyncOpenAI(api_key=openai_api_key)
+L111: openai_client = None
+L126: client = None
+L127: db = None
+L132: db = None
+L139: # Motor/PyMongo 4.x uses tlsAllowInvalidCertificates instead of ssl_cert_reqs
+L140: client = AsyncIOMotorClient(
+L149: db = client[db_name]
+L150: logger.info(f"✅ MongoDB client initialized for database: {db_name}")
+L153: logger.error(f"❌ Failed to initialize MongoDB client: {str(e)}")
+L154: db = None
+L284: async with aiohttp.ClientSession() as session:
+L340: async def startup_db_client():
+L342: app.mongodb_client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
+L343: app.mongodb = app.mongodb_client.get_database()
+L494: client_name: str
+L499: client_name: str
+L1065: await client.admin.command("ping")
+L1113: async with aiohttp.ClientSession() as session:
+L1185: async with aiohttp.ClientSession() as session:
+L1529: client_ip = request.client.host if request.client else None
+L1530: if not await verify_turnstile_token(user_data.turnstile_token, client_ip):
+L1600: client_ip = request.client.host if request.client else None
+L1601: if not await verify_turnstile_token(credentials.turnstile_token, client_ip):
+L2626: # Get Google Client ID from environment or use the one from the request
+L2627: GOOGLE_CLIENT_ID = os.getenv(
+L2628: "GOOGLE_CLIENT_ID",
+L2633: credential, google_requests.Request(), GOOGLE_CLIENT_ID
+L2968: async with aiohttp.ClientSession() as session:
+L3129: user_id=session.get("client_reference_id"),
+L4029: # IDOR Fix: Ignore client-provided userId, use authenticated user
+L5038: async with aiohttp.ClientSession() as session:
+L6030: GOOGLE_CLIENT_ID = os.getenv(
+L6031: "GOOGLE_CLIENT_ID",
+L6036: credential, google_requests.Request(), GOOGLE_CLIENT_ID
+L6731: if not openai_client:
+L6782: response = await openai_client.chat.completions.create(
+L6803: if not openai_client:
+L6833: response = await openai_client.chat.completions.create(
+L7206: async def shutdown_db_client():
+L7207: if client:
+L7208: client.close()

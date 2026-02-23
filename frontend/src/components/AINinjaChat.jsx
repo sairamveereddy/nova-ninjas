@@ -154,8 +154,10 @@ const AINinjaChat = ({ isOpen: propIsOpen, onClose }) => {
                                     ? 'bg-blue-600 text-white rounded-tr-sm'
                                     : 'bg-white border border-gray-100 text-gray-700 rounded-tl-sm'
                                 }`}>
-                                {/* Render bold text for job context */}
-                                <span dangerouslySetInnerHTML={{ __html: msg.content.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') }} />
+                                {(() => {
+                                    const content = typeof msg.content === 'string' ? msg.content : String(msg.content || '');
+                                    return <span dangerouslySetInnerHTML={{ __html: content.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') }} />;
+                                })()}
                             </div>
 
                             {/* Suggested Chips (Only on Welcome Message) */}

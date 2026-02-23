@@ -157,7 +157,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Derived state
-  const hasActiveSubscription = user?.subscription_status === 'active' || user?.plan === 'unlimited' || user?.plan === 'pro' || user?.plan === 'ai-yearly';
+  const hasActiveSubscription = user?.subscription_status === 'active' || user?.plan === 'unlimited' || user?.plan === 'pro' || user?.plan === 'ai-yearly'
+    || user?.role === 'admin' || user?.role === 'employee' || user?.is_admin === true;
   const isTrialActive = user?.subscription_status === 'trial' && new Date(user?.trial_expires_at) > new Date();
 
   const contextValue = {

@@ -655,7 +655,7 @@ const Dashboard = () => {
         is_already_tailored: true
       };
 
-      const safeCompany = (app.company || 'Company').trim().replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_');
+      const safeCompany = String(app.company || 'Company').trim().replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_');
       const fileName = `Tailored_Resume_${safeCompany}.docx`;
 
       const response = await fetch(endpoint, {

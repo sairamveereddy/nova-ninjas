@@ -288,10 +288,10 @@ const ProfileOrion = ({
 
                             {job.summary && (
                                 <div className="text-sm text-gray-600 leading-relaxed mb-6 bg-gray-50/50 p-4 rounded-xl border border-gray-50">
-                                    {job.summary.split('\n').filter(Boolean).map((line, i) => (
+                                    {String(job.summary || '').split('\n').filter(Boolean).map((line, i) => (
                                         <div key={i} className="flex gap-2 mb-1">
                                             <span className="text-emerald-500 shrink-0 mt-0.5"><CheckCircle2 className="w-3.5 h-3.5" /></span>
-                                            <span>{line.replace(/^[•\-\*]\s*/, '')}</span>
+                                            <span>{String(line || '').replace(/^[•\-\*]\s*/, '')}</span>
                                         </div>
                                     ))}
                                 </div>

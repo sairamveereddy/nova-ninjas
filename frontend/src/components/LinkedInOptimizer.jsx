@@ -114,7 +114,8 @@ I'm open to connecting with fellow professionals and exploring new opportunities
             }
 
             const data = await response.json();
-            setResult(data.response);
+            const responseText = typeof data.response === 'string' ? data.response : String(data.response || '');
+            setResult(responseText);
 
         } catch (err) {
             setError(err.message);

@@ -82,10 +82,19 @@ const JobDetailsOrion = () => {
                 const j = data.job || data;
 
                 if (j && (j.id || j._id || j.externalId)) {
+                    const safeString = (val) => {
+                        if (!val) return '';
+                        if (typeof val === 'string') return val;
+                        if (typeof val === 'object') return val.description || JSON.stringify(val);
+                        return String(val);
+                    };
+
                     const normalised = {
                         ...j,
                         id: j.id || j._id || j.externalId,
                         sourceUrl: j.sourceUrl || j.url || j.redirect_url,
+                        fullDescription: safeString(j.fullDescription),
+                        description: safeString(j.description),
                         salaryRange: j.salaryRange && j.salaryRange !== '0' ? j.salaryRange : 'Competitive',
                         postedDate: j.createdAt ? formatTimeAgo(j.createdAt) : 'Recently',
                         logo: j.companyLogo || j.logo,
@@ -114,8 +123,8 @@ const JobDetailsOrion = () => {
                     }
 
                     // AUTO-ENRICH: If description is too short (likely a snippet), enrich it
-                    const desc = j.fullDescription || j.description || "";
-                    if (desc.length < 1000 && (j.sourceUrl || j.url || j.redirect_url)) {
+                    const descCheck = safeString(j.fullDescription || j.description);
+                    if (descCheck.length < 1000 && (j.sourceUrl || j.url || j.redirect_url)) {
                         enrichJob(j.id || j._id || j.externalId);
                     }
                 } else {
@@ -153,10 +162,17 @@ const JobDetailsOrion = () => {
             if (response.ok) {
                 const data = await response.json();
                 if (data.success && data.description) {
+
+                    // Safely extract the description string if the backend returned an object
+                    let descText = data.description;
+                    if (typeof data.description === 'object' && data.description !== null) {
+                        descText = data.description.description || JSON.stringify(data.description);
+                    }
+
                     setJob(prev => ({
                         ...prev,
-                        fullDescription: data.description,
-                        description: data.description // Removed .substring(0, 1000)
+                        fullDescription: descText,
+                        description: descText
                     }));
                 }
             }
@@ -180,8 +196,9 @@ const JobDetailsOrion = () => {
         return d.toLocaleDateString();
     }
 
-    function inferSeniority(title = '') {
-        const t = title.toLowerCase();
+    function inferSeniority(title) {
+        // Robust string coercion
+        const t = (typeof title === 'string' ? title : String(title || '')).toLowerCase();
         if (/chief|cto|ceo|vp|vice president/.test(t)) return 'Executive';
         if (/director|head of|principal/.test(t)) return 'Director';
         if (/staff|distinguished/.test(t)) return 'Staff';
@@ -191,14 +208,14 @@ const JobDetailsOrion = () => {
         return 'Mid Level';
     }
 
-    function inferExperience(title = '') {
+    function inferExperience(title) {
         const s = inferSeniority(title);
         const map = { Executive: '15+ years exp', Director: '10+ years exp', Staff: '8+ years exp', Senior: '5+ years exp', 'Mid Level': '3+ years exp', 'Entry Level': '0-2 years exp', Intern: 'Student' };
         return map[s] || '3+ years exp';
     }
 
-    function inferRemoteType(title = '', loc = '') {
-        const t = `${title} ${loc}`.toLowerCase();
+    function inferRemoteType(title, loc) {
+        const t = `${typeof title === 'string' ? title : String(title || '')} ${typeof loc === 'string' ? loc : String(loc || '')}`.toLowerCase();
         if (/remote/.test(t)) return /hybrid/.test(t) ? 'Hybrid' : 'Remote';
         if (/on-?site|in-?office/.test(t)) return 'On-site';
         if (/hybrid/.test(t)) return 'Hybrid';
@@ -206,7 +223,11 @@ const JobDetailsOrion = () => {
     }
 
     function extractSkills(j) {
-        const desc = (j.fullDescription || j.description || '').toLowerCase();
+        if (!j) return [];
+        // Robust string coercion for technical skills extraction
+        const rawDesc = j.fullDescription || j.description || '';
+        const desc = (typeof rawDesc === 'string' ? rawDesc : (typeof rawDesc === 'object' ? rawDesc.description || JSON.stringify(rawDesc) : String(rawDesc))).toLowerCase();
+
         const techSkills = [
             'Python', 'JavaScript', 'TypeScript', 'React', 'Node.js', 'Java', 'C++', 'Go', 'Rust', 'Ruby', 'Scala', 'Swift',
             'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD', 'DevOps',
@@ -239,7 +260,13 @@ const JobDetailsOrion = () => {
     /** Parse the full description into structured sections */
     function parseDescriptionSections(text) {
         if (!text) return { intro: '', sections: [] };
-        let t = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        // Safely coerce to string - description may be a JSON object from Supabase
+        if (typeof text !== 'string') {
+            text = (typeof text === 'object' && text.description) ? text.description : JSON.stringify(text);
+        }
+        // Safely replace line breaks using robust coercion
+        const safeText = (typeof text === 'string' ? text : String(text || ''));
+        let t = safeText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
         const headerDefs = [
             { key: 'description', patterns: ['job description', 'about the role', 'about the job', 'about this role', 'the role', 'overview', "what you'll do", 'what you will do', 'how you will contribute'] },
             { key: 'responsibilities', patterns: ['responsibilities', 'key responsibilities', "what you'll be doing", 'your impact'] },
@@ -250,7 +277,11 @@ const JobDetailsOrion = () => {
             { key: 'about', patterns: ['about the company', 'about us', 'who we are', 'our company', 'disclaimers'] },
         ];
         const allP = headerDefs.flatMap(h => h.patterns);
-        const escaped = allP.map(p => p.replace(/[.*+?${}()|[\]\\]/g, '\\$&'));
+        // Escape regex special chars safely
+        const escaped = allP.map(p => {
+            const str = typeof p === 'string' ? p : String(p);
+            return str.replace(/[.*+?${}()|[\]\\]/g, '\\$&');
+        });
         const headerRegex = new RegExp('^\s*(' + escaped.join('|') + ')[\s:]*$', 'gim');
         const matches = [];
         let match;
@@ -276,31 +307,38 @@ const JobDetailsOrion = () => {
     const formatJobDescription = (text) => {
         if (!text) return '';
         // If it's already complex HTML (from enrichment), just clean up problematic artifact tags/whitespace
-        if (/<(p|div|ul|li|strong|h[1-6])[\s\S]*>/i.test(text)) {
-            return text.replace(/&nbsp;/g, ' ').replace(/\n\s*\n/g, '<br/>');
+        if (/\u003c(p|div|ul|li|strong|h[1-6])[\\s\\S]*\u003e/i.test(text)) {
+            const txt = typeof text === 'string' ? text : String(text);
+            return txt.replace(/\u0026nbsp;/g, ' ').replace(/\n\s*\n/g, '\u003cbr/\u003e');
         }
 
-        let f = text;
+        let f = typeof text === 'string' ? text : String(text);
         const headers = ["About the Role", "About the Job", "About Us", "Summary", "What You Will Do", "Responsibilities", "Key Responsibilities", "Requirements", "Qualifications", "Minimum Qualifications", "Preferred Qualifications", "Benefits", "Compensation", "What We Offer", "How You Will Contribute", "Who You Are"];
-        headers.forEach(h => { f = f.replace(new RegExp(`(${h}[:\\?]?)`, 'gi'), '<br/><br/><strong class="text-gray-900 block mb-2">$1</strong>'); });
-        f = f.replace(/([•\-])\s/g, '<br/>$1 ').replace(/\n/g, '<br/>').replace(/(<br\/>){3,}/g, '<br/><br/>');
+        headers.forEach(h => {
+            const pattern = new RegExp(`(${h}[:\\?]?)`, 'gi');
+            f = f.replace(pattern, '\u003cbr/\u003e\u003cbr/\u003e\u003cstrong class=\"text-gray-900 block mb-2\"\u003e$1\u003c/strong\u003e');
+        });
+        f = f.replace(/([•\-])\s/g, '\u003cbr/\u003e$1 ')
+            .replace(/\n/g, '\u003cbr/\u003e')
+            .replace(/(\u003cbr\/\u003e){3,}/g, '\u003cbr/\u003e\u003cbr/\u003e');
         return f;
     };
 
     const renderBulletList = (items) => {
-        if (!items || typeof items !== 'string') return null;
+        if (!items) return null;
+        const strItems = typeof items === 'string' ? items : String(items);
         // If content contains HTML, render it directly
-        if (/<[a-z][\s\S]*>/i.test(items)) {
-            return <div className="text-gray-700 text-sm leading-relaxed prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: formatJobDescription(items) }} />;
+        if (/\u003c[a-z][\\s\\S]*\u003e/i.test(strItems)) {
+            return <div className="text-gray-700 text-sm leading-relaxed prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: formatJobDescription(strItems) }} />;
         }
-        const list = items.split(/\n+/).filter(i => i.trim().length > 0);
+        const list = strItems.split(/\n+/).filter(i => i.trim().length > 0);
         if (!list.length) return null;
         return (
             <ul className="space-y-3">
                 {list.map((item, i) => (
                     <li key={i} className="flex items-start gap-3">
                         <div className="mt-1.5 min-w-[6px] h-[6px] rounded-full bg-gray-800" />
-                        <span className="text-gray-700 text-sm leading-relaxed">{item.replace(/^[•\-\*]\s*/, '')}</span>
+                        <span className="text-gray-700 text-sm leading-relaxed">{(typeof item === 'string' ? item : String(item)).replace(/^[•\-\*]\s*/, '')}</span>
                     </li>
                 ))}
             </ul>
@@ -557,7 +595,8 @@ const JobDetailsOrion = () => {
 
                             {/* ─── PARSED DESCRIPTION SECTIONS ── */}
                             {(() => {
-                                const fullText = job.fullDescription || job.description || '';
+                                const rawText = job.fullDescription || job.description || '';
+                                const fullText = typeof rawText === 'string' ? rawText : (rawText?.description || JSON.stringify(rawText));
                                 const parsed = parseDescriptionSections(fullText);
                                 const hasBackendSections = job.responsibilities || job.qualifications;
                                 const hasParsedSections = parsed.sections.length > 0;
@@ -769,10 +808,10 @@ const JobDetailsOrion = () => {
                                 <div className="bg-white rounded-xl border border-gray-200 p-6">
                                     <h3 className="text-lg font-bold text-gray-900 mb-4">Benefits</h3>
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                        {job.benefits.split(/\n+/).slice(0, 9).map((b, i) => (
+                                        {(typeof job.benefits === 'string' ? job.benefits : String(job.benefits)).split(/\n+/).slice(0, 9).map((b, i) => (
                                             <div key={i} className="flex items-center gap-2 text-sm text-gray-600 p-2 bg-gray-50 rounded-lg">
                                                 <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                                                <span className="truncate">{b.replace(/^[•\-\*]\s*/, '')}</span>
+                                                <span className="truncate">{(typeof b === 'string' ? b : String(b)).replace(/^[•\-\*]\s*/, '')}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -846,7 +885,7 @@ const JobDetailsOrion = () => {
                                         {cd.website && (
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-gray-500 flex items-center gap-2"><Globe className="w-4 h-4" /> Website</span>
-                                                <a href={cd.website} target="_blank" rel="noreferrer" className="font-medium text-blue-600 hover:underline truncate max-w-[160px]">{cd.website.replace('https://', '')}</a>
+                                                <a href={cd.website} target="_blank" rel="noreferrer" className="font-medium text-blue-600 hover:underline truncate max-w-[160px]">{(typeof cd.website === 'string' ? cd.website : String(cd.website)).replace('https://', '')}</a>
                                             </div>
                                         )}
                                     </div>

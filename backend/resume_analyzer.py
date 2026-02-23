@@ -89,9 +89,10 @@ async def call_groq_api(prompt: str, max_tokens: int = 4000, model: str = None, 
     }
     
     # Use global default if not specifically overridden
+    # NOTE: keeping retries LOW to avoid blocking the async event loop
     if max_retries is None:
-        max_retries = 7
-    base_delay = 4
+        max_retries = 3  # Was 7 - reduced to prevent event loop blockage
+    base_delay = 2  # Was 4 - shorter backoff window
     
     logger.info(f"Calling Groq API with model: {target_model} (max_retries: {max_retries})")
     
