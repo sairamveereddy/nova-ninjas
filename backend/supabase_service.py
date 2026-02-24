@@ -161,7 +161,7 @@ class SupabaseService:
                 "resume_text": user_dict.get("resume_text") or user_dict.get("resumeText"),
                 "latest_resume": user_dict.get("latest_resume"),
                 "profile_picture": user_dict.get("profile_picture") or user_dict.get("picture"),
-                
+
                 # Orion Boost: Detailed structured data
                 "target_role": user_dict.get("target_role") or user_dict.get("targetRole") or user_dict.get("preferences", {}).get("target_role"),
                 "phone": user_dict.get("phone") or person.get("phone"),
@@ -169,12 +169,19 @@ class SupabaseService:
                 "linkedin_url": user_dict.get("linkedin_url") or user_dict.get("linkedinUrl") or person.get("linkedinUrl"),
                 "github_url": user_dict.get("github_url") or user_dict.get("githubUrl") or person.get("githubUrl"),
                 "portfolio_url": user_dict.get("portfolio_url") or user_dict.get("portfolioUrl") or person.get("portfolioUrl"),
-                
+
                 "skills": user_dict.get("skills"),
                 "education": user_dict.get("education"),
                 "experience": user_dict.get("experience") or user_dict.get("employment_history"),
                 "work_authorization": user_dict.get("work_authorization"),
-                "preferences": user_dict.get("preferences")
+                "preferences": user_dict.get("preferences"),
+
+                # Ensure created_at is explicitly stored for accurate admin stats
+                "created_at": (
+                    user_dict.get("created_at").isoformat()
+                    if hasattr(user_dict.get("created_at"), "isoformat")
+                    else (user_dict.get("created_at") or datetime.utcnow().isoformat())
+                ),
             }
             
             # Clean up None values to avoid overwriting with null if unwanted
@@ -1000,15 +1007,70 @@ class SupabaseService:
 
     @staticmethod
     def get_all_users(limit: int = 100) -> List[Dict[str, Any]]:
-        """Get all user profiles from Supabase"""
+        """Get all user profiles from Supabase, sorted newest first"""
         client = SupabaseService.get_client()
         if not client: return []
         try:
-            response = client.table("profiles").select("*").limit(limit).execute()
+            response = (
+                client.table("profiles")
+                .select("*")
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
             return response.data
         except Exception as e:
-            logger.error(f"Error fetching admin users: {e}")
+            logger.error(f"Error fetching admin users: {repr(e)}")
             return []
+
+    @staticmethod
+    def get_admin_stats() -> Dict[str, Any]:
+        """Compute high-level admin stats from the profiles table"""
+        client = SupabaseService.get_client()
+        if not client:
+            return {"total_users": 0, "new_users_24h": 0, "subscription_stats": {"pro": 0, "free": 0},
+                    "total_resumes_tailored": 0, "total_jobs_applied": 0}
+        try:
+            cutoff_24h = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+
+            # All users
+            all_resp = client.table("profiles").select("id, plan, created_at", count="exact").execute()
+            total_users = all_resp.count or len(all_resp.data)
+            rows = all_resp.data or []
+
+            # New in last 24h
+            new_24h = sum(1 for r in rows if r.get("created_at") and r["created_at"] >= cutoff_24h)
+
+            # Subscription breakdown
+            pro_plans = {"pro", "unlimited", "ai-yearly", "ai-monthly"}
+            pro_count = sum(1 for r in rows if (r.get("plan") or "").lower() in pro_plans)
+            free_count = total_users - pro_count
+
+            # Applications count
+            try:
+                apps_resp = client.table("applications").select("id", count="exact").execute()
+                total_apps = apps_resp.count or 0
+            except Exception:
+                total_apps = 0
+
+            # Resumes/scans count
+            try:
+                scans_resp = client.table("resume_scans").select("id", count="exact").execute()
+                total_scans = scans_resp.count or 0
+            except Exception:
+                total_scans = 0
+
+            return {
+                "total_users": total_users,
+                "new_users_24h": new_24h,
+                "subscription_stats": {"pro": pro_count, "free": free_count},
+                "total_jobs_applied": total_apps,
+                "total_resumes_tailored": total_scans,
+            }
+        except Exception as e:
+            logger.error(f"Error computing admin stats: {repr(e)}")
+            return {"total_users": 0, "new_users_24h": 0, "subscription_stats": {"pro": 0, "free": 0},
+                    "total_resumes_tailored": 0, "total_jobs_applied": 0}
 
     @staticmethod
     def update_user_profile(user_id: str, update_data: Dict[str, Any]) -> bool:
