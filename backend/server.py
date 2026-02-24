@@ -5725,61 +5725,75 @@ async def create_interview_session(
 ):
     """Create a new interview session"""
     try:
-        import uuid as _uuid
-        raw_user_id = user.get("id") or str(user.get("_id"))
-        # Only pass user_id to Supabase if it's a valid UUID (36-char format)
-        # MongoDB ObjectIds (24 hex chars) are NOT valid Supabase UUIDs
-        try:
-            _uuid.UUID(str(raw_user_id))
-            supabase_user_id = str(raw_user_id)
-        except (ValueError, AttributeError):
-            supabase_user_id = None
-        
-        # Read resume
+        # Read resume bytes
         file_content = await resume.read()
-        
-        # Simple extraction
-        if resume.filename.endswith('.pdf'):
-            parsed_text = f"[PDF Resume: {resume.filename}]"
-        elif resume.filename.endswith('.docx'):
-            parsed_text = f"[DOCX Resume: {resume.filename}]"
-        else:
+        filename = resume.filename or ""
+
+        # Parse resume text from file
+        parsed_text = ""
+        try:
+            if filename.lower().endswith('.docx'):
+                import io
+                from docx import Document as DocxDocument
+                doc = DocxDocument(io.BytesIO(file_content))
+                parsed_text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+            elif filename.lower().endswith('.pdf'):
+                try:
+                    import io
+                    import PyPDF2
+                    reader = PyPDF2.PdfReader(io.BytesIO(file_content))
+                    parsed_text = "\n".join(
+                        page.extract_text() or "" for page in reader.pages
+                    )
+                except Exception:
+                    parsed_text = file_content.decode('utf-8', errors='ignore')
+            else:
+                parsed_text = file_content.decode('utf-8', errors='ignore')
+        except Exception as parse_err:
+            logger.warning(f"Resume parse error ({filename}): {parse_err}")
             parsed_text = file_content.decode('utf-8', errors='ignore')
-        
-        # Save resume to Supabase
+
+        if not parsed_text.strip():
+            parsed_text = f"Resume file: {filename}"
+
+        # NOTE: user_id is intentionally None — our users are in MongoDB, not
+        # Supabase Auth, so the FK constraint on auth.users would reject any ID.
         resume_doc = {
-            "user_id": supabase_user_id,
-            "file_name": resume.filename,
+            "user_id": None,
+            "file_name": filename,
             "parsed_text": parsed_text,
             "created_at": datetime.utcnow().isoformat()
         }
         new_resume = SupabaseService.insert_interview_resume(resume_doc)
-        resume_id = new_resume.get("id") if new_resume else None
-        
-        # Create interview session in Supabase
+        if not new_resume:
+            raise HTTPException(status_code=500, detail="Failed to save resume. Check Supabase interview_resumes table.")
+        resume_id = new_resume.get("id")
+
+        # Create interview session
         session_data = {
-            "user_id": supabase_user_id,
+            "user_id": None,
             "resume_id": resume_id,
             "job_description": jd,
+            "role_title": roleTitle,
             "status": "pending",
             "created_at": datetime.utcnow().isoformat()
         }
         new_session = SupabaseService.insert_interview_session(session_data)
-        session_id = new_session.get("id") if new_session else None
-        
-        if not session_id:
-            logger.error(f"Session insert returned None. Supabase may be misconfigured or interview_sessions table missing.")
-            raise HTTPException(status_code=500, detail="Failed to create interview session. Please try again.")
-        
+        if not new_session:
+            raise HTTPException(status_code=500, detail="Failed to create interview session. Check Supabase interview_sessions table.")
+
+        session_id = new_session.get("id")
         return {
             "success": True,
             "sessionId": str(session_id),
             "message": "Session created successfully"
         }
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Session creation error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Session creation error: {repr(e)}")
+        raise HTTPException(status_code=500, detail=f"Session creation failed: {str(e)}")
 
 
 @app.post("/api/interview/start/{session_id}")
