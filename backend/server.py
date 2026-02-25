@@ -5542,10 +5542,8 @@ async def create_interview_session(
 
         except Exception as sb_err:
             logger.error(f"Supabase interview creation failed: {sb_err}")
-            # We don't necessarily want to fail the whole request if it's just a logging issue,
-            # but here it's the primary store, so we might want to know.
-            # However, the outer catch will handle major failures.
-            pass
+            # Raise here so the user sees the 500 and the real cause
+            raise HTTPException(status_code=500, detail=f"Database error: {str(sb_err)}")
 
 
         return {
