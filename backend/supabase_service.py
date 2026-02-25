@@ -358,7 +358,7 @@ class SupabaseService:
             return response.data[0] if response.data else None
         except Exception as e:
             logger.error(f"Error inserting interview session. Data: {session_data}. Error: {repr(e)}")
-            return None
+            raise
 
     @staticmethod
     def insert_interview_resume(resume_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -372,7 +372,7 @@ class SupabaseService:
             return response.data[0] if response.data else None
         except Exception as e:
             logger.error(f"Error inserting interview resume. Data keys: {list(resume_data.keys())}. Error: {repr(e)}")
-            return None
+            raise
 
     @staticmethod
     def get_interview_resume(resume_id: str) -> Optional[Dict[str, Any]]:
