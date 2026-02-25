@@ -5199,6 +5199,7 @@ async def google_login(request: Request, login_data: GoogleLoginRequest, backgro
                     "google_id": google_id,
                     "profile_picture": picture,
                     "auth_method": "google",
+                    "plan": "free", # Explicitly set plan to match signup default
                     "created_at": (
                         user_dict["created_at"].isoformat()
                         if isinstance(user_dict["created_at"], datetime)
@@ -5208,7 +5209,14 @@ async def google_login(request: Request, login_data: GoogleLoginRequest, backgro
                 }
             )
 
-            SupabaseService.sign_up_user(user_dict)
+            result = SupabaseService.sign_up_user(user_dict)
+            if not result:
+                logger.error(f"FAILED to create user profile in Supabase for {email}")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to create your user profile. Please try again or contact support."
+                )
+            
             logger.info(f"New user created via Google OAuth in Supabase: {email}")
 
 
@@ -5232,7 +5240,7 @@ async def google_login(request: Request, login_data: GoogleLoginRequest, backgro
                     "email": email,
                     "name": name,
                     "role": new_user_obj.role,
-                    "plan": new_user_obj.plan,
+                    "plan": "free",
                     "is_verified": True,
                     "referral_code": new_user_obj.referral_code,
                     "profile_picture": picture,
@@ -5661,7 +5669,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "v3_supabase_only_final_fix: 2299",
+        "version": "v3_supabase_only_final_fix: 2311",
         "database": "supabase"
     }
 

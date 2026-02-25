@@ -38,6 +38,22 @@ BEGIN
     END IF;
 END $$;
 
--- 5. Comments for clarity
-COMMENT ON COLUMN saved_resumes.user_email IS 'User email address for unified lookups across services';
-COMMENT ON COLUMN saved_resumes.file_name IS 'Original filename of the uploaded resume';
+-- 6. Add missing columns to profiles table for Google Login
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='google_id') THEN
+        ALTER TABLE profiles ADD COLUMN google_id TEXT;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='auth_method') THEN
+        ALTER TABLE profiles ADD COLUMN auth_method TEXT;
+    END IF;
+END $$;
+
+COMMENT ON COLUMN profiles.google_id IS 'External Google sub ID for OAuth users';
+COMMENT ON COLUMN profiles.auth_method IS 'Authentication provider (google, email)';
+
+-- 7. Ensure plan has a default and is not null where possible
+ALTER TABLE profiles ALTER COLUMN plan SET DEFAULT 'free';
+
+SELECT 'Resume and Profile schema fixes applied ✅' AS result;
