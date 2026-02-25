@@ -396,7 +396,7 @@ class SupabaseService:
             return True
         except Exception as e:
             logger.error(f"Error updating interview session: {e}")
-            return False
+            raise
 
     @staticmethod
     def get_interview_turns(session_id: str) -> List[Dict[str, Any]]:
@@ -432,7 +432,7 @@ class SupabaseService:
             return True
         except Exception as e:
             logger.error(f"Error updating interview turn: {e}")
-            return False
+            raise
 
     @staticmethod
     def insert_evaluation_report(report_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

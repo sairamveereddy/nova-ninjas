@@ -173,7 +173,8 @@ const InterviewRoom = () => {
             }
         } catch (err) {
             console.error('Submit answer error:', err);
-            setError('Failed to submit answer. Please try again.');
+            setError(`Failed to submit answer: ${err.message}`);
+            alert(`Error: ${err.message}. Please try again.`);
         } finally {
             setIsSubmitting(false);
         }

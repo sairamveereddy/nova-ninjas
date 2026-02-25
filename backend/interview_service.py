@@ -265,6 +265,7 @@ class InterviewOrchestrator:
                 history_list.append(f"Q: {q}\nA: {a if a else '[No Answer]'}")
         
         history = "\n\n".join(history_list)
+        logger.info(f"Submitting answer for session {self.session_id}, history length: {len(history)}")
         
         prompt = InterviewPrompts.NEXT_TURN\
             .replace('{{profile}}', profile)\
@@ -272,7 +273,9 @@ class InterviewOrchestrator:
             .replace('{{history}}', history)\
             .replace('{{lastAnswer}}', answer_text)
         
+        logger.info(f"Calling AIService.chat for session {self.session_id}")
         response = AIService.chat(prompt, json_mode=True)
+        logger.info(f"AIService response received for {self.session_id}: {response[:100]}...")
         result = json.loads(response)
         
         # Save next turn in Supabase
