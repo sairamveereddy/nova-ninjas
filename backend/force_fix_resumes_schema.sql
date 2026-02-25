@@ -55,5 +55,6 @@ COMMENT ON COLUMN profiles.auth_method IS 'Authentication provider (google, emai
 
 -- 7. Ensure plan has a default and is not null where possible
 ALTER TABLE profiles ALTER COLUMN plan SET DEFAULT 'free';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMPTZ;
 
-SELECT 'Resume and Profile schema fixes applied ✅' AS result;
+SELECT 'Resume and Profile schema fixes applied (including plan_expires_at) ✅' AS result;

@@ -348,7 +348,7 @@ async def get_current_user(token: str = Header(None, alias="token")):
     if not email:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    email = email.strip()
+    email = email.lower().strip()
     
     # Get user from Supabase
     supabase_user = SupabaseService.get_user_by_email(email)
@@ -579,13 +579,20 @@ async def update_user_admin(email: str, update_data: dict, admin: dict = Depends
     """
     try:
         # Validate fields
-        allowed_fields = ["plan", "is_verified", "role"]
+        allowed_fields = ["plan", "is_verified", "role", "plan_expires_at"]
         update_set = {}
         
         for field in allowed_fields:
             if field in update_data:
                 update_set[field] = update_data[field]
-                
+        
+        # SPECIAL LOGIC: "Set Pro" for 1 year if requested or if plan becomes "pro" without specific expiry
+        if update_set.get("plan") == "pro" and "plan_expires_at" not in update_set:
+            # Default to 1 year from now
+            one_year_later = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
+            update_set["plan_expires_at"] = one_year_later
+            logger.info(f"Admin setting User {email} to PRO for 1 year (until {one_year_later})")
+
         if not update_set:
             raise HTTPException(status_code=400, detail="No valid fields to update")
             
@@ -1431,7 +1438,7 @@ async def login(request: Request, credentials: UserLogin):
             else:
                 logger.info(f"🛡️ Bypassing Turnstile block for Admin email: {credentials.email}")
 
-        email_clean = credentials.email.strip()
+        email_clean = credentials.email.lower().strip()
 
         # Find user in Supabase
         user = SupabaseService.get_user_by_email(email_clean)
@@ -1468,7 +1475,7 @@ async def login(request: Request, credentials: UserLogin):
                 "referral_code": user.get("referral_code"),
                 "subscription_status": user.get("subscription_status"),
                 "trial_expires_at": user.get("trial_expires_at"),
-                "subscription_expires_at": user.get("subscription_expires_at"),
+                "subscription_expires_at": user.get("subscription_expires_at") or user.get("plan_expires_at"),
                 "ai_applications_bonus": user.get("ai_applications_bonus", 0)
             },
             "token": access_token,
@@ -3243,6 +3250,21 @@ async def get_user_usage_limits(identifier: str) -> dict:
     if not tier:
         tier = "free"
 
+    # Check for plan expiration
+    plan_expires_at = user.get("plan_expires_at")
+    if plan_expires_at:
+        try:
+            if isinstance(plan_expires_at, str):
+                expires_dt = datetime.fromisoformat(plan_expires_at.replace("Z", "+00:00"))
+            else:
+                expires_dt = plan_expires_at
+                
+            if datetime.now(timezone.utc) > expires_dt:
+                logger.info(f"User {user.get('email')} plan '{tier}' expired at {expires_dt}. Reverting to free.")
+                tier = "free"
+        except Exception as e:
+            logger.error(f"Error checking plan expiration for {user.get('email')}: {e}")
+
     sub = user.get("subscription", {})
     if sub and sub.get("status") == "active":
         tier_id = sub.get("plan_id", tier)
@@ -3267,6 +3289,7 @@ async def get_user_usage_limits(identifier: str) -> dict:
 
     if tier_lower in ["pro", "unlimited", "ai-pro", "ai-monthly", "ai-quarterly", "ai-weekly", "human-starter", "human-growth", "human-scale"]:
         limit = "Unlimited"
+        autofills_limit = "Unlimited"
         can_generate = True
     elif tier_lower == "beginner" or tier_lower == "standard" or tier_lower == "ai-beginner":
         limit = 200
@@ -5164,6 +5187,9 @@ async def google_login(request: Request, login_data: GoogleLoginRequest, backgro
                 status_code=401, detail=f"Invalid Google token: {str(e)}"
             )
 
+        # Normalization
+        email = email.lower().strip()
+        
         # Check if user exists in Supabase
         existing_user = SupabaseService.get_user_by_email(email)
 
@@ -5669,7 +5695,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "v3_supabase_only_final_fix: 2315",
+        "version": "v3_supabase_only_final_fix: 2320",
         "database": "supabase"
     }
 

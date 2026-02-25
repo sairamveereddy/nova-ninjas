@@ -50,7 +50,8 @@ class SupabaseService:
         if not client: return None
         
         try:
-            response = client.table("profiles").select("*").eq("email", email).execute()
+            # Case-insensitive lookup using ilike
+            response = client.table("profiles").select("*").ilike("email", email).execute()
             return response.data[0] if response.data else None
         except Exception as e:
             logger.error(f"Error fetching user by email: {e}")
@@ -62,8 +63,18 @@ class SupabaseService:
     def create_profile(user_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         client = SupabaseService.get_client()
         if not client: return None
-        
+
+        if 'email' in user_data:
+            user_data['email'] = user_data['email'].lower().strip()
+            
         try:
+            # Ensure plan defaults and timestamps
+            if 'plan' not in user_data:
+                user_data['plan'] = 'free'
+            
+            # Explicitly log user data for debugging
+            logger.info(f"Supabase SIGNUP attempt for: {user_data.get('email')}")
+            
             response = client.table("profiles").insert(user_data).execute()
             return response.data[0] if response.data else None
         except Exception as e:
@@ -1133,7 +1144,12 @@ class SupabaseService:
         """Create a new user profile in Supabase profiles table"""
         client = SupabaseService.get_client()
         if not client: return None
+        if 'email' in user_data:
+            user_data['email'] = user_data['email'].lower().strip()
+            
         try:
+            # Explicitly log user data for debugging
+            logger.info(f"Supabase sign_up_user attempt for: {user_data.get('email')}")
             response = client.table("profiles").insert(user_data).execute()
             return response.data[0] if response.data else None
         except Exception as e:
