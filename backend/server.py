@@ -5669,13 +5669,8 @@ async def health_check():
 
     return {
         "status": "ok",
-        "v": "v3_supabase_only",
-
-        "supabase": "connected" if supabase_client is not None else "failed",
-        "groq_api_key_set": groq_key is not None and len(groq_key) > 0,
-        "env_check": groq_key is not None,
-        "google_auth_available": id_token is not None,
-        "environment": os.environ.get("ENVIRONMENT", "development")
+        "version": "v3_supabase_only_final_fix_2234",
+        "database": "supabase"
     }
 
 
