@@ -5703,29 +5703,34 @@ async def debug_supabase_connection():
             except Exception as e:
                 summary[table] = {"error": str(e), "success": False}
         
-        # Test Specific User Lookup (srkreddy45@gmail.com)
+        # Test Specific User Lookup (srkreddy@gmail.com)
         try:
-            target_email = "srkreddy45@gmail.com"
+            target_email = "srkreddy@gmail.com"
             existing = SupabaseService.get_user_by_email(target_email)
-            summary["lookup_test"] = {
+            summary["lookup_srk"] = {
                 "email": target_email,
                 "found": existing is not None,
                 "match": existing.get("email") if existing else None,
                 "success": True
             }
         except Exception as e:
-            summary["lookup_test"] = {"error": str(e), "success": False}
+            summary["lookup_srk"] = {"error": f"{type(e).__name__}: {str(e)}", "success": False}
 
         # Check Dependencies & Utilities
         try:
             import bcrypt
+            import jwt
             test_pass = "TestPassword123!"
-            # Use local hash_password (already imported/defined in this file)
             h = hash_password(test_pass)
+            
+            # Test JWT Generation
+            test_token = create_access_token(data={"sub": "test@example.com", "id": "test-id"})
             
             summary["utils"] = {
                 "bcrypt_import": True,
+                "jwt_import": True,
                 "hash_test": h.startswith("$2b$") if h else False,
+                "jwt_test": test_token is not None,
                 "turnstile_key_present": os.environ.get("CLOUDFLARE_TURNSTILE_SECRET_KEY") is not None
             }
         except Exception as e:
@@ -5771,7 +5776,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "v3_supabase_only_final_fix: 2375",
+        "version": "v3_supabase_only_final_fix: 2380",
         "database": "supabase"
     }
 
