@@ -5703,18 +5703,26 @@ async def debug_supabase_connection():
             except Exception as e:
                 summary[table] = {"error": str(e), "success": False}
         
-        # Test Admin Roles
+        # Test and Promote Admin Roles
         try:
             admin_emails = ["srkreddy@gmail.com", "srkreddy45@gmail.com", "srkreddy452@gmail.com"]
             admin_check = {}
             for email in admin_emails:
                 user = SupabaseService.get_user_by_email(email)
+                if user and user.get("role") != "admin":
+                    # Promotion!
+                    SupabaseService.update_user_by_email(email, {"role": "admin"})
+                    user = SupabaseService.get_user_by_email(email) # Re-fetch
+                
                 admin_check[email] = {
                     "found": user is not None,
                     "role": user.get("role") if user else None,
                     "id": user.get("id") if user else None
                 }
             summary["admin_check"] = admin_check
+            
+            # Verify Stats directly
+            summary["stats_direct"] = SupabaseService.get_admin_stats()
         except Exception as e:
             summary["admin_check"] = {"error": str(e), "success": False}
 
@@ -5778,7 +5786,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "v3_supabase_only_final_fix: 2400",
+        "version": "v3_supabase_only_final_fix: 2405",
         "database": "supabase"
     }
 
