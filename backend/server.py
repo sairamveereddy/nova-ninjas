@@ -5716,11 +5716,15 @@ async def debug_supabase_connection():
         except Exception as e:
             summary["lookup_test"] = {"error": str(e), "success": False}
 
-        # Check Dependencies
+        # Check Dependencies & Environment
         try:
             import bcrypt
             import aiohttp
-            summary["deps"] = {"bcrypt": True, "aiohttp": True}
+            summary["deps"] = {
+                "bcrypt": True, 
+                "aiohttp": True,
+                "turnstile_key_present": os.environ.get("CLOUDFLARE_TURNSTILE_SECRET_KEY") is not None
+            }
         except Exception as e:
             summary["deps"] = {"error": str(e)}
 
@@ -5762,7 +5766,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "v3_supabase_only_final_fix: 2360",
+        "version": "v3_supabase_only_final_fix: 2365",
         "database": "supabase"
     }
 
