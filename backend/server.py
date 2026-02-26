@@ -5723,7 +5723,7 @@ async def debug_supabase_connection():
             test_pass = "TestPassword123!"
             h = hash_password(test_pass)
             
-            # Test JWT Generation
+            # Test JWT Generation and Type
             test_token = create_access_token(data={"sub": "test@example.com", "id": "test-id"})
             
             summary["utils"] = {
@@ -5731,6 +5731,7 @@ async def debug_supabase_connection():
                 "jwt_import": True,
                 "hash_test": h.startswith("$2b$") if h else False,
                 "jwt_test": test_token is not None,
+                "jwt_type": str(type(test_token)),
                 "turnstile_key_present": os.environ.get("CLOUDFLARE_TURNSTILE_SECRET_KEY") is not None
             }
         except Exception as e:
@@ -5776,7 +5777,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "v3_supabase_only_final_fix: 2380",
+        "version": "v3_supabase_only_final_fix: 2385",
         "database": "supabase"
     }
 
