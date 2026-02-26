@@ -5686,6 +5686,21 @@ async def get_interview_report(session_id: str, user: dict = Depends(get_current
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/admin/debug-db")
+async def debug_supabase_connection():
+    """Diagnostic endpoint to verify Supabase connectivity."""
+    try:
+        client = SupabaseService.get_client()
+        if not client: return {"error": "Supabase client initialization failed"}
+        summary = {}
+        p_res = client.table("profiles").select("id", count="exact").limit(1).execute()
+        summary["profiles"] = {"count": p_res.count, "success": True}
+        url = os.environ.get("SUPABASE_URL", "MISSING")
+        summary["env"] = {"url": f"{url[:10]}...{url[-5:]}" if url != "MISSING" else "MISSING"}
+        return summary
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/api/health-check")
 async def health_check():
     # from resume_analyzer import GROQ_API_KEY - Removing broken import
@@ -5695,7 +5710,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "v3_supabase_only_final_fix: 2327",
+        "version": "v3_supabase_only_final_fix: 2330",
         "database": "supabase"
     }
 
