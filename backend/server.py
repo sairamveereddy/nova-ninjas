@@ -5688,15 +5688,18 @@ async def get_interview_report(session_id: str, user: dict = Depends(get_current
 
 @app.get("/api/admin/debug-db")
 async def debug_supabase_connection():
-    """Diagnostic endpoint to verify Supabase connectivity."""
+    """Diagnostic endpoint to verify Supabase connectivity and table access."""
     try:
         client = SupabaseService.get_client()
         if not client: return {"error": "Supabase client initialization failed"}
         summary = {}
-        p_res = client.table("profiles").select("id", count="exact").limit(1).execute()
-        summary["profiles"] = {"count": p_res.count, "success": True}
-        url = os.environ.get("SUPABASE_URL", "MISSING")
-        summary["env"] = {"url": f"{url[:10]}...{url[-5:]}" if url != "MISSING" else "MISSING"}
+        # Checks
+        for table in ["profiles", "applications", "interview_sessions", "daily_usage", "saved_resumes"]:
+            try:
+                res = client.table(table).select("id" if table != "daily_usage" else "user_email", count="exact").limit(1).execute()
+                summary[table] = {"count": res.count, "success": True}
+            except Exception as e:
+                summary[table] = {"error": str(e), "success": False}
         return summary
     except Exception as e:
         return {"error": str(e)}
@@ -5710,7 +5713,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "v3_supabase_only_final_fix: 2330",
+        "version": "v3_supabase_only_final_fix: 2335",
         "database": "supabase"
     }
 
