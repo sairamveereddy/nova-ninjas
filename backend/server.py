@@ -5719,8 +5719,8 @@ async def debug_supabase_connection():
         # Check Dependencies & Utilities
         try:
             import bcrypt
-            from server import hash_password
             test_pass = "TestPassword123!"
+            # Use local hash_password (already imported/defined in this file)
             h = hash_password(test_pass)
             
             summary["utils"] = {
@@ -5729,7 +5729,7 @@ async def debug_supabase_connection():
                 "turnstile_key_present": os.environ.get("CLOUDFLARE_TURNSTILE_SECRET_KEY") is not None
             }
         except Exception as e:
-            summary["utils"] = {"error": str(e), "success": False}
+            summary["utils"] = {"error": f"{type(e).__name__}: {str(e)}", "success": False}
 
         # Test Deep Signup Insert (Surface Real Errors)
         try:
@@ -5771,7 +5771,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "v3_supabase_only_final_fix: 2370",
+        "version": "v3_supabase_only_final_fix: 2375",
         "database": "supabase"
     }
 

@@ -102,7 +102,7 @@ const Signup = () => {
         navigate('/'); // Redirect to home page after signup
       }
     } catch (err) {
-      setError('Signup failed. Please try again.');
+      setError(err.message || 'Signup failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
