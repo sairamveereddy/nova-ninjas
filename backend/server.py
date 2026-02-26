@@ -5703,17 +5703,20 @@ async def debug_supabase_connection():
             except Exception as e:
                 summary[table] = {"error": str(e), "success": False}
         
-        # Test Specific User Lookup (srkreddy@gmail.com)
+        # Test Admin Roles
         try:
-            target_email = "srkreddy@gmail.com"
-            existing = SupabaseService.get_user_by_email(target_email)
-            summary["lookup_srk"] = {
-                "email": target_email,
-                "found": existing is not None,
-                "success": True
-            }
+            admin_emails = ["srkreddy@gmail.com", "srkreddy45@gmail.com", "srkreddy452@gmail.com"]
+            admin_check = {}
+            for email in admin_emails:
+                user = SupabaseService.get_user_by_email(email)
+                admin_check[email] = {
+                    "found": user is not None,
+                    "role": user.get("role") if user else None,
+                    "id": user.get("id") if user else None
+                }
+            summary["admin_check"] = admin_check
         except Exception as e:
-            summary["lookup_srk"] = {"error": f"{type(e).__name__}: {str(e)}", "success": False}
+            summary["admin_check"] = {"error": str(e), "success": False}
 
         # Check Dependencies & Utilities
         try:
@@ -5775,7 +5778,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "v3_supabase_only_final_fix: 2395",
+        "version": "v3_supabase_only_final_fix: 2400",
         "database": "supabase"
     }
 
