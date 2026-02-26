@@ -311,27 +311,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 
-@app.get("/api/admin/fix-admin-roles")
-async def fix_admin_roles():
-    """Temporary endpoint to correct admin roles."""
-    try:
-        # Demote inadvertent admins
-        SupabaseService.update_user_by_email("srkreddy@gmail.com", {"role": "customer"})
-        SupabaseService.update_user_by_email("srkreddy45@gmail.com", {"role": "customer"})
-        # Ensure correct admin
-        SupabaseService.update_user_by_email("srkreddy452@gmail.com", {"role": "admin"})
-        
-        return {
-            "status": "success",
-            "message": "Admin roles corrected. srkreddy452 is the only admin.",
-            "checks": {
-                "srkreddy@gmail.com": SupabaseService.get_user_by_email("srkreddy@gmail.com").get("role"),
-                "srkreddy45@gmail.com": SupabaseService.get_user_by_email("srkreddy45@gmail.com").get("role"),
-                "srkreddy452@gmail.com": SupabaseService.get_user_by_email("srkreddy452@gmail.com").get("role")
-            }
-        }
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
 
 def create_access_token(data: dict):
     """Create a signed JWT access token."""
@@ -5721,7 +5700,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "v3_supabase_only_final_fix: 2500",
+        "version": "v3_supabase_only_final_fix: vFinal_Supabase_Safe",
         "database": "supabase"
     }
 
