@@ -1096,8 +1096,8 @@ class SupabaseService:
             recent_interviews = sum(1 for r in (interviews_all.data or []) if r.get("created_at") and r["created_at"] >= thirty_days_ago)
             
             # --- Engagement (Active Users 30d) ---
-            usage_resp = client.table("daily_usage").select("user_email").gte("date", thirty_days_ago[:10]).execute()
-            active_emails = set(r["user_email"] for r in (usage_resp.data or []))
+            usage_resp = client.table("daily_usage").select("email").gte("date", thirty_days_ago[:10]).execute()
+            active_emails = set(r["email"] for r in (usage_resp.data or []))
             active_users_30d = len(active_emails)
 
             return {
