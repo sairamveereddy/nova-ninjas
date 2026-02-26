@@ -12,11 +12,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const AdminPortal = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, refreshUser } = useAuth();
     const navigate = useNavigate();
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [loginEmail, setLoginEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [syncing, setSyncing] = useState(false);
 
     const [stats, setStats] = useState(null);
     const [jobStats, setJobStats] = useState(null);
@@ -27,13 +29,29 @@ const AdminPortal = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('overview');
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        if (password === '1010') {
+        const ADMIN_EMAIL = 'srkreddy452@gmail.com';
+        const ADMIN_PIN = '1010';
+
+        if (loginEmail.toLowerCase().trim() === ADMIN_EMAIL && password === ADMIN_PIN) {
             setIsAuthenticated(true);
             setError('');
+
+            // Role Sync Logic: Ensure the frontend session knows we are an admin
+            if (user?.email?.toLowerCase() === ADMIN_EMAIL) {
+                try {
+                    setSyncing(true);
+                    await refreshUser();
+                    console.log("Admin role synced successfully");
+                } catch (err) {
+                    console.error("Failed to sync admin role:", err);
+                } finally {
+                    setSyncing(false);
+                }
+            }
         } else {
-            setError('Incorrect password');
+            setError('Invalid Admin Email or PIN');
         }
     };
 
@@ -133,18 +151,40 @@ const AdminPortal = () => {
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleLogin} className="space-y-4">
-                            <div className="space-y-2">
-                                <Input
-                                    type="password"
-                                    placeholder="Enter Admin Password"
-                                    className="text-center text-lg tracking-widest"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    autoFocus
-                                />
-                                {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
+                            <div className="space-y-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1">Admin Email</label>
+                                    <Input
+                                        type="email"
+                                        placeholder="admin@jobninjas.ai"
+                                        className="text-center text-lg"
+                                        value={loginEmail}
+                                        onChange={(e) => setLoginEmail(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1">Secret PIN</label>
+                                    <Input
+                                        type="password"
+                                        placeholder="••••"
+                                        className="text-center text-lg tracking-widest"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                    />
+                                </div>
+
+                                {error && <p className="text-red-500 text-sm text-center font-medium bg-red-50 py-2 rounded-lg">{error}</p>}
+
+                                {isAuthenticated && user?.email !== 'srkreddy452@gmail.com' && (
+                                    <p className="text-orange-600 text-xs text-center font-medium bg-orange-50 p-2 rounded-lg border border-orange-100">
+                                        Note: You are currently logged in as {user?.email}.
+                                        Please switch to the admin account for full access.
+                                    </p>
+                                )}
                             </div>
-                            <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-lg py-6 h-auto">
+                            <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-lg py-6 h-auto shadow-lg shadow-indigo-200">
                                 <Lock className="mr-2 h-5 w-5" /> Unlock Portal
                             </Button>
                         </form>
