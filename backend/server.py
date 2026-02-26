@@ -5696,10 +5696,33 @@ async def debug_supabase_connection():
         # Checks
         for table in ["profiles", "applications", "interview_sessions", "daily_usage", "saved_resumes"]:
             try:
-                res = client.table(table).select("id" if table != "daily_usage" else "user_email", count="exact").limit(1).execute()
+                # Use 'email' for daily_usage
+                col = "id" if table != "daily_usage" else "email"
+                res = client.table(table).select(col, count="exact").limit(1).execute()
                 summary[table] = {"count": res.count, "success": True}
             except Exception as e:
                 summary[table] = {"error": str(e), "success": False}
+        
+        # Test Signup Insert (Surface Errors)
+        try:
+            import uuid
+            test_id = str(uuid.uuid4())
+            test_user = {
+                "id": test_id,
+                "email": f"debug_{test_id[:8]}@example.com",
+                "name": "Debug Test",
+                "role": "customer",
+                "plan": "free",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            res = client.table("profiles").insert(test_user).execute()
+            summary["signup_trial"] = {"success": True, "data": res.data[0] if res.data else "No data"}
+            # Clean up
+            client.table("profiles").delete().eq("id", test_id).execute()
+        except Exception as e:
+            import traceback
+            summary["signup_trial"] = {"success": False, "error": str(e), "trace": traceback.format_exc()}
+
         return summary
     except Exception as e:
         return {"error": str(e)}
@@ -5713,7 +5736,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "v3_supabase_only_final_fix: 2340",
+        "version": "v3_supabase_only_final_fix: 2345",
         "database": "supabase"
     }
 
