@@ -1674,13 +1674,13 @@ async def save_user_profile(request: Request, user: dict = Depends(get_current_u
             profile_update["fullName"] = user.get("name", "")
 
         # Update user profile in Supabase
+        # First sync to ensure flat columns are updated
+        SupabaseService.sync_user_profile(profile_update)
+        
         ok = SupabaseService.update_user_by_email(email, profile_update)
         if not ok:
              # Fallback to create if not exists
              SupabaseService.sign_up_user(profile_update)
-
-        # --- SUPABASE SYNC ---
-        SupabaseService.sync_user_profile(profile_update)
 
         logger.info(f"Full Universal Profile updated and synced for {email}")
         return {"success": True, "message": "Profile updated successfully"}
@@ -1792,12 +1792,18 @@ async def save_profile(request: Request, user: dict = Depends(get_current_user))
             logger.error(f"Error parsing resume file during profile save: {e}")
             # Don't fail the whole profile save, just log it
 
+    # Ensure ID is present for sync
+    profile_data["id"] = user.get("id") or user.get("_id")
+
     # Update profile in Supabase
+    # Sync first to handle nested -> flat mapping
+    SupabaseService.sync_user_profile(profile_data)
+    
     ok = SupabaseService.update_user_by_email(email, profile_data)
     if not ok:
         SupabaseService.sign_up_user(profile_data)
 
-    logger.info(f"Profile saved to Supabase for {email}")
+    logger.info(f"Profile saved and synced to Supabase for {email}")
     return {"success": True, "message": "Profile saved successfully"}
 
 
@@ -3560,7 +3566,7 @@ async def ai_ninja_apply(request: Request, user: dict = Depends(get_current_user
             "user_id": userId,
             "user_email": user.get("email"),
             "job_id": jobId if jobId and len(jobId) > 30 else None,
-            "job_title": job_title,
+            "job_title": jobTitle,
             "company": company,
             "status": "applied",
             "resume_id": resume_id,
@@ -4736,9 +4742,13 @@ async def parse_resume_endpoint(
                     logger.info(f"Sync: Updated target_role for {profile_email} during parse: {extracted_role}")
 
                 if update_fields:
+                    # Sync to flatten nested fields
+                    update_fields["email"] = profile_email
+                    SupabaseService.sync_user_profile(update_fields)
+                    
                     # Update Supabase Profile
                     SupabaseService.update_user_profile(userId, update_fields)
-                    logger.info(f"Full Universal Profile updated for {profile_email} via sync (Supabase only)")
+                    logger.info(f"Full Universal Profile updated and synced for {profile_email} via parse")
         except Exception as sync_err:
             logger.error(f"Failed to sync profile during parse: {sync_err}")
 

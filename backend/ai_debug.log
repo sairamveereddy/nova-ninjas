@@ -198,3 +198,6 @@
 2026-02-23 08:52:19,021 - resume_analyzer - INFO - Calling Groq API with model: llama-3.1-8b-instant (max_retries: 3)
 2026-02-23 08:54:27,493 - resume_analyzer - INFO - Calling Groq API with model: llama-3.1-8b-instant (max_retries: 3)
 2026-02-23 08:54:29,023 - resume_analyzer - INFO - Calling Groq API with model: llama-3.1-8b-instant (max_retries: 3)
+2026-02-27 15:00:25,011 - resume_analyzer - INFO - Calling Groq API with model: llama-3.1-8b-instant (max_retries: 3)
+2026-02-27 15:00:25,610 - resume_analyzer - INFO - Calling Groq API with model: llama-3.3-70b-versatile (max_retries: 3)
+2026-02-27 15:00:26,125 - resume_analyzer - INFO - Calling Groq API with model: llama-3.3-70b-versatile (max_retries: 3)

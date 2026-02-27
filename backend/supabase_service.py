@@ -191,11 +191,15 @@ class SupabaseService:
                 "work_authorization": user_dict.get("work_authorization"),
                 "preferences": user_dict.get("preferences"),
 
+                # Orion Boost: Full nested profile and sensitive data
+                "full_profile": user_dict if not user_dict.get("full_profile") else user_dict.get("full_profile"),
+                "sensitive_data": user_dict.get("sensitive"),
+
                 # Ensure created_at is explicitly stored for accurate admin stats
                 "created_at": (
                     user_dict.get("created_at").isoformat()
                     if hasattr(user_dict.get("created_at"), "isoformat")
-                    else (user_dict.get("created_at") or datetime.utcnow().isoformat())
+                    else (user_dict.get("created_at") or datetime.now(timezone.utc).isoformat())
                 ),
             }
             
