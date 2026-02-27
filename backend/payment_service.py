@@ -82,12 +82,6 @@ def create_checkout_session(
             },
         }
 
-        # Add trial period if it's the yearly plan
-        if plan_id == 'ai-yearly':
-            session_kwargs['subscription_data'] = {
-                'trial_period_days': 7
-            }
-
         checkout_session = stripe.checkout.Session.create(**session_kwargs)
         
         return {

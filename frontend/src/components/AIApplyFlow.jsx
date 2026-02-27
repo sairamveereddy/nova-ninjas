@@ -477,7 +477,6 @@ const AIApplyFlow = ({ isScanner = false }) => {
       };
 
       console.log('Saving resume:', { ...resumeData, resume_text: `[${textToSave.length} chars]` });
-      console.log('API URL:', `${API_URL}/api/resumes/save`);
 
       const responseData = await apiCall('/api/resumes/save', {
         method: 'POST',
@@ -495,6 +494,9 @@ const AIApplyFlow = ({ isScanner = false }) => {
       } else {
         alert(responseData.detail || 'Failed to save resume. Please try again.');
       }
+    } catch (error) {
+      console.error('Failed to save resume:', error);
+      alert(error.message || 'Failed to save resume. Please try again.');
     } finally {
       console.log('Save complete, stopping loading');
       setIsSavingResume(false);
@@ -531,6 +533,7 @@ const AIApplyFlow = ({ isScanner = false }) => {
       }
     } catch (error) {
       console.error('Failed to replace resume:', error);
+      alert(error.message || 'Failed to replace resume. Please try again.');
     } finally {
       setIsReplacing(false);
     }

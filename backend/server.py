@@ -3302,6 +3302,23 @@ async def get_user_usage_limits(identifier: str) -> dict:
         except Exception as e:
             logger.error(f"Error checking plan expiration for {user.get('email')}: {e}")
 
+    # Check for trial expiration
+    if user.get("subscription_status") == "trial":
+        trial_expires_at = user.get("trial_expires_at")
+        if trial_expires_at:
+            try:
+                if isinstance(trial_expires_at, str):
+                    expires_dt = datetime.fromisoformat(trial_expires_at.replace("Z", "+00:00"))
+                else:
+                    expires_dt = trial_expires_at
+                    
+                if datetime.now(timezone.utc) > expires_dt:
+                    logger.info(f"User {user.get('email')} trial expired at {expires_dt}. Reverting to free.")
+                    tier = "free"
+                    # We could also functionally update the DB here, but relying on read-time check is safest.
+            except Exception as e:
+                logger.error(f"Error checking trial expiration for {user.get('email')}: {e}")
+
     sub = user.get("subscription", {})
     if sub and sub.get("status") == "active":
         tier_id = sub.get("plan_id", tier)
@@ -3324,7 +3341,7 @@ async def get_user_usage_limits(identifier: str) -> dict:
 
     tier_lower = str(tier).strip().lower()
 
-    if tier_lower in ["pro", "unlimited", "ai-pro", "ai-monthly", "ai-quarterly", "ai-weekly", "human-starter", "human-growth", "human-scale"]:
+    if tier_lower in ["pro", "unlimited", "ai-pro", "ai-yearly", "ai-monthly", "ai-quarterly", "ai-weekly", "human-starter", "human-growth", "human-scale"]:
         limit = "Unlimited"
         autofills_limit = "Unlimited"
         can_generate = True
@@ -3366,11 +3383,12 @@ async def get_user_usage_limits(identifier: str) -> dict:
             autofills_limit = 5
             current_count = current_daily_apps
             can_generate = current_count < limit
-    else:  # free or ai-free
-        limit = 10
-        autofills_limit = 5
+    else:  # free, expired, or ai-free
+        # User requested 14-day trial paywall
+        limit = 0
+        autofills_limit = 0
         current_count = current_daily_apps
-        can_generate = current_count < limit
+        can_generate = False
 
     return {
         "limit": limit,
