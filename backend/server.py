@@ -2780,6 +2780,10 @@ async def create_dodo_portal(user: dict = Depends(get_current_user)):
         logger.error(f"Error creating dodo portal: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to create subscription portal: {str(e)}")
 
+@app.get("/api/debug-routes")
+async def list_routes():
+    return [{"path": route.path, "name": route.name, "methods": list(route.methods)} for route in app.routes]
+
 @api_router.post("/webhooks/dodo")
 async def dodo_webhook(request: Request):
     """
