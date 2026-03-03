@@ -138,11 +138,11 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.get("/")
 async def root():
-    return {"status": "ok", "message": "Backend version v1.0.6"}
+    return {"status": "ok", "message": "Backend version v1.0.7"}
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "version": "v1.0.6"}
+    return {"status": "ok", "version": "v1.0.7"}
 
 # Security Middleware
 @app.middleware("http")
@@ -2757,7 +2757,7 @@ async def create_dodo_checkout(request: Request, user: dict = Depends(get_curren
         return {"url": session.checkout_url}
     except Exception as e:
         logger.error(f"DODO_CRITICAL_CHECKOUT_ERROR: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=400, detail=f"BACKEND_ERROR_V1.0.6: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"BACKEND_ERROR_V1.0.7: {str(e)}")
 
 @api_router.get("/test-dodo")
 async def test_dodo():
