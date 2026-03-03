@@ -136,6 +136,10 @@ app = FastAPI(docs_url=docs_url, redoc_url=redoc_url)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "version": "v1.0.1"}
+
 # Security Middleware
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
