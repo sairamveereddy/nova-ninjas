@@ -138,11 +138,11 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.get("/")
 async def root():
-    return {"status": "ok", "message": "Backend version v1.0.5"}
+    return {"status": "ok", "message": "Backend version v1.0.6"}
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "version": "v1.0.5"}
+    return {"status": "ok", "version": "v1.0.6"}
 
 # Security Middleware
 @app.middleware("http")
@@ -2709,13 +2709,15 @@ async def create_checkout(request: CheckoutRequest):
 
 
 @api_router.post("/dodo-checkout")
-async def create_dodo_checkout(request: dict, user: dict = Depends(get_current_user)):
+async def create_dodo_checkout(request: Request, user: dict = Depends(get_current_user)):
     """
     Create a Dodo Payments checkout link.
     """
     from dodopayments import AsyncDodoPayments
     try:
-        plan_id = request.get("plan_id")
+        data = await request.json()
+        logger.info(f"Received dodo-checkout request: {data}")
+        plan_id = data.get("plan_id")
         DODO_PRICING = {
             'ai-yearly': 'pdt_0NZdskVVIhaRIFib0pvKX',
             'ai-pro-plus': 'pdt_0NZdskeTK6brGEax0h2cX',
@@ -2754,8 +2756,8 @@ async def create_dodo_checkout(request: dict, user: dict = Depends(get_current_u
         session = await dodo_client.checkout_sessions.create(**checkout_payload)
         return {"url": session.checkout_url}
     except Exception as e:
-        logger.error(f"DODO_CRITICAL_CHECKOUT_ERROR: {str(e)}")
-        raise HTTPException(status_code=400, detail=f"BACKEND_ERROR_V1.0.5: {str(e)}")
+        logger.error(f"DODO_CRITICAL_CHECKOUT_ERROR: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"BACKEND_ERROR_V1.0.6: {str(e)}")
 
 @api_router.get("/test-dodo")
 async def test_dodo():
