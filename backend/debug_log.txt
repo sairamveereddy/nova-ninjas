@@ -339,3 +339,62 @@ PROFESSIONAL SUMMARY
 AI Enginee
 Starting extraction...
 Extraction complete. Keys: ['person', 'address', 'education', 'employment_history', 'skills', 'work_authorization', 'preferences']
+
+--- PARSE RESUME 2026-03-02 23:24:17.347391 ---
+User: srkreddy452@gmail.com
+Filename: Sairam_Kumar_GenAI_Engineer_Elevance_Tailored.docx
+Content Length: 29391
+Parsed Text Length: 4626
+Parsed Text Preview: SAIRAM KUMAR
+217-862-4693  |  vsairamkumarreddy@gmail.com
+GEN AI / NLP ENGINEER — LLMs | RAG | MLOps
+Starting extraction...
+Extraction complete. Keys: ['error']
+
+--- PARSE RESUME 2026-03-02 23:37:09.476069 ---
+User: srkreddy452@gmail.com
+Filename: Optimized_Resume_Verizon.docx
+Content Length: 38670
+Parsed Text Length: 3747
+Parsed Text Preview: SAIRAM KUMAR
+(217)-862-4693 | vsairamkumarreddy@gmail.com | Linkedin
+PROFESSIONAL SUMMARY
+AI Securit
+Starting extraction...
+Extraction complete. Keys: ['person', 'address', 'education', 'employment_history', 'skills', 'work_authorization', 'preferences']
+
+--- PARSE RESUME 2026-03-02 23:50:27.470918 ---
+User: srkreddy452@gmail.com
+Filename: Optimized_Resume_Verizon.docx
+Content Length: 38670
+Parsed Text Length: 3747
+Parsed Text Preview: SAIRAM KUMAR
+(217)-862-4693 | vsairamkumarreddy@gmail.com | Linkedin
+PROFESSIONAL SUMMARY
+AI Securit
+Starting extraction...
+Extraction complete. Keys: ['person', 'address', 'education', 'employment_history', 'skills', 'work_authorization', 'preferences']
+
+--- PARSE RESUME 2026-03-02 23:53:55.199067 ---
+User: srkreddy452@gmail.com
+Filename: Optimized_Resume_Verizon.docx
+Content Length: 38670
+Parsed Text Length: 3747
+Parsed Text Preview: SAIRAM KUMAR
+(217)-862-4693 | vsairamkumarreddy@gmail.com | Linkedin
+PROFESSIONAL SUMMARY
+AI Securit
+Starting extraction...
+Extraction complete. Keys: ['person', 'address', 'education', 'employment_history', 'skills', 'work_authorization', 'preferences']
+
+--- PARSE RESUME 2026-03-03 00:06:08.617863 ---
+User: srkreddy452@gmail.com
+Filename: Optimized_Resume_Oracle (1).docx
+Content Length: 38766
+Parsed Text Length: 3903
+Parsed Text Preview: SAIRAM KUMAR
+(217)-862-4693 | vsairamkumarreddy@gmail.com | Linkedin
+PROFESSIONAL SUMMARY
+AI Enginee
+Starting extraction...
+Extraction complete. Keys: ['error']

@@ -761,10 +761,7 @@ const AIApplyFlow = ({ isScanner = false }) => {
               )}
 
               {/* Upload Zone */}
-              <div
-                className={`upload-zone ${resumeFile ? 'has-file' : ''}`}
-                onClick={() => document.getElementById('resume-upload-input').click()}
-              >
+              <div className="flex justify-center mb-6">
                 <input
                   id="resume-upload-input"
                   type="file"
@@ -774,26 +771,39 @@ const AIApplyFlow = ({ isScanner = false }) => {
                 />
 
                 {resumeFile ? (
-                  <div className="uploaded-file">
-                    <FileText className="w-12 h-12 text-indigo-500" />
-                    <span className="file-name">{resumeFile.name}</span>
-                    <span className="file-size">{(resumeFile.size / 1024).toFixed(1)} KB</span>
-                    <button className="remove-file" onClick={(e) => { e.stopPropagation(); setResumeFile(null); setResumeText(''); }}>
-                      <X className="w-4 h-4" /> Change
+                  <div className="flex items-center gap-3 p-3 bg-indigo-50 border border-indigo-100 rounded-xl relative">
+                    <FileText className="w-5 h-5 text-indigo-500" />
+                    <span className="text-sm font-medium text-indigo-900 truncate max-w-[200px]">{resumeFile.name}</span>
+                    <span className="text-xs text-indigo-400">{(resumeFile.size / 1024).toFixed(1)} KB</span>
+                    <button
+                      className="ml-2 p-1.5 hover:bg-indigo-100 rounded-lg text-indigo-400 hover:text-indigo-600 transition-colors"
+                      onClick={(e) => { e.stopPropagation(); setResumeFile(null); setResumeText(''); }}
+                      title="Remove file"
+                    >
+                      <X className="w-4 h-4" />
                     </button>
+                    {isParsingResume && (
+                      <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-indigo-600">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Parsing...
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <>
-                    <Upload className="w-12 h-12 text-slate-300" />
-                    <p>Drag & Drop or <span className="choose-file">Choose file</span> to upload</p>
-                    <span className="file-types">as .pdf or .docx file</span>
-                  </>
-                )}
-
-                {isParsingResume && (
-                  <div className="parsing-overlay">
-                    <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
-                    <span>Parsing Resume...</span>
+                  <div className="relative">
+                    <Button
+                      onClick={() => document.getElementById('resume-upload-input').click()}
+                      className="bg-white border-2 border-dashed border-slate-300 text-slate-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 font-bold px-6 h-12 rounded-xl transition-all flex items-center gap-2"
+                      variant="outline"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Upload Resume (PDF, DOCX)
+                    </Button>
+                    {isParsingResume && (
+                      <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-indigo-600">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

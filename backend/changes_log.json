@@ -2,22 +2,22 @@
   {
     "section": "summary",
     "type": "rewritten",
-    "original": "AI Engineer \u2014 Results-driven AI Architect with expertise in GenAI, LLMs, and agentic workflows, delivering high-impact AI solutions that drive business growth and operational efficiency",
-    "updated": "AI-native Software Engineer with 3+ years of experience in delivering AI-powered solutions",
+    "original": "AI Engineer \u2014 Results-driven AI Architect with expertise in GenAI, LLMs, and agentic workflows, delivering high-impact AI solutions that drive business growth and operational efficiency.",
+    "updated": "AI Automation Architect with 3+ years of experience in designing and developing AI solutions",
     "reason": "Job title and required skills"
   },
   {
     "section": "experience",
     "type": "keyword_surfaced",
     "original": "Designed and developed internal R&D initiatives focused on building and experimenting with Generative AI solutions",
-    "updated": "Designed and developed internal R&D initiatives focused on building and experimenting with Generative AI solutions, integrating multi-agent systems orchestration using LangChain, LangGraph, and CrewAI",
-    "reason": "Multi-agent systems orchestration"
+    "updated": "Designed and developed internal R&D initiatives focused on building and experimenting with Generative AI solutions, utilizing LangChain, LangGraph, and CrewAI",
+    "reason": "Agentic AI and multi-agent systems"
   },
   {
     "section": "projects",
     "type": "rewritten",
     "original": "Built a JDto-application copilot generating tailored resume bullets, cover letters, and recruiter cold emails using LangChain/LangGraph and LlamaIndex RAG over user profiles with ChromaDB and OpenAI embeddings",
-    "updated": "Built a JDto-application copilot generating tailored resume bullets, cover letters, and recruiter cold emails using LangChain/LangGraph and LlamaIndex RAG over user profiles with ChromaDB and OpenAI embeddings, using evaluation pipelines to measure accuracy and reliability",
-    "reason": "Evaluation pipelines"
+    "updated": "Built a JDto-application copilot generating tailored resume bullets, cover letters, and recruiter cold emails using LangChain/LangGraph and LlamaIndex RAG over user profiles with ChromaDB and OpenAI embeddings, utilizing guardrails for auditable, deterministic execution",
+    "reason": "Guardrails for auditable, deterministic execution"
   }
 ]

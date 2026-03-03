@@ -498,10 +498,6 @@ const ProfileOrion = ({
             {/* Header Bar */}
             <div className="flex items-center justify-between mb-8">
                 <h1 className="text-2xl font-black text-gray-900">PROFILE</h1>
-                <Button className="bg-emerald-400 hover:bg-emerald-500 text-gray-900 font-bold rounded-full px-6 flex gap-2">
-                    <span className="bg-white rounded-full p-0.5"><Sparkles className="w-3.5 h-3.5" /></span>
-                    Upgrade to Turbo: Get Hired Faster <ChevronRight className="w-4 h-4" />
-                </Button>
             </div>
 
             {/* Save Message Notification */}

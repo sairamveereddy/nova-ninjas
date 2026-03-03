@@ -523,10 +523,11 @@ async def generate_expert_documents(
     if not facts_json or not facts_json.get("employers"):
         logger.warning("Fact extraction flaked - rescuing with simple tailoring")
         simple_text = await generate_simple_tailored_resume(resume_text, job_description, "Target Role", "Target Company", byok_config=byok_config)
+        cl_text = await generate_cover_letter_content(resume_text, job_description, "Target Role", "Target Company", byok_config=byok_config)
         return {
             "alignment_highlights": "- Full resume generated via rescue mode",
             "ats_resume": simple_text, "detailed_cv": simple_text,
-            "cover_letter": None, "resume_json": {}
+            "cover_letter": cl_text, "resume_json": {}
         }
 
     # Resolve Header - Robust handling for "undefined" or "None" strings
@@ -797,6 +798,7 @@ OUTPUT FORMAT — STRICT JSON
       {{"degree": "...", "school": "..."}}
     ]
   }},
+  "cover_letter": "A brief, highly compelling 3-paragraph cover letter tailored to the job description and the candidate's core strengths.",
   "changes": [
     {{
       "section": "summary|skills|experience|projects",
@@ -879,6 +881,7 @@ OUTPUT ONLY VALID JSON. NO PREAMBLE. NO CHAT. NO CONVERSATIONAL TEXT.
         class ExpertResumeOutput(BaseModel):
             jd_extraction: Optional[JDExtraction] = None
             tailored_resume: TailoredResume
+            cover_letter: Optional[str] = ""
             changes: List[ResumeChangeItem] = []
             skills_added: List[str] = []
             self_check_passed: Optional[bool] = True
@@ -987,10 +990,11 @@ OUTPUT ONLY VALID JSON. NO PREAMBLE. NO CHAT. NO CONVERSATIONAL TEXT.
             tf.write("RAW JSON:\\n" + str(locals().get('json_text', 'No json_text')))
             
         simple_text = await generate_simple_tailored_resume(resume_text, job_description, "Position", "Company", byok_config=byok_config)
+        cl_text = await generate_cover_letter_content(resume_text, job_description, "Position", "Company", byok_config=byok_config)
         return {
             "alignment_highlights": "- Tailored analysis complete",
             "ats_resume": simple_text, "detailed_cv": simple_text,
-            "cover_letter": None, "resume_json": {},
+            "cover_letter": cl_text, "resume_json": {},
             "changes": [], "skills_added": [], "skills_skipped": []
         }
 

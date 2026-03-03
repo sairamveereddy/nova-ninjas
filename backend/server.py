@@ -1649,6 +1649,17 @@ async def get_user_profile(user: dict = Depends(get_current_user)):
                 },
             }
         
+        # Merge full_profile so frontend receives nested structure properly
+        full_prof = user.get("full_profile") or {}
+        if isinstance(full_prof, dict):
+            for k, v in full_prof.items():
+                if k not in user or user[k] is None:
+                    user[k] = v
+                    
+        # Map sensitive_data back to sensitive for the frontend if omitted
+        if "sensitive_data" in user and "sensitive" not in user:
+            user["sensitive"] = user["sensitive_data"]
+
         return {"success": True, "profile": user}
     except Exception as e:
         logger.error(f"Error fetching user profile: {str(e)}")
@@ -1697,6 +1708,19 @@ async def get_profile(email: str):
     try:
         # Get profile from Supabase
         profile = SupabaseService.get_user_by_email(email)
+        
+        if profile:
+            # Merge full_profile so frontend receives nested structure properly
+            full_prof = profile.get("full_profile") or {}
+            if isinstance(full_prof, dict):
+                for k, v in full_prof.items():
+                    if k not in profile or profile[k] is None:
+                        profile[k] = v
+                        
+            # Map sensitive_data back to sensitive for the frontend
+            if "sensitive_data" in profile and "sensitive" not in profile:
+                profile["sensitive"] = profile["sensitive_data"]
+                
         return {"profile": profile}
     except Exception as e:
         logger.error(f"Error fetching profile: {e}")
@@ -1945,9 +1969,16 @@ async def admin_update_user_plan(request: Request):
             
         # Update in Supabase
         update_doc = {"plan": new_plan}
+        
+        # SPECIAL LOGIC: "Set Pro" for 1 year
+        if new_plan == "pro":
+            one_year_later = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
+            update_doc["plan_expires_at"] = one_year_later
+            logger.info(f"Admin setting User {user_id} to PRO for 1 year (until {one_year_later})")
+            
         ok = SupabaseService.update_user_profile(user_id, update_doc)
         if ok:
-            return {"success": True, "plan": new_plan, "user_id": user_id}
+            return {"success": True, "plan": new_plan, "user_id": user_id, "updated": update_doc}
         return JSONResponse(status_code=404, content={"success": False, "detail": "User not found"})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -3504,11 +3535,11 @@ async def get_user_usage_limits(identifier: str) -> dict:
             current_count = current_daily_apps
             can_generate = current_count < limit
     else:  # free, expired, or ai-free
-        # Trial limits (7-day free trial)
-        limit = 10
-        autofills_limit = 10
+        # Free tier limits (5 resumes, 5 autofills)
+        limit = 5
+        autofills_limit = 5
         current_count = current_daily_apps
-        can_generate = False
+        can_generate = current_count < limit
 
     return {
         "limit": limit,

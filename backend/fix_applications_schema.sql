@@ -8,6 +8,9 @@ ALTER TABLE applications ADD COLUMN IF NOT EXISTS job_title  TEXT;
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS company    TEXT;
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS job_url    TEXT;
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS metadata   JSONB;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS notes      TEXT;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS platform   TEXT;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS applied_at TIMESTAMPTZ;
 
 -- 2. Create index for email lookup if missing
 CREATE INDEX IF NOT EXISTS applications_email_idx ON applications(user_email);

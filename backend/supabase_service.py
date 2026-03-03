@@ -487,6 +487,15 @@ class SupabaseService:
                     app["company"] = app["platform"]
                 if not app.get("job_title") and app.get("role"):
                     app["job_title"] = app["role"]
+                
+                # Unpack metadata fields to root level for frontend compatibility
+                meta = app.get("metadata") or {}
+                if "resumeId" in meta and "resumeId" not in app:
+                    app["resumeId"] = meta["resumeId"]
+                if "matchScore" in meta and "matchScore" not in app:
+                    app["matchScore"] = meta["matchScore"]
+                if "origin" in meta and "origin" not in app:
+                    app["origin"] = meta["origin"]
                     
             return apps
         except Exception as e:

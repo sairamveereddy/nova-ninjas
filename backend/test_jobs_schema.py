@@ -1,15 +1,17 @@
 import asyncio
-from supabase_service import SupabaseService
+import os
 from dotenv import load_dotenv
+from supabase_service import SupabaseService
 
 load_dotenv(".env")
+client = SupabaseService.get_client()
 
-async def main():
-    client = SupabaseService.get_client()
+try:
     res = client.table("jobs").select("*").limit(1).execute()
     if res.data:
-        print("Columns:", list(res.data[0].keys()))
-        print("Sample:", res.data[0])
-
-if __name__ == "__main__":
-    asyncio.run(main())
+        print("Jobs table columns:")
+        print(res.data[0].keys())
+    else:
+        print("Jobs table works but is empty.")
+except Exception as e:
+    print(f"Error fetching jobs: {str(e)}")
