@@ -2752,6 +2752,34 @@ async def create_dodo_checkout(request: dict, user: dict = Depends(get_current_u
         logger.error(f"Error creating dodo checkout: {str(e)}")
         raise HTTPException(status_code=400, detail="Failed to create Dodo checkout link")
 
+@api_router.post("/dodo-portal")
+async def create_dodo_portal(user: dict = Depends(get_current_user)):
+    """
+    Create a Dodo Payments portal link for managing active subscriptions.
+    """
+    from dodopayments import AsyncDodoPayments
+    try:
+        dodo_client = AsyncDodoPayments(bearer_token="VlSrQp7v8yEwy3UB.Lzvf3GZC-wqETu11N-S8paVhoWjfyJfUHmPVDi-6g8HrvTaC")
+        
+        email = user.get("email")
+        if not email:
+            raise HTTPException(status_code=400, detail="User requires email to manage billing")
+
+        customers = await dodo_client.customers.list(email=email)
+        if not customers.items:
+            raise HTTPException(status_code=400, detail="No billing profile found. Please subscribe first.")
+            
+        customer_id = customers.items[0].customer_id
+        portal = await dodo_client.customers.customer_portal.create(customer_id=customer_id)
+        
+        portal_dict = portal.model_dump()
+        return {"url": portal_dict.get('link') or portal_dict.get('url')}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating dodo portal: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Failed to create subscription portal: {str(e)}")
+
 @api_router.post("/webhooks/dodo")
 async def dodo_webhook(request: Request):
     """

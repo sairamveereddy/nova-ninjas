@@ -2021,7 +2021,18 @@ const Dashboard = () => {
                         <CreditCard className="w-4 h-4 mr-2" />
                         Change Plan
                       </Button>
-                      <Button variant="outline" className="ml-2">
+                      <Button variant="outline" className="ml-2" onClick={async () => {
+                        try {
+                          const data = await apiCall('/api/dodo-portal', { method: 'POST' });
+                          if (data && data.url) {
+                            window.location.href = data.url;
+                          } else {
+                            alert("Failed to open subscription portal.");
+                          }
+                        } catch (error) {
+                          alert(error.message || "An error occurred.");
+                        }
+                      }}>
                         Manage Subscription
                       </Button>
                     </div>
