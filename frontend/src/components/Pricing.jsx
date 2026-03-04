@@ -94,10 +94,36 @@ const Pricing = () => {
     },
   };
 
+  const isProSubscriber = user?.subscription_plan === 'ai-yearly' && user?.subscription_status === 'active';
+  const isProPlusSubscriber = user?.subscription_plan === 'ai-pro-plus' && user?.subscription_status === 'active';
+  const isProMaxSubscriber = user?.subscription_plan === 'ai-pro-max' && user?.subscription_status === 'active';
+
   const aiNinjaPlans = [
-    { ...PRICING.AI_YEARLY, popular: false, buttonVariant: 'outline', description: PRICING.AI_YEARLY.description },
-    { ...PRICING.AI_PRO_PLUS, popular: true, buttonVariant: 'default', description: PRICING.AI_PRO_PLUS.description },
-    { ...PRICING.AI_PRO_MAX, popular: false, buttonVariant: 'outline', description: PRICING.AI_PRO_MAX.description },
+    {
+      ...PRICING.AI_YEARLY,
+      popular: false,
+      buttonVariant: 'outline',
+      description: PRICING.AI_YEARLY.description,
+      isSubscribed: isProSubscriber
+    },
+    {
+      ...PRICING.AI_PRO_PLUS,
+      popular: true,
+      buttonVariant: 'default',
+      description: PRICING.AI_PRO_PLUS.description,
+      // If user paid $49 (Pro), this becomes $20 (69-49=20)
+      price: isProSubscriber ? 20 : PRICING.AI_PRO_PLUS.price,
+      isSubscribed: isProPlusSubscriber
+    },
+    {
+      ...PRICING.AI_PRO_MAX,
+      popular: false,
+      buttonVariant: 'outline',
+      description: PRICING.AI_PRO_MAX.description,
+      // If user paid $49 (Pro), this becomes $40 (89-49=40)
+      price: isProSubscriber ? 40 : PRICING.AI_PRO_MAX.price,
+      isSubscribed: isProMaxSubscriber
+    },
   ];
 
   const humanNinjaPlans = [
@@ -290,7 +316,7 @@ const Pricing = () => {
                     }}
                   >
                     {planType === 'ai'
-                      ? (user?.subscription_status === 'active' ? '✅ Subscribed' : 'Subscribe Now')
+                      ? (plan.isSubscribed ? '✅ Subscribed' : 'Subscribe Now')
                       : (plan.price === 0 ? 'Try Free' : (plan.id === 'human-enterprise' ? 'Contact Us' : 'Get Started'))}
                   </button>
 
