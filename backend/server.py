@@ -3528,7 +3528,7 @@ async def ai_ninja_apply(request: Request, user: dict = Depends(get_current_user
 
         # Tailoring logic
         expert_docs = await generate_expert_documents(
-            resumeText, jobDescription, user_info=user, byok_config=None
+            resumeText, jobDescription, user_info=user
         )
         
         tailoredResume = expert_docs.get("ats_resume", "")
@@ -4833,7 +4833,6 @@ async def generate_resume_docx(request: GenerateResumeRequest):
                 request.resume_text,
                 request.job_description,
                 user_info=user,
-                byok_config=None, # Force system keys
             )
 
             if expert_docs and expert_docs.get("ats_resume"):
