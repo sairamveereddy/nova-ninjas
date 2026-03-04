@@ -3501,7 +3501,7 @@ async def ai_ninja_apply(request: Request, user: dict = Depends(get_current_user
             if not user.get("target_role") or not user.get("resume_text"):
                 from resume_analyzer import extract_resume_data
                 byok_config = None
-                extracted_data = await extract_resume_data(resumeText, byok_config=byok_config)
+                extracted_data = await extract_resume_data(resumeText)
                 
                 if extracted_data and not extracted_data.get("error"):
                     update_fields = {}
