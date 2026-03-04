@@ -2608,10 +2608,10 @@ async def create_dodo_checkout(request: Request, user: dict = Depends(get_curren
         logger.info(f"Received dodo-checkout request: {data}")
         plan_id = data.get("plan_id")
         DODO_PRICING = {
-            'ai-monthly': 'pdt_0NZUIq5YeOwMHJLTzi24o',
-            'ai-yearly': 'pdt_0NZdskVVIhaRIFib0pvKX',
-            'ai-pro-plus': 'pdt_0NZdskeTK6brGEax0h2cX',
-            'ai-pro-max': 'pdt_0NZdskimkgkJlRKi7MK0g'
+            'ai-monthly': 'pdt_0NZmnBVVr47PQFhQrHsxN',
+            'ai-yearly': 'pdt_0NZmnBd3UIZjSKOmo85RK',
+            'ai-pro-plus': 'pdt_0NZmnBgVJUd3o8Aw9rLCS',
+            'ai-pro-max': 'pdt_0NZmnBjvZfdf7wlo16mpF'
         }
         
         if plan_id not in DODO_PRICING:
@@ -2636,7 +2636,7 @@ async def create_dodo_checkout(request: Request, user: dict = Depends(get_curren
         
         # 2. Unified Checkout Session Creation
         checkout_payload = {
-            "product_cart": [{"product_id": DODO_PRICING[plan_id], "quantity": 1, "trial_period_days": 0}],
+            "product_cart": [{"product_id": DODO_PRICING[plan_id], "quantity": 1}],
             "customer": {"customer_id": customer_id} if customer_id else {"email": user.get("email"), "name": user.get("name", "User")},
             "return_url": f"{frontend_url}/dashboard?dodo_success=true"
         }
@@ -2706,11 +2706,11 @@ async def dodo_webhook(request: Request):
             product_id = product_cart[0].get("product_id") if isinstance(product_cart, list) and len(product_cart) > 0 else None
             
             plan_id = "ai-yearly"  # Default
-            if product_id == 'pdt_0NZdskeTK6brGEax0h2cX':
+            if product_id in ['pdt_0NZmnBgVJUd3o8Aw9rLCS', 'pdt_0NZdskeTK6brGEax0h2cX']:
                 plan_id = "ai-pro-plus"
-            elif product_id == 'pdt_0NZdskimkgkJlRKi7MK0g':
+            elif product_id in ['pdt_0NZmnBjvZfdf7wlo16mpF', 'pdt_0NZdskimkgkJlRKi7MK0g']:
                 plan_id = "ai-pro-max"
-            elif product_id == 'pdt_0NZUIq5YeOwMHJLTzi24o':
+            elif product_id in ['pdt_0NZmnBVVr47PQFhQrHsxN', 'pdt_0NZUIq5YeOwMHJLTzi24o']:
                 plan_id = "ai-monthly"
                 
             if customer_email:
