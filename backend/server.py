@@ -6105,11 +6105,16 @@ async def get_jobs(
         # Determine if we should perform a boosted search (if user has a target role)
         target_role = (user.get("preferences") or {}).get("target_role") if user else None
         
+        # Use target_role as search ONLY if no explicit keyword search AND no explicit job_functions
+        active_search = search
+        if not search and not job_functions:
+            active_search = target_role
+            
         # Primary fetch (Fresh jobs)
         supabase_jobs = SupabaseService.get_jobs(
             limit=limit if not target_role else 100, # Fetch more if we need to filter/score
             offset=offset if not target_role else 0, # Manual pagination if boosted
-            search=search or target_role,
+            search=active_search,
             job_type=type,
             location=country,
             visa=visa,
@@ -6127,7 +6132,7 @@ async def get_jobs(
             supabase_jobs = SupabaseService.get_jobs(
                 limit=limit if not target_role else 100,
                 offset=offset if not target_role else 0,
-                search=search or target_role,
+                search=active_search,
                 job_type=type,
                 location=country,
                 visa=visa,
