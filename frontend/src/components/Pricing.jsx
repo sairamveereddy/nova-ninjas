@@ -169,7 +169,7 @@ const Pricing = () => {
             customVariants={revealVariants}
             className="md:text-base text-sm text-gray-600 w-[80%]"
           >
-            Trusted by candidates worldwide. {planType === 'ai' ? 'Automate your search with AI. You only need this once—land your dream job during your trial or first year.' : 'Let our human Ninjas handle everything.'} Choose your path.
+            Trusted by candidates worldwide. {planType === 'ai' ? 'Automate your search with AI. You only need this once—land your dream job during your first month or first year.' : 'Let our human Ninjas handle everything.'} Choose your path.
           </TimelineContent>
 
           <TimelineContent
