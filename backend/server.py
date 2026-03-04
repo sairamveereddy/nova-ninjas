@@ -2448,14 +2448,49 @@ async def get_user_applications(user_email: str):
                     except:
                         pass
 
+        # NEW: Also fetch applications from Supabase to merge
+        try:
+            supabase_apps = SupabaseService.get_applications(user_email=user_email)
+            for s_app in supabase_apps:
+                # Map Supabase fields to Sheets-like format for frontend
+                # Sheets format is roughly: [Date, Company, Role, Match, Resume, JobLink, Status]
+                mapped_app = [
+                    s_app.get("applied_at", s_app.get("created_at", "")).split("T")[0], # Date
+                    s_app.get("company", s_app.get("platform", "Unknown")),             # Company
+                    s_app.get("job_title", s_app.get("role", "Unknown")),               # Role
+                    s_app.get("matchScore", s_app.get("match_score", "N/A")),           # Match
+                    "View",                                                             # Resume Link text
+                    s_app.get("job_link", "-"),                                         # Job Link
+                    s_app.get("status", "Applied"),                                     # Status
+                    s_app.get("resume_id", "")                                          # Extra: internal resume ID
+                ]
+                user_applications.append(mapped_app)
+                
+                # Update stats
+                total_count += 1
+                try:
+                    app_date_str = s_app.get("applied_at", s_app.get("created_at", ""))
+                    if app_date_str:
+                        app_dt = datetime.fromisoformat(app_date_str.replace("Z", "+00:00"))
+                        if app_dt > one_week_ago:
+                            week_count += 1
+                except: pass
+                
+                if s_app.get("status", "").lower() == "interview":
+                    interview_count += 1
+        except Exception as sup_err:
+            logger.error(f"Failed to merge Supabase apps in get_user_applications: {sup_err}")
+
+        # Final sort by date descending
+        user_applications.sort(key=lambda x: x[0] if x and len(x) > 0 else "", reverse=True)
+
         return {
             "applications": user_applications,
             "stats": {
                 "total": total_count,
                 "this_week": week_count,
                 "interviews": interview_count,
-                "hours_saved": total_count
-                * 0.5,  # Estimate 30 min saved per application
+                "hours_saved": total_count * 0.5,
             },
         }
 
@@ -3540,6 +3575,7 @@ async def ai_ninja_apply(request: Request, user: dict = Depends(get_current_user
         resume_doc = {
             "id": resume_id,
             "user_id": userId,
+            "user_email": user.get("email"),  # Ensure email is included for retrieval
             "resume_name": f"AI Tailored: {company}",
             "job_title": jobTitle,
             "company_name": company,
@@ -3547,6 +3583,7 @@ async def ai_ninja_apply(request: Request, user: dict = Depends(get_current_user
             "is_system_generated": True,
             "origin": "ai-ninja",
             "applied_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
         SupabaseService.create_saved_resume(resume_doc)
@@ -3562,7 +3599,11 @@ async def ai_ninja_apply(request: Request, user: dict = Depends(get_current_user
             "resume_id": resume_id,
             "platform": company, # Legacy fallback
             "applied_at": datetime.now(timezone.utc).isoformat(),
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "metadata": {
+                "origin": "ai-ninja",
+                "resumeId": resume_id
+            }
         }
 
         app_result = SupabaseService.create_application(app_doc)

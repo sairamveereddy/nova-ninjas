@@ -1306,6 +1306,8 @@ def create_text_docx(text: str, title: str = "Document", font_family: str = "Tim
         section.right_margin = Inches(0.5)
     
     # Split text into lines and add to document
+    # PRE-PROCESS: Replace literal \n or \\n strings from LLM with real newlines
+    text = text.replace('\\n', '\n').replace('\\\\n', '\n')
     lines = text.strip().split('\n')
     
     # First line is usually the name
@@ -1370,7 +1372,8 @@ def create_text_docx(text: str, title: str = "Document", font_family: str = "Tim
             p.paragraph_format.space_after = Pt(0)
         else:
             # Check if this is a job header (contains separators like " — " or " | ")
-            is_job_header = " — " in line_stripped or " | " in line_stripped or " – " in line_stripped
+            # Added length check to avoid bolding long paragraphs that happen to have separators
+            is_job_header = (" — " in line_stripped or " | " in line_stripped or " – " in line_stripped) and len(line_stripped) < 150
             
             p = doc.add_paragraph()
             if is_job_header:
