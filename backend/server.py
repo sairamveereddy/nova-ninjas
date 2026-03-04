@@ -645,60 +645,12 @@ async def activate_trial(
     user: dict = Depends(get_current_user)
 ):
     """
-    Activate 2-week free trial for a user.
+    DEPRECATED: Free trial activation has been disabled.
     """
-    try:
-        email = user.get("email")
-        
-        # Check if user already has an active trial or subscription
-        if user.get("subscription_status") == "active":
-            raise HTTPException(
-                status_code=400, 
-                detail="You already have an active subscription"
-            )
-        
-        if user.get("subscription_status") == "trial":
-            # Check if trial is still active
-            trial_expires_at = user.get("trial_expires_at")
-            if trial_expires_at:
-                expires_dt = datetime.fromisoformat(trial_expires_at.replace('Z', '+00:00'))
-                if datetime.now(timezone.utc) < expires_dt:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="You already have an active trial"
-                    )
-        
-        # Activate 2-week trial
-        now = datetime.now(timezone.utc)
-        trial_expires_at = now + timedelta(days=7)  # 1 week
-        
-        update_data = {
-            "subscription_status": "trial",
-            "trial_activated_at": now.isoformat(),
-            "trial_expires_at": trial_expires_at.isoformat(),
-            "subscription_plan": request.plan_id,
-            "plan": "ai-yearly"  # Set plan for compatibility
-        }
-        
-        ok = SupabaseService.update_user_by_email(email, update_data)
-        
-        if not ok:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        logger.info(f"Trial activated for user {email}, expires at {trial_expires_at.isoformat()}")
-        
-        return {
-            "success": True,
-            "message": "Trial activated successfully",
-            "trial_expires_at": trial_expires_at.isoformat(),
-            "days_remaining": 7
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error activating trial: {e}")
-        raise HTTPException(status_code=500, detail="Failed to activate trial")
+    raise HTTPException(
+        status_code=403, 
+        detail="Free trials are no longer available. Please upgrade to a pro plan to continue."
+    )
 
 @api_router.get("/subscription/status")
 async def get_subscription_status(user: dict = Depends(get_current_user)):

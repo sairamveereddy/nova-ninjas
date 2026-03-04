@@ -23,7 +23,7 @@ for plan in plans:
                 "subscription_period_count": 1,
                 "subscription_period_interval": "Year",
                 "purchasing_power_parity": False,
-                "trial_period_days": 7
+                "trial_period_days": 0
             },
             tax_category="digital_products"
         )
