@@ -2501,13 +2501,14 @@ async def get_unified_applications(user_id_or_email: str):
             
             standard_app = {
                 "id": app.get("id"),
-                "company": app.get("company") or app.get("platform") or "Unknown",
-                "job_title": app.get("job_title") or app.get("role") or "Unknown",
+                "company": app.get("company") or app.get("platform") or meta.get("company") or "Unknown",
+                "job_title": app.get("job_title") or app.get("role") or meta.get("jobTitle") or "Unknown",
                 "status": app.get("status") or "applied",
-                "application_link": app.get("job_link") or "",
+                "application_link": app.get("job_link") or meta.get("jobUrl") or "",
                 "applied_at": app.get("applied_at") or app.get("created_at"),
                 "notes": app.get("notes") or "",
                 "resumeId": app.get("resume_id") or meta.get("resumeId"),
+                "resumeText": meta.get("resumeText") or "",
                 "matchScore": meta.get("matchScore"),
                 "origin": meta.get("origin") or "ai-ninja"
             }
@@ -5543,7 +5544,16 @@ async def save_application(application: ApplicationData):
             "status": application.status or "materials_ready",
             "notes": application.notes,
             "platform": application.location,
-            "applied_at": application.appliedAt
+            "applied_at": application.appliedAt,
+            "metadata": {
+                "jobUrl": application.sourceUrl,
+                "resumeText": application.resumeText,
+                "coverLetterText": application.coverLetterText,
+                "matchScore": application.matchScore,
+                "company": application.company,
+                "jobTitle": application.jobTitle,
+                "origin": "ai-ninja"
+            }
         }
 
         result = SupabaseService.create_application(app_doc)
