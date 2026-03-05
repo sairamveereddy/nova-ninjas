@@ -6,9 +6,9 @@
 
 export const BRAND = {
   // Core branding
-  name: 'jobNinjas.ai',
+  name: 'jobNinjas.io',
   oldName: 'Nova Ninjas', // For reference during migration
-  domain: 'jobNinjas.ai',
+  domain: 'jobNinjas.io',
 
   // Taglines
   tagline: 'Apply Smarter, Land Faster',
@@ -16,11 +16,11 @@ export const BRAND = {
   heroTagline: 'AI-Powered Resume Tools & Human Job Application Service',
 
   // Contact
-  contactEmail: 'hello@jobNinjas.ai',
-  supportEmail: 'support@jobNinjas.ai',
+  contactEmail: 'hello@jobNinjas.io',
+  supportEmail: 'support@jobNinjas.io',
 
   // Social/Links
-  website: 'https://jobNinjas.ai',
+  website: 'https://jobNinjas.io',
 
   // Logo (update path when new logo is ready)
   logoPath: '/logo.png?v=2',
@@ -28,7 +28,7 @@ export const BRAND = {
 
   // Company info
   year: new Date().getFullYear(),
-  copyright: `© ${new Date().getFullYear()} jobNinjas.ai. All rights reserved.`,
+  copyright: `© ${new Date().getFullYear()} jobNinjas.io. All rights reserved.`,
 };
 
 // ============================================
@@ -66,7 +66,7 @@ export const PRICING = {
     period: '',
     applications: 10,
     isBeta: true,
-    description: 'Try jobNinjas.ai for free with essential tools.',
+    description: 'Try jobNinjas.io for free with essential tools.',
     features: [
       'Access to all Free Tools',
       'AI Resume Scanner',

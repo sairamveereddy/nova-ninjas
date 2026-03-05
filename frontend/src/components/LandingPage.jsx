@@ -713,7 +713,7 @@ const LandingPage = () => {
               <h4>Support</h4>
               <button onClick={() => navigate('/refund-policy')}>Refund Policy</button>
               <button onClick={() => navigate('/contact')}>Contact Us</button>
-              <button onClick={() => window.open('mailto:support@jobninjas.ai')}>Contact Support</button>
+              <button onClick={() => window.open('mailto:hello@jobninjas.io')}>Contact Support</button>
             </div>
           </div>
           <div className="footer-bottom-modern">

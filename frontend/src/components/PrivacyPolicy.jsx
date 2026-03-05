@@ -119,7 +119,7 @@ const PrivacyPolicy = () => {
                     </Section>
 
                     <p className="text-sm text-gray-400 text-center pt-4 border-t border-gray-100">
-                        We may update this Privacy Policy from time to time. The latest version will always be available at <a href="https://jobninjas.ai/privacy-policy" className="text-blue-600 underline">jobninjas.ai/privacy-policy</a>. Continued use of the platform constitutes acceptance of any updates.
+                        We may update this Privacy Policy from time to time. The latest version will always be available at <a href="https://jobninjas.io/privacy-policy" className="text-blue-600 underline">jobninjas.io/privacy-policy</a>. Continued use of the platform constitutes acceptance of any updates.
                     </p>
                 </Card>
             </main>

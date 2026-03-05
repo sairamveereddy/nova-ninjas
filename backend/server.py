@@ -151,6 +151,8 @@ async def add_security_headers(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://jobninjas.io",
+        "https://www.jobninjas.io",
         "https://jobninjas.ai",
         "https://www.jobninjas.ai",
         "https://jobninjas.org",
@@ -965,7 +967,7 @@ async def send_email_resend(to_email: str, subject: str, html_content: str):
     Send email using Resend API (HTTP-based, works on Railway).
     """
     resend_api_key = os.environ.get("RESEND_API_KEY")
-    from_email = os.environ.get("FROM_EMAIL", "jobNinjas <noreply@jobninjas.ai>")
+    from_email = os.environ.get("FROM_EMAIL", "jobNinjas <hello@jobninjas.io>")
 
     if not resend_api_key:
         logger.warning("RESEND_API_KEY not configured, skipping email")
@@ -1081,7 +1083,7 @@ async def send_booking_email(name: str, email: str):
         <div class="content">
             <p>Hi <strong>{name}</strong>,</p>
             
-            <p>Thank you for booking a consultation call with jobNinjas.org!</p>
+            <p>Thank you for booking a consultation call with jobNinjas.io!</p>
             
             <p>We've received your request and our team will reach out to you within 24 hours to schedule your 15-minute call.</p>
             
@@ -1104,7 +1106,7 @@ async def send_booking_email(name: str, email: str):
     """
 
     return await send_email_resend(
-        email, "Your Call with jobNinjas.org is Booked! 📞", html_content
+        email, "Your Call with jobNinjas.io is Booked! 📞", html_content
     )
 
 
@@ -1115,7 +1117,7 @@ async def send_welcome_email(
     Send a refined welcome email to new users who sign up.
     """
     logger.info(f"Attempting to send welcome email to {email} (Name: {name})")
-    frontend_url = os.environ.get("FRONTEND_URL", "https://jobninjas.ai")
+    frontend_url = os.environ.get("FRONTEND_URL", "https://jobninjas.io")
     verify_link = (
         f"{frontend_url}/verify-email?token={token}&email={email}"
         if token
@@ -1231,7 +1233,7 @@ async def send_welcome_email(
                 <div class="footer-links">
                     If you prefer not to receive these emails, you can <a href="#">unsubscribe</a>.
                 </div>
-                <p>Copyright © 2025 jobNinjas.org. All rights reserved.</p>
+                <p>Copyright © 2026 jobNinjas.io. All rights reserved.</p>
                 <p>Fast. Accurate. Human-Powered & AI-Driven.</p>
             </div>
         </div>
@@ -1253,7 +1255,7 @@ async def send_admin_booking_notification(booking):
     """
     Send notification to admin when someone books a call.
     """
-    admin_email = os.environ.get("ADMIN_EMAIL", "hello@jobninjas.org")
+    admin_email = os.environ.get("ADMIN_EMAIL", "hello@jobninjas.io")
 
     html_content = f"""
 <!DOCTYPE html>
