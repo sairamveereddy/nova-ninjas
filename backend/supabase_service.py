@@ -100,7 +100,7 @@ class SupabaseService:
         if not client: return []
         
         try:
-            query = client.table("jobs").select("*")
+            query = client.table("jobs").select("*").order("created_at", desc=True)
             
             # Time filter: last 72 hours (optional)
             if fresh_only:

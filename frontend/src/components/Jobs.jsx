@@ -61,6 +61,7 @@ const Jobs = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [userProfile, setUserProfile] = useState(null);
   const [recommendedTags, setRecommendedTags] = useState([]);
+  const [sortBy, setSortBy] = useState('recommended');
 
   // Advanced Filter States
   const [selectedJobFunctions, setSelectedJobFunctions] = useState([]);
@@ -116,7 +117,7 @@ const Jobs = () => {
     setIsLoading(true);
     setError(null);
     try {
-      let url = `${API_URL}/api/jobs?page=${page}&limit=20`;
+      let url = `${API_URL}/api/jobs?page=${page}&limit=20&sort=${sortBy}`;
 
       if (countryFilter && countryFilter !== 'all') {
         url += `&country=${countryFilter}`;
@@ -243,7 +244,7 @@ const Jobs = () => {
   // Fetch jobs when filters or page change
   useEffect(() => {
     fetchJobs(currentPage);
-  }, [currentPage, countryFilter, workTypeFilter, sponsorshipFilter, selectedJobFunctions, selectedExperience, selectedCities, datePostedFilter, salaryFilter]);
+  }, [currentPage, countryFilter, workTypeFilter, sponsorshipFilter, selectedJobFunctions, selectedExperience, selectedCities, datePostedFilter, salaryFilter, sortBy]);
 
   // Debounced keyword search
   useEffect(() => {
@@ -516,7 +517,7 @@ const Jobs = () => {
               </span>
 
               <div className="ml-auto">
-                <Select defaultValue="recommended">
+                <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="rounded-full h-9 px-4 border border-gray-200 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 shadow-sm w-fit gap-2">
                     <SelectValue placeholder="Recommended" />
                   </SelectTrigger>

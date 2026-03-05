@@ -1473,9 +1473,9 @@ async def scheduled_job_fetch():
         # FOCUS ON QUALITY: Disable Adzuna/JSearch as they lack full descriptions
         stats = await aggregator.aggregate_all_jobs(
             use_adzuna=False,
-            use_jsearch=False, 
-            use_usajobs=True, # USAJobs usually has ok details or is niche
-            use_rss=True,     # RemoteOK/Remotive are usually ok
+            use_jsearch=True,  # ENABLED to catch LinkedIn jobs
+            use_usajobs=True, 
+            use_rss=True,     
         )
         
         logger.info(f"✅ Scheduled job fetch completed. Stats: {stats}")

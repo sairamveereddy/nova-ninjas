@@ -179,36 +179,13 @@ job_sync_service = JobSyncService()
 scheduler = AsyncIOScheduler()
 
 # No DB check needed, JobSyncService uses Supabase internally
-# Schedule Adzuna sync every 10 minutes
-async def sync_adzuna():
-    try:
-        logger.info("Starting Adzuna job sync...")
-        await job_sync_service.sync_adzuna_jobs()
-    except Exception as e:
-        logger.error(f"Adzuna sync error: {e}")
+# Schedule job fetch every hour
+from job_fetcher import scheduled_job_fetch
 
-# Schedule JSearch sync every hour
-async def sync_jsearch():
-    try:
-        logger.info("Starting JSearch job sync...")
-        await job_sync_service.sync_jsearch_jobs()
-    except Exception as e:
-        logger.error(f"JSearch sync error: {e}")
-
-# Schedule cleanup of old jobs (older than 72 hours) - runs daily
-async def cleanup_old_jobs():
-    try:
-        logger.info("Starting cleanup of jobs older than 72 hours...")
-        deleted_count = await job_sync_service.cleanup_old_jobs()
-        logger.info(f"Cleanup completed: {deleted_count} jobs removed")
-    except Exception as e:
-        logger.error(f"Cleanup error: {e}")
-
-scheduler.add_job(sync_adzuna, 'interval', minutes=10, id='adzuna_sync')
-scheduler.add_job(sync_jsearch, 'interval', hours=1, id='jsearch_sync')
+scheduler.add_job(scheduled_job_fetch, 'interval', hours=1, id='scheduled_job_fetch')
 scheduler.add_job(cleanup_old_jobs, 'interval', hours=24, id='cleanup_old_jobs')  # Run daily
 scheduler.start()
-logger.info("Job sync scheduler started successfully (Adzuna: 10min, JSearch: 1hr, Cleanup: daily)")
+logger.info("Job sync scheduler started successfully (Scheduled Fetch: 1hr, Cleanup: daily)")
 
 
 # Note: api_router will be included at the end of the file after all routes are defined
@@ -6115,6 +6092,7 @@ async def get_jobs(
     cities: str = Query(None),
     date_posted: str = Query(None),
     salary: str = Query(None),
+    sort: str = Query('recommended'),
     token: str = Header(None)
 ):
     """
@@ -6183,40 +6161,39 @@ async def get_jobs(
                 salary=salary
             )
 
-        # 3. SMART SORTING & BOOSTING (PROJECT ORION)
+        # 3. SORTING (PROJECT ORION)
         all_candidates = supabase_jobs or []
         
-        # Apply Match Scores and Format Fields (with deduplication)
+        # Apply Match Scores and Format Fields
         formatted_results = []
-        seen_jobs = set() # Track (title, company) for deduplication
+        seen_jobs = set()
         
         for job in all_candidates:
-            # First map fields
             job = _format_supabase_job(job)
             
-            # Deduplicate by title and company (case-insensitive)
+            # Deduplicate
             title = (job.get("title") or "").strip().lower()
             company = (job.get("company") or "").strip().lower()
+            if not title or not company: continue
             
-            if not title or not company:
-                continue
-                
             job_key = (title, company)
-            if job_key in seen_jobs:
-                continue
+            if job_key in seen_jobs: continue
             seen_jobs.add(job_key)
             
-            # Then apply match score
+            # Apply Match Score
             job["matchScore"] = _calculate_match_score(job, user)
             job["match_score"] = job["matchScore"]
             
-            # Enrich with mock data
+            # Enrich
             job["companyData"] = _get_mock_company_data(job.get("company", "Unknown"))
             job["insiderConnections"] = _get_mock_insider_connections()
             formatted_results.append(job)
 
-        # Sort by Match Score DESC if user is present
-        if user and formatted_results:
+        # Apply Sort
+        if sort == 'newest':
+            # Already sorted by created_at in Supabase, but re-confirm
+            formatted_results.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+        elif user and sort == 'recommended' and formatted_results:
             formatted_results.sort(key=lambda x: x.get("matchScore", 0), reverse=True)
 
         # Manual Pagination if we fetched a larger pool

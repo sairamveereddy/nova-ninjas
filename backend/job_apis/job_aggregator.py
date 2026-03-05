@@ -32,12 +32,12 @@ class JobAggregator:
         
     async def aggregate_all_jobs(
         self,
-        use_adzuna: bool = False, # DISABLED by user request
-        use_jsearch: bool = True,  # RE-ENABLED: We need LinkedIn jobs
+        use_adzuna: bool = False, 
+        use_jsearch: bool = False, # Changed to False by default
         use_usajobs: bool = True,
         use_rss: bool = True,
-        max_adzuna_pages: int = 20,
-        max_jsearch_queries: int = 15
+        max_adzuna_pages: int = 10,
+        max_jsearch_queries: int = 10
     ) -> Dict[str, Any]:
         """
         Aggregate jobs from all enabled sources
@@ -392,25 +392,20 @@ class JobAggregator:
                 job['job_id'] = hashlib.md5(unique_string.encode()).hexdigest()[:24]
                 
                 # Check for existing job to perform smart update
-                existing = SupabaseService.get_job_by_external_id(ext_id)
+                job_id = job.get('job_id')
+                existing = SupabaseService.get_job_by_external_id(job_id) if job_id else None
                 
                 if existing:
                     # SMART UPDATE LOGIC
-                    old_desc = existing.get("full_description", "") or existing.get("fullDescription", "") or ""
-                    new_desc = job.get("full_description", "") or job.get("fullDescription", "") or ""
+                    old_desc = existing.get("description", "") or ""
+                    new_desc = job.get("description", "") or ""
                     
-                    # If existing has HTML (>200 chars) and new is short/link (<200 chars)
-                    # KEEP EXISTING description fields
-                    if len(old_desc) > 200 and len(new_desc) < 200:
-                        job["full_description"] = old_desc
-                        job["description"] = existing.get("description", job.get("description"))
-                        # Preserve parsed sections if they exist in old but not new
-                        if existing.get("responsibilities"):
-                            job["responsibilities"] = existing.get("responsibilities")
-                            job["qualifications"] = existing.get("qualifications")
-                            job["benefits"] = existing.get("benefits")
+                    # If existing has a long description and new is short
+                    # KEEP EXISTING description
+                    if len(old_desc) > len(new_desc) + 100:
+                        job["description"] = old_desc
                             
-                # Final cleanup: Ensure no camelCase metadata leaks to Supabase
+                # Final cleanup
                 job.pop('createdAt', None)
                 job.pop('updatedAt', None)
                 job.pop('fullDescription', None)
@@ -434,11 +429,11 @@ class JobAggregator:
         logger.info("Running light job refresh...")
         
         return await self.aggregate_all_jobs(
-            use_adzuna=True,
+            use_adzuna=False,
             use_jsearch=True,
             use_usajobs=False,  # Skip federal jobs for light refresh
             max_adzuna_pages=5,  # Only 5 pages = ~250 jobs
-            max_jsearch_queries=3  # Only 3 queries to conserve API calls
+            max_jsearch_queries=5  # Only 3 queries to conserve API calls
         )
         
     async def get_job_stats(self) -> Dict[str, Any]:
